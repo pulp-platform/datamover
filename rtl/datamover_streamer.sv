@@ -19,9 +19,12 @@ import hwpe_stream_package::*;
 import hci_package::*;
 import datamover_package::*;
 
+`include "hci_helpers.svh"
+
 module datamover_streamer #(
   parameter int unsigned TCDM_FIFO_DEPTH = 2,
-  parameter int unsigned BW = 32
+  parameter int unsigned BW = 32,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
   // global signals
   input  logic                   clk_i,
@@ -35,21 +38,28 @@ module datamover_streamer #(
   // output data stream + handshake
   hwpe_stream_intf_stream.sink   data_out,
   // TCDM ports
-  hci_core_intf.master           tcdm,
+  hci_core_intf.initiator        tcdm,
   // control channel
   input  ctrl_streamer_t         ctrl_i,
   output flags_streamer_t        flags_o
 );
 
-  // We "sacrifice" 1 word of memory interface bandwidth in order to support
-  // realignment at a byte boundary.
-  localparam BW_ALIGNED = BW-32;
+  localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
+  localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm);
+  localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
+  localparam int unsigned EHW = `HCI_SIZE_GET_EHW(tcdm);
+
   flags_fifo_t tcdm_fifo_flags;
 
   // "Virtual" HCI TCDM interfaces. Interface [0] maps loads (coming from
   // and HCI source) and interface [1] maps stores (coming from an HCI sink).
   hci_core_intf #(
-    .DW ( BW )
+    .DW  ( BW ),
+    .BW  ( 32 ),
+    .UW  ( UW ),
+    .IW  ( IW ),
+    .EW  ( EW ),
+    .EHW ( EHW)
   ) virt_tcdm [1:0] (
     .clk ( clk_i )
   );
@@ -57,7 +67,12 @@ module datamover_streamer #(
   // "Virtual" TCDM interface, used to embody data after mixing loads and
   // stores, but before the TCDM FIFO (if present).
   hci_core_intf #(
-    .DW ( BW )
+    .DW ( BW ),
+    .BW ( 32 ),
+    .UW ( UW ),
+    .IW ( IW ),
+    .EW ( EW ),
+    .EHW( EHW)
   ) tcdm_prefifo (
     .clk ( clk_i )
   );
@@ -67,7 +82,12 @@ module datamover_streamer #(
   // an array of interfaces, with one single instance inside. This is
   // useful because HCI muxes expect an array of output interfaces.
   hci_core_intf #(
-    .DW ( BW )
+    .DW  ( BW ),
+    .BW  ( 32 ),
+    .UW  ( UW                        ),
+    .IW  ( IW                        ),
+    .EW  ( EW                        ),
+    .EHW ( EHW                       )
   ) tcdm_prefilter [0:0] (
     .clk ( clk_i )
   );
@@ -76,7 +96,7 @@ module datamover_streamer #(
   // the HWPE-Stream, since the source also performs realignment, it will
   // expose a 32-bit larger HCI TCDM interface.
   hci_core_source #(
-    .DATA_WIDTH ( BW )
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_source (
     .clk_i       ( clk_i                         ),
     .rst_ni      ( rst_ni                        ),
@@ -93,7 +113,7 @@ module datamover_streamer #(
   // the HWPE-Stream, since the sink also performs realignment, it will
   // expose a 32-bit larger HCI TCDM interface.
   hci_core_sink #(
-    .DATA_WIDTH ( BW )
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_sink (
     .clk_i       ( clk_i                       ),
     .rst_ni      ( rst_ni                      ),
@@ -118,28 +138,25 @@ module datamover_streamer #(
       hci_core_load_store_mixer #(
         .DW          ( BW )
       ) i_ld_st_mux_static (
-        .clk_i    ( clk_i                ),
-        .rst_ni   ( rst_ni               ),
-        .clear_i  ( clear_i              ),
-        .in_load  ( virt_tcdm[0]         ),
-        .in_store ( virt_tcdm[1]         ),
-        .out      ( tcdm_prefifo         )
+        .clk_i    ( clk_i        ),
+        .rst_ni   ( rst_ni       ),
+        .clear_i  ( clear_i      ),
+        .in_load  ( virt_tcdm[0] ),
+        .in_store ( virt_tcdm[1] ),
+        .out      ( tcdm_prefifo )
       );
 
       // The HCI core FIFO the request path from the response path, easing
       // timing closure when integrating the accelerator in a cluster.
       hci_core_fifo #(
-        .FIFO_DEPTH ( TCDM_FIFO_DEPTH ),
-        .DW         ( BW              ),
-        .AW         ( 32              ),
-        .OW         (  1              )
+        .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
       ) i_tcdm_fifo (
-        .clk_i       ( clk_i                       ),
-        .rst_ni      ( rst_ni                      ),
-        .clear_i     ( clear_i                     ),
-        .flags_o     ( tcdm_fifo_flags             ),
-        .tcdm_slave  ( tcdm_prefifo                ),
-        .tcdm_master ( tcdm_prefilter[0]           )
+        .clk_i         ( clk_i             ),
+        .rst_ni        ( rst_ni            ),
+        .clear_i       ( clear_i           ),
+        .flags_o       ( tcdm_fifo_flags   ),
+        .tcdm_target   ( tcdm_prefifo      ),
+        .tcdm_initiator( tcdm_prefilter[0] )
       );
     end
     else begin : dont_use_fifo_gen
@@ -149,13 +166,13 @@ module datamover_streamer #(
       hci_core_mux_dynamic #(
         .NB_IN_CHAN  ( 2  ),
         .NB_OUT_CHAN ( 1  ),
-        .DW          ( BW )
+        .`HCI_SIZE_PARAM(in)(( `HCI_SIZE_PARAM(tcdm) ))
       ) i_ld_st_mux_static (
-        .clk_i   ( clk_i                ),
-        .rst_ni  ( rst_ni               ),
-        .clear_i ( clear_i              ),
-        .in      ( virt_tcdm            ),
-        .out     ( tcdm_prefilter       )
+        .clk_i   ( clk_i          ),
+        .rst_ni  ( rst_ni         ),
+        .clear_i ( clear_i        ),
+        .in      ( virt_tcdm[1:0] ),
+        .out     ( tcdm_prefilter )
       );
       assign tcdm_fifo_flags.empty = 1'b1;
 
@@ -167,12 +184,12 @@ module datamover_streamer #(
   // pollute HCI TCDM FIFOs and mixers, and it is better to remove them
   // altogether.
   hci_core_r_valid_filter i_tcdm_filter (
-    .clk_i       ( clk_i                ),
-    .rst_ni      ( rst_ni               ),
-    .clear_i     ( clear_i              ),
-    .enable_i    ( 1'b1                 ),
-    .tcdm_slave  ( tcdm_prefilter[0]    ),
-    .tcdm_master ( tcdm                 )
+    .clk_i         ( clk_i                ),
+    .rst_ni        ( rst_ni               ),
+    .clear_i       ( clear_i              ),
+    .enable_i      ( 1'b1                 ),
+    .tcdm_target   ( tcdm_prefilter[0].target ),
+    .tcdm_initiator( tcdm                 )
   );
   assign flags_o.tcdm_fifo_empty = tcdm_fifo_flags.empty;
 

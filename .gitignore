@@ -1,0 +1,7 @@
+.bender
+modelsim/build
+test/BUILD
+**.log
+**.txt
+**__pycache**
+verif/python/generated/**
