@@ -5,7 +5,7 @@ package:
 
 dependencies:
   hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.6 }
-  hci:         { git: "https://github.com/pulp-platform/hci.git", version: 1.0.6 }
+  hci:         { git: "https://github.com/pulp-platform/hci.git", version: 2.1.1 }
   hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 1.6 }
 
 
@@ -20,3 +20,9 @@ sources:
   - rtl/datamover_streamer.sv
   # Level 2
   - rtl/datamover_top.sv
+  - target: test
+    files:
+      - rtl/datamover_top_wrap.sv
+      - verif/tb/tb_package.sv
+      - verif/tb/tb_dummy_memory.sv
+      - verif/tb/tb_datamover_top.sv
