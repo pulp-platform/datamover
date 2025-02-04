@@ -14,7 +14,7 @@
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
  */
-
+`include "hci_helpers.svh"
 import hwpe_ctrl_package::*;
 import hci_package::*;
 import datamover_package::*;
@@ -23,7 +23,9 @@ module datamover_top #(
   parameter int unsigned ID        = 10,
   parameter int unsigned BW        = 288,
   parameter int unsigned N_CORES   = 8,
-  parameter int unsigned N_CONTEXT = 2
+  parameter int unsigned N_CONTEXT = 2,
+  parameter int unsigned MISALIGNED = 0,
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
   // global signals
   input  logic                    clk_i,
@@ -32,18 +34,18 @@ module datamover_top #(
   // events
   output logic [N_CORES-1:0][1:0] evt_o,
   // tcdm master ports
-  hci_core_intf.master            tcdm,
+  hci_core_intf.initiator         tcdm,
   // periph slave port
   hwpe_ctrl_intf_periph.slave     periph
 );
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
-  // realignment at a byte boundary.
-  localparam BW_ALIGNED = BW-32;
-  
+  // realignment at a byte boundary if the access are misaligned.
+  localparam BW_ALIGNED = MISALIGNED === 0 ? BW : BW-32;
+
   // State for the FSM declared directly in datamover_top.
   typedef enum { DM_IDLE, DM_STARTING, DM_WORKING, DM_FINISHED } dm_state;
-  dm_state cs, ns;
+  dm_state state_d, state_q;
 
   // Software-generated clear signal.
   logic clear;
@@ -79,6 +81,7 @@ module datamover_top #(
   // an incoming data out HWPE-Streams, each 256-bit wide.
   datamover_streamer #(
     .BW              ( BW ),
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm)     ),
     .TCDM_FIFO_DEPTH ( 0  )
   ) i_streamer (
     .clk_i      ( clk_i          ),
@@ -131,30 +134,30 @@ module datamover_top #(
   always_ff @(posedge clk_i or negedge rst_ni)
   begin : fsm_seq
     if(~rst_ni)
-      cs <= DM_IDLE;
+      state_q <= DM_IDLE;
     else if(clear)
-      cs <= DM_IDLE;
+      state_q <= DM_IDLE;
     else
-      cs <= ns;
+      state_q <= state_d;
   end
 
   // Datamover FSM: combinational next-state calculation process.
   always_comb
   begin : fsm_ns_comb
-    ns = cs;
-    if(cs == DM_IDLE) begin
+    state_d = state_q;
+    if(state_q == DM_IDLE) begin
       if(slave_flags.start)
-        ns = DM_STARTING;
+        state_d = DM_STARTING;
     end
-    else if(cs == DM_STARTING) begin
-      ns = DM_WORKING;
+    else if(state_q == DM_STARTING) begin
+      state_d = DM_WORKING;
     end
-    else if(cs == DM_WORKING) begin
+    else if(state_q == DM_WORKING) begin
       if ((streamer_flags.data_out_sink_flags.done | streamer_flags.data_out_sink_flags.ready_start) & (streamer_flags.data_in_source_flags.done | streamer_flags.data_in_source_flags.ready_start) & streamer_flags.tcdm_fifo_empty)
-        ns = DM_FINISHED;
+        state_d = DM_FINISHED;
     end
     else begin
-      ns = DM_IDLE;
+      state_d = DM_IDLE;
     end
   end
 
@@ -163,11 +166,11 @@ module datamover_top #(
   begin : fsm_out_comb
     slave_ctrl = '0;
     streamer_ctrl = streamer_ctrl_cfg;
-    if(cs == DM_STARTING) begin
+    if(state_q == DM_STARTING) begin
       streamer_ctrl.data_in_source_ctrl.req_start = 1'b1;
       streamer_ctrl.data_out_sink_ctrl.req_start = 1'b1;
     end
-    else if (cs == DM_FINISHED) begin
+    else if (state_q == DM_FINISHED) begin
       slave_ctrl.done = 1'b1;
     end
   end
@@ -200,5 +203,14 @@ module datamover_top #(
   // Bind the output event, which is propagated to the event unit and used
   // to implement HWPE datamover barriers.
   assign evt_o = slave_flags.evt[7:0];
+
+
+  localparam int unsigned DEBUG_DW  = `HCI_SIZE_GET_DW(tcdm);
+  localparam int unsigned DEBUG_BW  = `HCI_SIZE_GET_BW(tcdm);
+  localparam int unsigned DEBUG_AW  = `HCI_SIZE_GET_AW(tcdm);
+  localparam int unsigned DEBUG_UW  = `HCI_SIZE_GET_UW(tcdm);
+  localparam int unsigned DEBUG_IW  = `HCI_SIZE_GET_IW(tcdm);
+  localparam int unsigned DEBUG_EW  = `HCI_SIZE_GET_EW(tcdm);
+  localparam int unsigned DEBUG_EHW = `HCI_SIZE_GET_EHW(tcdm);
 
 endmodule // datamover_top
