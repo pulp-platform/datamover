@@ -24,6 +24,7 @@ import datamover_package::*;
 module datamover_streamer #(
   parameter int unsigned TCDM_FIFO_DEPTH = 2,
   parameter int unsigned BW = 32,
+  parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
   // global signals
@@ -96,7 +97,8 @@ module datamover_streamer #(
   // the HWPE-Stream, since the source also performs realignment, it will
   // expose a 32-bit larger HCI TCDM interface.
   hci_core_source #(
-    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
+    .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES)
   ) i_source (
     .clk_i       ( clk_i                         ),
     .rst_ni      ( rst_ni                        ),
@@ -113,7 +115,8 @@ module datamover_streamer #(
   // the HWPE-Stream, since the sink also performs realignment, it will
   // expose a 32-bit larger HCI TCDM interface.
   hci_core_sink #(
-    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
+    .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES)
   ) i_sink (
     .clk_i       ( clk_i                       ),
     .rst_ni      ( rst_ni                      ),

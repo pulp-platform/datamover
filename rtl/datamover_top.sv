@@ -24,7 +24,7 @@ module datamover_top #(
   parameter int unsigned BW        = 288,
   parameter int unsigned N_CORES   = 8,
   parameter int unsigned N_CONTEXT = 2,
-  parameter int unsigned MISALIGNED = 0,
+  parameter int unsigned MISALIGNED_ACCESSES = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
   // global signals
@@ -41,7 +41,7 @@ module datamover_top #(
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
   // realignment at a byte boundary if the access are misaligned.
-  localparam BW_ALIGNED = MISALIGNED === 0 ? BW : BW-32;
+  localparam BW_ALIGNED = MISALIGNED_ACCESSES === 0 ? BW : BW-32;
 
   // State for the FSM declared directly in datamover_top.
   typedef enum { DM_IDLE, DM_STARTING, DM_WORKING, DM_FINISHED } dm_state;
@@ -82,6 +82,7 @@ module datamover_top #(
   datamover_streamer #(
     .BW              ( BW ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm)     ),
+    .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES),
     .TCDM_FIFO_DEPTH ( 0  )
   ) i_streamer (
     .clk_i      ( clk_i          ),

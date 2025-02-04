@@ -253,10 +253,9 @@ int error_status;
     while(status !== 32'h00)
       periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS,  status,  clk_i, periph_bus);  
     
-
     check_output(GOLDEN_PATH,  // File containing golden reference data
-      write_addr.base_addr >> 2,  // Start address in memory
-      write_addr.tot_length,  // Number of entries to check
+      32'h0,  // Start address in memory
+      MEMORY_SIZE >> 2,  // Number of entries to check
       tb_datamover_top.i_dummy_memory.memory,  // Reference to memory array
       error_status
     );

@@ -89,15 +89,15 @@ module datamover_top_wrap
   // bindings
   generate
     for(genvar ii=0; ii<MP; ii++) begin: tcdm_binding
-        assign tcdm_req  [ii] = tcdm.req;
-        assign tcdm_add  [ii] = tcdm.add;
-        assign tcdm_wen  [ii] = tcdm.wen;
-        assign tcdm_be   [ii] = tcdm.be;
-        assign tcdm_data [ii] = tcdm.data;
+      assign tcdm_req  [ii] = tcdm.req;
+      assign tcdm_add  [ii] = tcdm.add + ii*4;
+      assign tcdm_wen  [ii] = tcdm.wen;
+      assign tcdm_be   [ii] = tcdm.be[3:0];
+      assign tcdm_data [ii] = tcdm.data[(ii+1)*32-1:ii*32];
     end 
-        assign tcdm.gnt      = &(tcdm_gnt);
-        assign tcdm.r_data   = { >> {tcdm_r_data}};
-        assign tcdm.r_valid  = &(tcdm_r_valid);
+      assign tcdm.gnt      = &(tcdm_gnt);
+      assign tcdm.r_data   = { >> {tcdm_r_data}};
+      assign tcdm.r_valid  = &(tcdm_r_valid);
   endgenerate
 
   always_comb
