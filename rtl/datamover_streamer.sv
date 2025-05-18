@@ -186,7 +186,9 @@ module datamover_streamer #(
   // cluster may generate even when the TCDM access is a write. These 
   // pollute HCI TCDM FIFOs and mixers, and it is better to remove them
   // altogether.
-  hci_core_r_valid_filter i_tcdm_filter (
+  hci_core_r_valid_filter #(
+    .`HCI_SIZE_PARAM(tcdm_target) ( `HCI_SIZE_PARAM(tcdm) )
+  ) i_tcdm_filter (
     .clk_i         ( clk_i                ),
     .rst_ni        ( rst_ni               ),
     .clear_i       ( clear_i              ),
