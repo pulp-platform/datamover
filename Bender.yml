@@ -20,9 +20,10 @@ sources:
   - rtl/datamover_streamer.sv
   # Level 2
   - rtl/datamover_top.sv
+  # Level 3
+  - rtl/datamover_top_wrap.sv
   - target: test
     files:
-      - rtl/datamover_top_wrap.sv
       - verif/tb/tb_package.sv
       - verif/tb/tb_dummy_memory.sv
       - verif/tb/tb_datamover_top.sv

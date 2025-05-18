@@ -71,7 +71,7 @@ module datamover_top_wrap
 `endif
     .DW  ( BW          ),
     .AW  ( DEFAULT_AW  ),
-    .BW  ( DEFAULT_BW  ),
+    .BW  ( 32          ),
     .UW  ( DEFAULT_UW  ),
     .IW  ( DEFAULT_IW  ),
     .EW  ( DEFAULT_EW  ),
