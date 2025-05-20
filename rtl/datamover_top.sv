@@ -54,6 +54,9 @@ module datamover_top #(
   ctrl_streamer_t  streamer_ctrl, streamer_ctrl_cfg;
   flags_streamer_t streamer_flags;
 
+  // Bit field to control the engine.
+  ctrl_engine_t engine_ctrl;
+
   // These are the bit fields used to propagate flags from/to the peripheral
   // interconnect slave interface.
   ctrl_slave_t slave_ctrl;
@@ -118,7 +121,7 @@ module datamover_top #(
   hwpe_ctrl_slave #(
     .N_CORES        ( 8  ),
     .N_CONTEXT      ( 2  ),
-    .N_IO_REGS      ( 13 ),
+    .N_IO_REGS      ( 14 ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
   ) i_slave (
@@ -185,20 +188,40 @@ module datamover_top #(
     streamer_ctrl_cfg = '0;
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = '1;
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = '1;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[0];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[1];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[3];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[4];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = reg_file.hwpe_params[5];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = reg_file.hwpe_params[6];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = reg_file.hwpe_params[7];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[8];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = reg_file.hwpe_params[9];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[10];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = reg_file.hwpe_params[11];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = reg_file.hwpe_params[12];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D0_LEN >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D0_STRIDE >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D1_LEN >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D1_STRIDE >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D2_STRIDE >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0_LEN >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0_STRIDE >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1_LEN >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1_STRIDE >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D2_STRIDE >> 2];
+  end
+
+  // Binding of engine configuration
+  always_comb
+  begin
+    engine_ctrl = '0;
+    engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b000 ? TRANSP_NONE :
+                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b001 ? TRANSP_8B :
+                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b010 ? TRANSP_16B : TRANSP_32B;
+    engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b000 ? 1 :
+                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b001 ? 1 :
+                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b010 ? 2 : 4;
+    if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][31:16] == '0) begin // no leftover
+      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b000 ? (BW_ALIGNED/8) :
+                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b001 ? (BW_ALIGNED/16) :
+                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b010 ? (BW_ALIGNED/32) : (BW_ALIGNED/8);
+    end
+    else begin // in case of leftover, use the reg content as length
+      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][31:16];
+    end
   end
 
   // Bind the output event, which is propagated to the event unit and used
