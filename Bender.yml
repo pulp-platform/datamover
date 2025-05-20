@@ -1,5 +1,5 @@
 package:
-  name: hwpe-datamover-example
+  name: datamover
   authors:
     - "Francesco Conti <f.conti@unibo.it>"
 
@@ -14,15 +14,16 @@ sources:
   # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
   # levels 1 and 0, etc. Files within a level are ordered alphabetically.
   # Level 0
-  - rtl/datamover_engine.sv
   - rtl/datamover_package.sv
   # Level 1
-  - rtl/datamover_streamer.sv
+  - rtl/datamover_engine.sv
   # Level 2
-  - rtl/datamover_top.sv
+  - rtl/datamover_streamer.sv
   # Level 3
+  - rtl/datamover_top.sv
+  # Level 4
   - rtl/datamover_top_wrap.sv
-  - target: test
+  - target: datamover_test
     files:
       - verif/tb/tb_package.sv
       - verif/tb/tb_dummy_memory.sv

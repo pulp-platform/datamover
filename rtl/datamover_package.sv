@@ -25,6 +25,14 @@ package datamover_package;
     logic tcdm_fifo_empty;
   } flags_streamer_t;
 
+  parameter int unsigned MAX_BW = 512; // support maximum 512bits of bandwidth
+
+  typedef enum logic[1:0] { TRANSP_32B, TRANSP_16B, TRANSP_8B, TRANSP_NONE } transp_mode_e;
+  typedef struct packed {
+    transp_mode_e                transp_mode;
+    logic [$clog2(MAX_BW/8)-1:0] transp_len;
+    logic [2:0]                  transp_stride; // 1, 2, or 4
+  } ctrl_engine_t;
 
   parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset
   // General hwpe register offsets
@@ -56,6 +64,7 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REG_OUT_D1_LEN      = 32'h28;  // Output dimension 1 length
   parameter int unsigned DATAMOVER_REG_OUT_D1_STRIDE   = 32'h2C;  // Output dimension 1 stride
   parameter int unsigned DATAMOVER_REG_OUT_D2_STRIDE   = 32'h30;  // Output dimension 2 stride
-
+  parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h34;  // Transposition mode (LSB: 000=none, 001=8b, 010=16b, 100=32b)
+                                                                  // Leftover: [31:16], if 0 then no leftover
 
 endpackage
