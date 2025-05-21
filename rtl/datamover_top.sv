@@ -121,8 +121,8 @@ module datamover_top #(
   // each, which are exposed into `reg_file.hwpe_params`
   hwpe_ctrl_slave #(
     .N_CORES        ( 8  ),
-    .N_CONTEXT      ( 2  ),
-    .N_IO_REGS      ( 14 ),
+    .N_CONTEXT      ( 4  ),
+    .N_IO_REGS      ( 11 ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
   ) i_slave (
@@ -191,16 +191,16 @@ module datamover_top #(
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = '1;
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D0_LEN >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][23:12];
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D0_STRIDE >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D1_LEN >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = { reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][27:24], reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][31:24] };
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D1_STRIDE >> 2];
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D2_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0_LEN >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][11:0];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1_LEN >> 2];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][23:12];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1_STRIDE >> 2];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D2_STRIDE >> 2];
   end
