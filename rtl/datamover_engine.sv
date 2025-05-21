@@ -173,9 +173,10 @@ module datamover_engine
     // enable buffer rows that are aligned with counter in groups of four (in 32b mode),
     // of two (in 16b mode) or single rows (in 8b mode).
     logic buffer_enable;
-    assign buffer_enable = ctrl_i.transp_mode == TRANSP_32B ? ((cnt_q >> 2) == (ii >> 2)) & data_in_valid & data_in_ready :
-                           ctrl_i.transp_mode == TRANSP_16B ? ((cnt_q >> 1) == (ii >> 1)) & data_in_valid & data_in_ready :
-                                                              ( cnt_q       ==  ii      ) & data_in_valid & data_in_ready;
+    assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE ? 1'b0 :
+                           ctrl_i.transp_mode == TRANSP_32B  ? ((cnt_q >> 2) == (ii >> 2)) & data_in_valid & data_in_ready :
+                           ctrl_i.transp_mode == TRANSP_16B  ? ((cnt_q >> 1) == (ii >> 1)) & data_in_valid & data_in_ready :
+                                                               ( cnt_q       ==  ii      ) & data_in_valid & data_in_ready;
     // select appropriately shifted rows
     logic [NB_BYTES-1:0][7:0] data_in_selected;
     assign data_in_selected = ctrl_i.transp_mode == TRANSP_32B ? data_in_shifted[ii % 4] :
@@ -205,12 +206,12 @@ module datamover_engine
 
   // Output assignment
   for(genvar ii=0; ii<NB_BYTES; ii++) begin : gen_output
-    assign data_out_unrolled[ii] = bytes_matrix_q[ii][cnt_q];
+    assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? bytes_matrix_q[ii][cnt_q] : data_in_unrolled[ii];
   end // gen_output
 
   // Input ready & output valid generation
-  assign data_in_ready  = fsm_q == WRITE;
-  assign data_out_valid = fsm_q == READ;
+  assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE : data_out_ready;
+  assign data_out_valid = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == READ  : data_in_valid;
 
 `ifndef SYNTHESIS
 `ifndef VERILATOR
