@@ -53,18 +53,15 @@ package datamover_package;
   // Job-specific registers
   parameter int unsigned DATAMOVER_REG_IN_PTR          = 32'h00;  // Input pointer
   parameter int unsigned DATAMOVER_REG_OUT_PTR         = 32'h04;  // Output pointer
-  parameter int unsigned DATAMOVER_REG_TOT_LEN         = 32'h08;  // Total length
-  parameter int unsigned DATAMOVER_REG_IN_D0_LEN       = 32'h0C;  // Input dimension 0 length
+  parameter int unsigned DATAMOVER_REG_LEN0            = 32'h08;  // [31:24] in_d1_len[7:0]; [23:12] in_d0_len; [11:0] tot_len
+  parameter int unsigned DATAMOVER_REG_LEN1            = 32'h0C;  // [27:24] in_d1_len[11:8]; [23:12] out_d1_len; [11:0] out_d0_len
   parameter int unsigned DATAMOVER_REG_IN_D0_STRIDE    = 32'h10;  // Input dimension 0 stride
-  parameter int unsigned DATAMOVER_REG_IN_D1_LEN       = 32'h14;  // Input dimension 1 length
-  parameter int unsigned DATAMOVER_REG_IN_D1_STRIDE    = 32'h18;  // Input dimension 1 stride
-  parameter int unsigned DATAMOVER_REG_IN_D2_STRIDE    = 32'h1C;  // Input dimension 2 stride
-  parameter int unsigned DATAMOVER_REG_OUT_D0_LEN      = 32'h20;  // Output dimension 0 length
-  parameter int unsigned DATAMOVER_REG_OUT_D0_STRIDE   = 32'h24;  // Output dimension 0 stride
-  parameter int unsigned DATAMOVER_REG_OUT_D1_LEN      = 32'h28;  // Output dimension 1 length
-  parameter int unsigned DATAMOVER_REG_OUT_D1_STRIDE   = 32'h2C;  // Output dimension 1 stride
-  parameter int unsigned DATAMOVER_REG_OUT_D2_STRIDE   = 32'h30;  // Output dimension 2 stride
-  parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h34;  // Transposition mode (LSB: 000=none, 001=8b, 010=16b, 100=32b)
+  parameter int unsigned DATAMOVER_REG_IN_D1_STRIDE    = 32'h14;  // Input dimension 1 stride
+  parameter int unsigned DATAMOVER_REG_IN_D2_STRIDE    = 32'h18;  // Input dimension 2 stride
+  parameter int unsigned DATAMOVER_REG_OUT_D0_STRIDE   = 32'h1C;  // Output dimension 0 stride
+  parameter int unsigned DATAMOVER_REG_OUT_D1_STRIDE   = 32'h20;  // Output dimension 1 stride
+  parameter int unsigned DATAMOVER_REG_OUT_D2_STRIDE   = 32'h24;  // Output dimension 2 stride
+  parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h28;  // Transposition mode (LSB: 000=none, 001=8b, 010=16b, 100=32b)
                                                                   // Leftover: [31:16], if 0 then no leftover
 
 endpackage
