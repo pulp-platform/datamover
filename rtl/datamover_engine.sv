@@ -43,6 +43,7 @@ module datamover_engine
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
   datamover_engine_fsm_t fsm_d, fsm_q;
+  logic clear_bytes_matrix;
   logic [$clog2(NB_BYTES):0] cnt_q, cnt_d;
   logic cnt_en;
   logic [NB_BYTES-1:0][7:0] data_in_unrolled;
@@ -58,12 +59,12 @@ module datamover_engine
     fsm_d = fsm_q;
     case (fsm_q)
       WRITE: begin
-        if ((cnt_q == ctrl_i.transp_len-1) && (data_in_valid & data_in_ready)) begin
+        if ((cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride) && (data_in_valid & data_in_ready)) begin
           fsm_d = READ;
         end
       end
       READ: begin
-        if ((cnt_q == ctrl_i.transp_len-1) && (data_out_valid & data_out_ready)) begin
+        if ((cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride) && (data_out_valid & data_out_ready)) begin
           fsm_d = WRITE;
         end
       end
@@ -82,6 +83,8 @@ module datamover_engine
       fsm_q <= fsm_d;
     end
   end
+
+  assign clear_bytes_matrix = (fsm_q == READ && fsm_d == WRITE) ? 1'b1 : 1'b0;
 
   // internal interfaces and unrolling
   hwpe_stream_intf_stream #(
@@ -139,7 +142,7 @@ module datamover_engine
       cnt_q <= cnt_d;
     end
   end
-  assign cnt_d = cnt_q < ctrl_i.transp_len-1 ? cnt_q+ctrl_i.transp_stride : '0;
+  assign cnt_d = cnt_q < ctrl_i.transp_len-ctrl_i.transp_stride ? cnt_q+ctrl_i.transp_stride : '0;
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
@@ -170,9 +173,9 @@ module datamover_engine
     // enable buffer rows that are aligned with counter in groups of four (in 32b mode),
     // of two (in 16b mode) or single rows (in 8b mode).
     logic buffer_enable;
-    assign buffer_enable = ctrl_i.transp_mode == TRANSP_32B ? (cnt_q == (ii >> 2)) & data_in_valid & data_in_ready :
-                           ctrl_i.transp_mode == TRANSP_16B ? (cnt_q == (ii >> 1)) & data_in_valid & data_in_ready :
-                                                              (cnt_q == ii)        & data_in_valid & data_in_ready;
+    assign buffer_enable = ctrl_i.transp_mode == TRANSP_32B ? ((cnt_q >> 2) == (ii >> 2)) & data_in_valid & data_in_ready :
+                           ctrl_i.transp_mode == TRANSP_16B ? ((cnt_q >> 1) == (ii >> 1)) & data_in_valid & data_in_ready :
+                                                              ( cnt_q       ==  ii      ) & data_in_valid & data_in_ready;
     // select appropriately shifted rows
     logic [NB_BYTES-1:0][7:0] data_in_selected;
     assign data_in_selected = ctrl_i.transp_mode == TRANSP_32B ? data_in_shifted[ii % 4] :
@@ -181,12 +184,15 @@ module datamover_engine
 
     for(genvar jj=0; jj<NB_BYTES; jj++) begin : gen_bytes_matrix_y
 
+      logic clear_int;
+      assign clear_int = clear_i | clear_bytes_matrix;
+
       always_ff @(posedge clk_i or negedge rst_ni)
       begin
         if (~rst_ni) begin
           bytes_matrix_q[ii][jj] <= '0;
         end
-        else if(clear_i) begin
+        else if(clear_int) begin
           bytes_matrix_q[ii][jj] <= '0;
         end
         else if(buffer_enable) begin
