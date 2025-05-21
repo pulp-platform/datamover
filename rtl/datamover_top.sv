@@ -216,9 +216,7 @@ module datamover_top #(
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
     if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
-      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? (BW_ALIGNED/8) :
-                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? (BW_ALIGNED/8) :
-                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? (BW_ALIGNED/16) : (BW_ALIGNED/32);
+      engine_ctrl.transp_len = BW_ALIGNED/8;
     end
     else begin // in case of leftover, use the reg content as length
       engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];
