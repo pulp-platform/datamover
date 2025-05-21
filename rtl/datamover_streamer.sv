@@ -45,6 +45,7 @@ module datamover_streamer #(
   output flags_streamer_t        flags_o
 );
 
+  localparam int unsigned BW_INT = `HCI_SIZE_GET_BW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
@@ -56,7 +57,7 @@ module datamover_streamer #(
   // and HCI source) and interface [1] maps stores (coming from an HCI sink).
   hci_core_intf #(
     .DW  ( BW ),
-    .BW  ( 32 ),
+    .BW  ( BW_INT ),
     .UW  ( UW ),
     .IW  ( IW ),
     .EW  ( EW ),
@@ -69,7 +70,7 @@ module datamover_streamer #(
   // stores, but before the TCDM FIFO (if present).
   hci_core_intf #(
     .DW ( BW ),
-    .BW ( 32 ),
+    .BW ( BW_INT ),
     .UW ( UW ),
     .IW ( IW ),
     .EW ( EW ),
@@ -84,7 +85,7 @@ module datamover_streamer #(
   // useful because HCI muxes expect an array of output interfaces.
   hci_core_intf #(
     .DW  ( BW ),
-    .BW  ( 32 ),
+    .BW  ( BW_INT ),
     .UW  ( UW                        ),
     .IW  ( IW                        ),
     .EW  ( EW                        ),

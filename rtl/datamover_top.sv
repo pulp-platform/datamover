@@ -111,6 +111,7 @@ module datamover_top #(
     .test_mode_i( test_mode_i    ),
     .enable_i   ( 1'b1           ),
     .clear_i    ( clear          ),
+    .ctrl_i     ( engine_ctrl    ),
     .data_in    ( data_in        ),
     .data_out   ( data_out       )
   );
@@ -208,19 +209,19 @@ module datamover_top #(
   always_comb
   begin
     engine_ctrl = '0;
-    engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b000 ? TRANSP_NONE :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b001 ? TRANSP_8B :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b010 ? TRANSP_16B : TRANSP_32B;
-    engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b000 ? 1 :
-                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b001 ? 1 :
-                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b010 ? 2 : 4;
-    if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][31:16] == '0) begin // no leftover
-      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b000 ? (BW_ALIGNED/8) :
-                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b001 ? (BW_ALIGNED/16) :
-                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][2:0] == 3'b010 ? (BW_ALIGNED/32) : (BW_ALIGNED/8);
+    engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? TRANSP_NONE :
+                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? TRANSP_8B :
+                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? TRANSP_16B : TRANSP_32B;
+    engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? 1 :
+                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
+                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
+    if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
+      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? (BW_ALIGNED/8) :
+                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? (BW_ALIGNED/8) :
+                               reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? (BW_ALIGNED/16) : (BW_ALIGNED/32);
     end
     else begin // in case of leftover, use the reg content as length
-      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE][31:16];
+      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];
     end
   end
 

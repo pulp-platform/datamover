@@ -44,6 +44,7 @@ module datamover_engine
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
   datamover_engine_fsm_t fsm_d, fsm_q;
   logic [$clog2(NB_BYTES):0] cnt_q, cnt_d;
+  logic cnt_en;
   logic [NB_BYTES-1:0][7:0] data_in_unrolled;
   logic                     data_in_valid;
   logic                     data_in_ready;
@@ -120,6 +121,7 @@ module datamover_engine
     .push_i  ( data_out_prefifo ),
     .pop_o   ( data_out         )
   );
+  assign data_out_prefifo.strb = '1; // FIXME for leftovers
   assign data_out_prefifo.data = data_out_unrolled;
   assign data_out_prefifo.valid = data_out_valid;
   assign data_out_ready = data_out_prefifo.ready;
@@ -133,11 +135,12 @@ module datamover_engine
     else if(clear_i) begin
       cnt_q <= '0;
     end
-    else if(data_in_valid & data_in_ready) begin
+    else if(cnt_en) begin
       cnt_q <= cnt_d;
     end
   end
-  assign cnt_d = cnt_q < ctrl_i.transp_len-1 ? cnt_q+ctrl_i.transp_stride : '0; // FIXME ctrl len, stride EXAMPLE: 8b len=NB_BYTES, stride=1; 16b len=NB_BYTES/2, stride=2, etc.
+  assign cnt_d = cnt_q < ctrl_i.transp_len-1 ? cnt_q+ctrl_i.transp_stride : '0;
+  assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration (8b transpose, 16b transpose,

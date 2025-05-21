@@ -29,9 +29,9 @@ package datamover_package;
 
   typedef enum logic[1:0] { TRANSP_32B, TRANSP_16B, TRANSP_8B, TRANSP_NONE } transp_mode_e;
   typedef struct packed {
-    transp_mode_e                transp_mode;
-    logic [$clog2(MAX_BW/8)-1:0] transp_len;
-    logic [2:0]                  transp_stride; // 1, 2, or 4
+    transp_mode_e              transp_mode;
+    logic [$clog2(MAX_BW/8):0] transp_len;
+    logic [2:0]                transp_stride; // 1, 2, or 4
   } ctrl_engine_t;
 
   parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset
