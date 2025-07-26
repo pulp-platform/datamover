@@ -120,6 +120,7 @@ module datamover_top #(
   // in the default configuration, it provides 2 contexts with 13 registers
   // each, which are exposed into `reg_file.hwpe_params`
   hwpe_ctrl_slave #(
+    .REGFILE_SCM    ( 0  ),
     .N_CORES        ( 8  ),
     .N_CONTEXT      ( 4  ),
     .N_IO_REGS      ( 11 ),
