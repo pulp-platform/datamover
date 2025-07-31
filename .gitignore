@@ -1,5 +1,5 @@
 .bender
-modelsim/build
+modelsim/vsim
 test/BUILD
 **.log
 **.txt

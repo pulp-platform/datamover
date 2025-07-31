@@ -24,9 +24,9 @@ module datamover_engine
   parameter int unsigned FIFO_DEPTH = 2,
   parameter int unsigned BW_ALIGNED = 32,
   parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
-  parameter int unsigned ELEM_WIDTH = 8     // element width (in bits)
+  parameter int unsigned ELEM_WIDTH = 8,     // element width (in bits)
   // Dependent parameters: do not modify!
-  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
+  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH // should correspond to bank width
 ) (
   // global signals
   input  logic                   clk_i,
