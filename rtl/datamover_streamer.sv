@@ -13,6 +13,7 @@
 
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
+ *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
 
 import hwpe_stream_package::*;
@@ -22,8 +23,10 @@ import datamover_package::*;
 `include "hci_helpers.svh"
 
 module datamover_streamer #(
-  parameter int unsigned TCDM_FIFO_DEPTH = 2,
   parameter int unsigned BW = 32,
+  parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
+  parameter int unsigned ELEM_WIDTH = 8,    // element width (in bits)
+  parameter int unsigned TCDM_FIFO_DEPTH = 2,
   parameter int unsigned MISALIGNED_ACCESSES = 1,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
@@ -96,7 +99,7 @@ module datamover_streamer #(
 
   // Standard HCI core source. The DATA_WIDTH parameter is referred to
   // the HWPE-Stream, since the source also performs realignment, it will
-  // expose a 32-bit larger HCI TCDM interface.
+  // expose a 1-word-larger HCI TCDM interface.
   hci_core_source #(
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
     .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES)
@@ -114,10 +117,12 @@ module datamover_streamer #(
 
   // Standard HCI core sink. The DATA_WIDTH parameter is referred to
   // the HWPE-Stream, since the sink also performs realignment, it will
-  // expose a 32-bit larger HCI TCDM interface.
+  // expose a 1-word-larger HCI TCDM interface.
   hci_core_sink #(
+    .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
+    .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
+    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   )
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
-    .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES)
   ) i_sink (
     .clk_i       ( clk_i                       ),
     .rst_ni      ( rst_ni                      ),
@@ -140,7 +145,10 @@ module datamover_streamer #(
       // a STORE-exclusive channel. It will couple any valid response to
       // the LOAD channel exclusively.
       hci_core_load_store_mixer #(
-        .DW          ( BW )
+        .DW ( BW ),
+        .BW ( BW_INT ),
+        .UW ( UW ),
+        .EW ( EW )
       ) i_ld_st_mux_static (
         .clk_i    ( clk_i        ),
         .rst_ni   ( rst_ni       ),

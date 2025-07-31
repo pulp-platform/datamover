@@ -27,7 +27,7 @@ package datamover_package;
 
   parameter int unsigned MAX_BW = 512; // support maximum 512bits of bandwidth
 
-  typedef enum logic[1:0] { TRANSP_32B, TRANSP_16B, TRANSP_8B, TRANSP_NONE } transp_mode_e;
+  typedef enum logic[1:0] { TRANSP_4ELEM, TRANSP_2ELEM, TRANSP_1ELEM, TRANSP_NONE } transp_mode_e;
   typedef struct packed {
     transp_mode_e              transp_mode;
     logic [$clog2(MAX_BW/8):0] transp_len;
@@ -61,7 +61,7 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REG_OUT_D0_STRIDE   = 32'h1C;  // Output dimension 0 stride
   parameter int unsigned DATAMOVER_REG_OUT_D1_STRIDE   = 32'h20;  // Output dimension 1 stride
   parameter int unsigned DATAMOVER_REG_OUT_D2_STRIDE   = 32'h24;  // Output dimension 2 stride
-  parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h28;  // Transposition mode (LSB: 000=none, 001=8b, 010=16b, 100=32b)
+  parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h28;  // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
                                                                   // Leftover: [31:16], if 0 then no leftover
 
 endpackage
