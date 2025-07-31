@@ -13,6 +13,7 @@
 
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
+ *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
 
 module datamover_engine
@@ -21,7 +22,11 @@ module datamover_engine
   import datamover_package::*;
 #(
   parameter int unsigned FIFO_DEPTH = 2,
-  parameter int unsigned BW_ALIGNED = 32
+  parameter int unsigned BW_ALIGNED = 32,
+  parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
+  parameter int unsigned ELEM_WIDTH = 8     // element width (in bits)
+  // Dependent parameters: do not modify!
+  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
 ) (
   // global signals
   input  logic                   clk_i,
@@ -38,18 +43,19 @@ module datamover_engine
   hwpe_stream_intf_stream.source data_out
 );
 
-  localparam NB_BYTES = BW_ALIGNED / 8;
+  // number of elements (in the full bandwidth, not a single bank word)
+  localparam NB_ELEMENTS = BW_ALIGNED / ELEM_WIDTH;
 
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
   datamover_engine_fsm_t fsm_d, fsm_q;
-  logic clear_bytes_matrix;
-  logic [$clog2(NB_BYTES):0] cnt_q, cnt_d;
+  logic clear_elem_matrix;
+  logic [$clog2(NB_ELEMENTS):0] cnt_q, cnt_d;
   logic cnt_en;
-  logic [NB_BYTES-1:0][7:0] data_in_unrolled;
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_unrolled;
   logic                     data_in_valid;
   logic                     data_in_ready;
-  logic [NB_BYTES-1:0][7:0] data_out_unrolled;
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_out_unrolled;
   logic                     data_out_valid;
   logic                     data_out_ready;
   
@@ -84,16 +90,18 @@ module datamover_engine
     end
   end
 
-  assign clear_bytes_matrix = (fsm_q == READ && fsm_d == WRITE) ? 1'b1 : 1'b0;
+  assign clear_elem_matrix = (fsm_q == READ && fsm_d == WRITE) ? 1'b1 : 1'b0;
 
   // internal interfaces and unrolling
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH (BW_ALIGNED )
+    .DATA_WIDTH (BW_ALIGNED ),
+    .STRB_WIDTH (BW_ALIGNED / ELEM_WIDTH)
   ) data_in_postfifo (
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH (BW_ALIGNED )
+    .DATA_WIDTH (BW_ALIGNED ),
+    .STRB_WIDTH (BW_ALIGNED / ELEM_WIDTH)
   ) data_out_prefifo (
     .clk ( clk_i )
   );
@@ -146,17 +154,22 @@ module datamover_engine
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
-  // appropriately, depending on the configuration (8b transpose, 16b transpose,
-  // 32b transpose). We assume that transposes >= 64b can be done efficiently
-  // by Snitch processors through SSRs and those <8b are not interesting in our
-  // use case.
-  localparam MAX_SHIFTING = 4; // in bytes, 4 for 32b transpose (includes shifting by 0 bytes)
-  logic [MAX_SHIFTING-1:0][NB_BYTES-1:0][7:0] data_in_shifted;
+  // appropriately, depending on the configuration.
+  // E.g., if you have a classical configuration with
+  // - NUM_ELEM_WORD = 4 and
+  // - ELEM_WIDTH = 8 bits, i.e. total is 32 bits per word
+  // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
+  // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
+  // and those < 8b are not interesting in our use case.
+  localparam MAX_SHIFTING = 4; // in "number of elements per word"
+  // e.g., in a classical configuration (ELEM_WIDTH = 8), MAX_SHIFTING is
+  // in bytes, i.e., "4" for 32b transpose (includes shifting by 0 bytes)
+  logic [MAX_SHIFTING-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_shifted;
   
   for(genvar ii=0; ii<MAX_SHIFTING; ii++) begin : gen_data_shifting_x
-    for(genvar jj=0; jj<NB_BYTES; jj++) begin : gen_data_shifting_y
+    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_data_shifting_y
 
-      if(ii+jj < NB_BYTES) begin : gen_feasible_shiftings
+      if(ii+jj < NB_ELEMENTS) begin : gen_feasible_shiftings
         assign data_in_shifted[ii][jj] = data_in_unrolled[ii+jj];
       end
       else begin : gen_unfeasible_shiftings
@@ -166,47 +179,48 @@ module datamover_engine
     end // gen_data_shifting_y
   end // gen_data_shifting_x
 
-  // Buffering matrix: this 2D array of bytes is used to buffer values to transpose.
-  logic [NB_BYTES-1:0][NB_BYTES-1:0][7:0] bytes_matrix_q;
-  for(genvar ii=0; ii<NB_BYTES; ii++) begin : gen_bytes_matrix_x
+  // Buffering matrix: this 2D array of word elements (e.g., bytes
+  // when ELEM_WIDTH = 8) is used to buffer values to transpose.
+  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_q;
+  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_x
 
     // enable buffer rows that are aligned with counter in groups of four (in 32b mode),
     // of two (in 16b mode) or single rows (in 8b mode).
     logic buffer_enable;
     assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE ? 1'b0 :
-                           ctrl_i.transp_mode == TRANSP_32B  ? ((cnt_q >> 2) == (ii >> 2)) & data_in_valid & data_in_ready :
-                           ctrl_i.transp_mode == TRANSP_16B  ? ((cnt_q >> 1) == (ii >> 1)) & data_in_valid & data_in_ready :
-                                                               ( cnt_q       ==  ii      ) & data_in_valid & data_in_ready;
+                           ctrl_i.transp_mode == TRANSP_4ELEM ? ((cnt_q >> 2) == (ii >> 2)) & data_in_valid & data_in_ready :
+                           ctrl_i.transp_mode == TRANSP_2ELEM ? ((cnt_q >> 1) == (ii >> 1)) & data_in_valid & data_in_ready :
+                                                                ( cnt_q       ==  ii      ) & data_in_valid & data_in_ready;
     // select appropriately shifted rows
-    logic [NB_BYTES-1:0][7:0] data_in_selected;
-    assign data_in_selected = ctrl_i.transp_mode == TRANSP_32B ? data_in_shifted[ii % 4] :
-                              ctrl_i.transp_mode == TRANSP_16B ? data_in_shifted[ii % 2] : 
-                                                                 data_in_shifted[0];
+    logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_selected;
+    assign data_in_selected = ctrl_i.transp_mode == TRANSP_4ELEM? data_in_shifted[ii % 4] :
+                              ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] : 
+                                                                   data_in_shifted[0];
 
-    for(genvar jj=0; jj<NB_BYTES; jj++) begin : gen_bytes_matrix_y
+    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_y
 
       logic clear_int;
-      assign clear_int = clear_i | clear_bytes_matrix;
+      assign clear_int = clear_i | clear_elem_matrix;
 
       always_ff @(posedge clk_i or negedge rst_ni)
       begin
         if (~rst_ni) begin
-          bytes_matrix_q[ii][jj] <= '0;
+          elem_matrix_q[ii][jj] <= '0;
         end
         else if(clear_int) begin
-          bytes_matrix_q[ii][jj] <= '0;
+          elem_matrix_q[ii][jj] <= '0;
         end
         else if(buffer_enable) begin
-          bytes_matrix_q[ii][jj] <= data_in_selected[jj];
+          elem_matrix_q[ii][jj] <= data_in_selected[jj];
         end
       end
 
-    end // gen_bytes_matrix_y
-  end // gen_bytes_matrix_x
+    end // gen_elem_matrix_y
+  end // gen_elem_matrix_x
 
   // Output assignment
-  for(genvar ii=0; ii<NB_BYTES; ii++) begin : gen_output
-    assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? bytes_matrix_q[ii][cnt_q] : data_in_unrolled[ii];
+  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
+    assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q] : data_in_unrolled[ii];
   end // gen_output
 
   // Input ready & output valid generation
@@ -219,8 +233,10 @@ module datamover_engine
   initial begin
     assert (BW_ALIGNED <= MAX_BW)
       else $fatal("BW_ALIGNED (%0d) must not be greater than MAX_BW (%0d)", BW_ALIGNED, MAX_BW);
-    assert ((BW_ALIGNED % 32) == 0)
-      else $fatal("BW_ALIGNED (%0d) must be a multiple of 32", BW_ALIGNED);
+    assert ((BW_ALIGNED % WORD_WIDTH) == 0)
+      else $fatal("BW_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BW_ALIGNED, WORD_WIDTH);
+    assert (NUM_ELEM_WORD <= MAX_SHIFTING)
+      else $fatal("NUM_ELEM_WORD (%0d) must not be greater than MAX_SHIFTING (%0d)", NUM_ELEM_WORD, MAX_SHIFTING);
   end
 `endif
 `endif

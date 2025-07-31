@@ -13,6 +13,7 @@
 
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
+ *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
 `include "hci_helpers.svh"
 import hwpe_ctrl_package::*;
@@ -21,11 +22,16 @@ import datamover_package::*;
 
 module datamover_top #(
   parameter int unsigned ID        = 10,
-  parameter int unsigned BW        = 288,
+  parameter int unsigned BW        = 288,   // total bandwidth to TCDM (in bits)
+  parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a word
+  parameter int unsigned ELEM_WIDTH = 8,    // element width (in bits)
   parameter int unsigned N_CORES   = 8,
   parameter int unsigned N_CONTEXT = 2,
   parameter int unsigned MISALIGNED_ACCESSES = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
+  // Dependent parameters: do not modify!
+  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
+  localparam int unsigned NUM_WORDS = BW / WORD_WIDTH
 ) (
   // global signals
   input  logic                    clk_i,
@@ -40,8 +46,8 @@ module datamover_top #(
 );
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
-  // realignment at a byte boundary if the access are misaligned.
-  localparam BW_ALIGNED = MISALIGNED_ACCESSES === 0 ? BW : BW-32;
+  // realignment at a word boundary if the access are misaligned.
+  localparam BW_ALIGNED = MISALIGNED_ACCESSES === 0 ? BW : BW-WORD_WIDTH;
 
   // State for the FSM declared directly in datamover_top.
   typedef enum { DM_IDLE, DM_STARTING, DM_WORKING, DM_FINISHED } dm_state;
@@ -68,12 +74,14 @@ module datamover_top #(
   // bandwidth. The additional 32 bits of memory bandwidth are used to 
   // support access to non-word-aligned data packets.
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH(BW_ALIGNED)
+    .DATA_WIDTH(BW_ALIGNED),
+    .STRB_WIDTH(BW_ALIGNED / ELEM_WIDTH)
   ) data_in  (
     .clk(clk_i)
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH(BW_ALIGNED)
+    .DATA_WIDTH(BW_ALIGNED),
+    .STRB_WIDTH(BW_ALIGNED / ELEM_WIDTH)
   ) data_out (
     .clk(clk_i)
   );
@@ -83,10 +91,12 @@ module datamover_top #(
   // On the accelerator side, it exposes an outgoing data in stream and
   // an incoming data out HWPE-Streams, each 256-bit wide.
   datamover_streamer #(
-    .BW              ( BW ),
-    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm)     ),
-    .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES),
-    .TCDM_FIFO_DEPTH ( 0  )
+    .BW                    ( BW                    ),
+    .NUM_ELEM_WORD         ( NUM_ELEM_WORD         ),
+    .ELEM_WIDTH            ( ELEM_WIDTH            ),
+    .TCDM_FIFO_DEPTH       ( 0                      )
+    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
   ) i_streamer (
     .clk_i      ( clk_i          ),
     .rst_ni     ( rst_ni         ),
@@ -104,7 +114,9 @@ module datamover_top #(
   // a FIFO copying the data in stream into the data out one!
   datamover_engine #(
     .FIFO_DEPTH ( 4          ),
-    .BW_ALIGNED ( BW_ALIGNED )
+    .BW_ALIGNED ( BW_ALIGNED ),
+    .NUM_ELEM_WORD ( NUM_ELEM_WORD ),
+    .ELEM_WIDTH ( ELEM_WIDTH )
   ) i_engine (
     .clk_i      ( clk_i          ),
     .rst_ni     ( rst_ni         ),
@@ -236,5 +248,16 @@ module datamover_top #(
   localparam int unsigned DEBUG_IW  = `HCI_SIZE_GET_IW(tcdm);
   localparam int unsigned DEBUG_EW  = `HCI_SIZE_GET_EW(tcdm);
   localparam int unsigned DEBUG_EHW = `HCI_SIZE_GET_EHW(tcdm);
+
+  `ifndef SYNTHESIS
+  `ifndef VERILATOR
+  `ifndef VCS
+    initial begin
+      assert (BW % WORD_WIDTH == 0)
+        else $fatal("BW (%0d) must be a multiple of WORD_WIDTH (%0d)", BW, WORD_WIDTH);
+    end
+  `endif
+  `endif
+  `endif
 
 endmodule // datamover_top
