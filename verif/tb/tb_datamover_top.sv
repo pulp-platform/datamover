@@ -1,8 +1,6 @@
-/* 
- * tb_datamover_top.sv
- * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
+/*
+ * Copyright (C) 2025 ETH Zurich and University of Bologna
  *
- * Copyright (C) 2018-2023 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -11,6 +9,11 @@
  * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ */
+
+/*
+ * Authors: Sergio Mazzola <smazzola@iis.ee.ethz.ch>
+ *          Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>s
  */
 
 
@@ -229,29 +232,28 @@ int error_status;
       periph_read(datamover_package::DATAMOVER_ACQUIRE, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);   
     
 
-    periph_write(datamover_package::DATAMOVER_REG_IN_PTR,       datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.base_addr,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_OUT_PTR,      datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr,  clk_i, periph_bus);   
+    periph_write(datamover_package::DATAMOVER_REG_IN_PTR,       datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.base_addr,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_PTR,      datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr,  clk_i, periph_bus);
     
-    periph_write(datamover_package::DATAMOVER_REG_TOT_LEN,      datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.tot_length,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_IN_D0_LEN,    datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_length,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_IN_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_stride,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_IN_D1_LEN,    datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_length,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_IN_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_stride,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_IN_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);   
+    periph_write(datamover_package::DATAMOVER_REG_LEN0,         datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_length,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_stride,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_LEN1,         datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_length,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_stride,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);
 
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D0_LEN,    datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_length,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_stride,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D1_LEN,    datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_length,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_stride,  clk_i, periph_bus);   
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h4,  clk_i, periph_bus);   
+    periph_write(datamover_package::DATAMOVER_REG_LEN0,         datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_length,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_stride,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_LEN1,         datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_length,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_stride,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h4,  clk_i, periph_bus);
 
-    periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);   
+    periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);
 
     while(status === 32'h00)
-      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);  
+      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);
     
     while(status !== 32'h00)
-      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS,  status,  clk_i, periph_bus);  
+      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS,  status,  clk_i, periph_bus);
     
     check_output(GOLDEN_PATH,  // File containing golden reference data
       32'h0,  // Start address in memory

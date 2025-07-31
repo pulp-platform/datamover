@@ -15,12 +15,9 @@ sources:
   - rtl/datamover_package.sv
   # Level 1
   - rtl/datamover_engine.sv
-  # Level 2
   - rtl/datamover_streamer.sv
-  # Level 3
+  # Level 2
   - rtl/datamover_top.sv
-  # Level 4
-  - rtl/datamover_top_wrap.sv
   - target: datamover_test
     files:
       - verif/tb/tb_package.sv

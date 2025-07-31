@@ -12,10 +12,10 @@ BENDER_INSTALL_DIR    = ${INSTALL_DIR}/bender
 VENV_BIN=venv/bin/
 
 BENDER_VERSION = 0.28.1
-SIM_PATH   ?= modelsim/build
+SIM_PATH   ?= modelsim/vsim
 SYNTH_PATH  = synopsys
 
-BENDER_TARGETS = -t rtl -t test
+BENDER_TARGETS = -t rtl -t test -t datamover_test
 
 target ?= sim_tb_datamover_top
 
@@ -26,8 +26,8 @@ STIMULI_DIR ?= ${ROOT_DIR}/verif/python/generated
 
 STIMULI_FILE_PATH ?= ${STIMULI_DIR}/initial_memory.txt
 GOLDEN_FILE_PATH ?= ${STIMULI_DIR}/updated_memory.txt
-TESTBENCH_DEFINES  ?= -DSTIMULI_PATH="\"${STIMULI_FILE_PATH}\""
-TESTBENCH_DEFINES  += -DGOLDEN_PATH="\"${GOLDEN_FILE_PATH}\""
+TESTBENCH_DEFINES  ?= -DSTIMULI_PATH=\\\"${STIMULI_FILE_PATH}\\\"
+TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"${GOLDEN_FILE_PATH}\\\"
 
 STIM_READ_BASE_ADDR ?= 0
 STIM_READ_D0_LENGTH ?= 4

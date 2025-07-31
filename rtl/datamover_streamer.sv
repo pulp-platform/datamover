@@ -16,13 +16,13 @@
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
 
-import hwpe_stream_package::*;
-import hci_package::*;
-import datamover_package::*;
-
 `include "hci_helpers.svh"
 
-module datamover_streamer #(
+module datamover_streamer
+  import hwpe_stream_package::*;
+  import hci_package::*;
+  import datamover_package::*;
+#(
   parameter int unsigned BW = 32,
   parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
   parameter int unsigned ELEM_WIDTH = 8,    // element width (in bits)
@@ -121,8 +121,8 @@ module datamover_streamer #(
   hci_core_sink #(
     .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
-    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   )
-    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
+    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_sink (
     .clk_i       ( clk_i                       ),
     .rst_ni      ( rst_ni                      ),

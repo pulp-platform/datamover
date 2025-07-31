@@ -15,30 +15,32 @@
  * Authors:  Francesco Conti <f.conti@unibo.it>
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
-`include "hci_helpers.svh"
-import hwpe_ctrl_package::*;
-import hci_package::*;
-import datamover_package::*;
 
-module datamover_top #(
-  parameter int unsigned ID        = 10,
-  parameter int unsigned BW        = 288,   // total bandwidth to TCDM (in bits)
-  parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a word
-  parameter int unsigned ELEM_WIDTH = 8,    // element width (in bits)
-  parameter int unsigned N_CORES   = 8,
-  parameter int unsigned N_CONTEXT = 2,
-  parameter int unsigned MISALIGNED_ACCESSES = 0,
-  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
+`include "hci_helpers.svh"
+
+module datamover_top
+  import hwpe_ctrl_package::*;
+  import hci_package::*;
+  import datamover_package::*;
+#(
+  parameter int unsigned ID = 10,                 // control slave peripheral ID width
+  parameter int unsigned BW = 288,                // total bandwidth to TCDM (in bits)
+  parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a word
+  parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
+  parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
+  parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
+  parameter int unsigned MISALIGNED_ACCESSES = 0, // enable misaligned accesses on TCDM interface
+  parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
-  localparam int unsigned NUM_WORDS = BW / WORD_WIDTH
+  localparam int unsigned NUM_WORDS = BW / WORD_WIDTH // TCDM interface width in number of words
 ) (
   // global signals
   input  logic                    clk_i,
   input  logic                    rst_ni,
   input  logic                    test_mode_i,
   // events
-  output logic [N_CORES-1:0][1:0] evt_o,
+  output logic [N_CORES-1:0][REGFILE_N_EVT-1:0] evt_o,
   // tcdm master ports
   hci_core_intf.initiator         tcdm,
   // periph slave port
@@ -94,9 +96,9 @@ module datamover_top #(
     .BW                    ( BW                    ),
     .NUM_ELEM_WORD         ( NUM_ELEM_WORD         ),
     .ELEM_WIDTH            ( ELEM_WIDTH            ),
-    .TCDM_FIFO_DEPTH       ( 0                      )
+    .TCDM_FIFO_DEPTH       ( 0                     ),
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
-    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_streamer (
     .clk_i      ( clk_i          ),
     .rst_ni     ( rst_ni         ),
@@ -223,8 +225,8 @@ module datamover_top #(
   begin
     engine_ctrl = '0;
     engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? TRANSP_NONE :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? TRANSP_8B :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? TRANSP_16B : TRANSP_32B;
+                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? TRANSP_1ELEM :
+                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
     engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
