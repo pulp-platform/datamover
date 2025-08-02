@@ -24,7 +24,7 @@ module datamover_top
   import datamover_package::*;
 #(
   parameter int unsigned ID = 10,                 // control slave peripheral ID width
-  parameter int unsigned BW = 288,                // total bandwidth to TCDM (in bits)
+  parameter int unsigned BANDWIDTH = 288,         // total bandwidth to TCDM (in bits)
   parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
   parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
@@ -33,7 +33,7 @@ module datamover_top
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
-  localparam int unsigned NUM_WORDS = BW / WORD_WIDTH // TCDM interface width in number of words
+  localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH // TCDM interface width in number of words
 ) (
   // global signals
   input  logic                    clk_i,
@@ -49,7 +49,7 @@ module datamover_top
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
   // realignment at a word boundary if the access are misaligned.
-  localparam BW_ALIGNED = MISALIGNED_ACCESSES === 0 ? BW : BW-WORD_WIDTH;
+  localparam BANDWIDTH_ALIGNED = MISALIGNED_ACCESSES === 0 ? BANDWIDTH : BANDWIDTH-WORD_WIDTH;
 
   // State for the FSM declared directly in datamover_top.
   typedef enum { DM_IDLE, DM_STARTING, DM_WORKING, DM_FINISHED } dm_state;
@@ -76,14 +76,14 @@ module datamover_top
   // bandwidth. The additional 32 bits of memory bandwidth are used to 
   // support access to non-word-aligned data packets.
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH(BW_ALIGNED),
-    .STRB_WIDTH(BW_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH(BANDWIDTH_ALIGNED),
+    .STRB_WIDTH(BANDWIDTH_ALIGNED / ELEM_WIDTH)
   ) data_in  (
     .clk(clk_i)
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH(BW_ALIGNED),
-    .STRB_WIDTH(BW_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH(BANDWIDTH_ALIGNED),
+    .STRB_WIDTH(BANDWIDTH_ALIGNED / ELEM_WIDTH)
   ) data_out (
     .clk(clk_i)
   );
@@ -93,7 +93,7 @@ module datamover_top
   // On the accelerator side, it exposes an outgoing data in stream and
   // an incoming data out HWPE-Streams, each 256-bit wide.
   datamover_streamer #(
-    .BW                    ( BW                    ),
+    .BANDWIDTH             ( BANDWIDTH             ),
     .NUM_ELEM_WORD         ( NUM_ELEM_WORD         ),
     .ELEM_WIDTH            ( ELEM_WIDTH            ),
     .TCDM_FIFO_DEPTH       ( 0                     ),
@@ -116,7 +116,7 @@ module datamover_top
   // a FIFO copying the data in stream into the data out one!
   datamover_engine #(
     .FIFO_DEPTH ( 4          ),
-    .BW_ALIGNED ( BW_ALIGNED ),
+    .BANDWIDTH_ALIGNED ( BANDWIDTH_ALIGNED ),
     .NUM_ELEM_WORD ( NUM_ELEM_WORD ),
     .ELEM_WIDTH ( ELEM_WIDTH )
   ) i_engine (
@@ -231,7 +231,7 @@ module datamover_top
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
     if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
-      engine_ctrl.transp_len = BW_ALIGNED/8;
+      engine_ctrl.transp_len = BANDWIDTH_ALIGNED/8;
     end
     else begin // in case of leftover, use the reg content as length
       engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];
@@ -255,8 +255,8 @@ module datamover_top
   `ifndef VERILATOR
   `ifndef VCS
     initial begin
-      assert (BW % WORD_WIDTH == 0)
-        else $fatal("BW (%0d) must be a multiple of WORD_WIDTH (%0d)", BW, WORD_WIDTH);
+      assert (BANDWIDTH % WORD_WIDTH == 0)
+        else $fatal("BANDWIDTH (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH, WORD_WIDTH);
     end
   `endif
   `endif

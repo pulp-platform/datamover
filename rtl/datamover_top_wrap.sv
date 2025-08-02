@@ -35,7 +35,7 @@ module datamover_top_wrap
 `endif
   parameter int unsigned ADDR_WIDTH = 32,         // width of addres bus
   parameter int unsigned ID = 10,                 // control slave peripheral ID width
-  parameter int unsigned BW = 288,                // total bandwidth to TCDM (in bits)
+  parameter int unsigned BANDWIDTH = 288,         // total bandwidth to TCDM (in bits)
   parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
   parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
@@ -43,7 +43,7 @@ module datamover_top_wrap
   parameter int unsigned MISALIGNED_ACCESSES = 0, // enable misaligned accesses on TCDM interface
   // Dependent parameters: do not modify!
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
-  localparam int unsigned NUM_WORDS = BW / WORD_WIDTH // TCDM interface width in number of words
+  localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH // TCDM interface width in number of words
 )
 (
   // global signals
@@ -79,7 +79,7 @@ module datamover_top_wrap
   ////////////////////
 
   localparam hci_size_ter_t `HCI_SIZE_PARAM(tcdm) = '{
-    DW:  BW,
+    DW:  BANDWIDTH,
     AW:  ADDR_WIDTH,
     BW:  ELEM_WIDTH,
     UW:  DEFAULT_UW,
@@ -95,7 +95,7 @@ module datamover_top_wrap
     .WAIVE_RSP3_ASSERT ( WAIVE_RSP3_ASSERT ),
     .WAIVE_RSP5_ASSERT ( WAIVE_RSP5_ASSERT ),
   `endif
-    .DW  ( BW          ),
+    .DW  ( BANDWIDTH   ),
     .AW  ( ADDR_WIDTH  ),
     .BW  ( ELEM_WIDTH  ),
     .UW  ( DEFAULT_UW  ),
@@ -151,7 +151,7 @@ module datamover_top_wrap
 
   datamover_top #(
     .ID ( ID ),
-    .BW ( BW ),
+    .BANDWIDTH ( BANDWIDTH ),
     .NUM_ELEM_WORD ( NUM_ELEM_WORD ),
     .ELEM_WIDTH ( ELEM_WIDTH ),
     .N_CORES ( N_CORES ),
@@ -183,8 +183,8 @@ module datamover_top_wrap
   `ifndef VERILATOR
   `ifndef VCS
     initial begin
-      assert (BW % WORD_WIDTH == 0)
-        else $fatal("BW (%0d) must be a multiple of WORD_WIDTH (%0d)", BW, WORD_WIDTH);
+      assert (BANDWIDTH % WORD_WIDTH == 0)
+        else $fatal("BANDWIDTH (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH, WORD_WIDTH);
     end
   `endif
   `endif

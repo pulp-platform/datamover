@@ -23,7 +23,7 @@ module datamover_streamer
   import hci_package::*;
   import datamover_package::*;
 #(
-  parameter int unsigned BW = 32,
+  parameter int unsigned BANDWIDTH = 32,
   parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
   parameter int unsigned ELEM_WIDTH = 8,    // element width (in bits)
   parameter int unsigned TCDM_FIFO_DEPTH = 2,
@@ -48,7 +48,7 @@ module datamover_streamer
   output flags_streamer_t        flags_o
 );
 
-  localparam int unsigned BW_INT = `HCI_SIZE_GET_BW(tcdm);
+  localparam int unsigned BW = `HCI_SIZE_GET_BW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
@@ -59,8 +59,8 @@ module datamover_streamer
   // "Virtual" HCI TCDM interfaces. Interface [0] maps loads (coming from
   // and HCI source) and interface [1] maps stores (coming from an HCI sink).
   hci_core_intf #(
-    .DW  ( BW ),
-    .BW  ( BW_INT ),
+    .DW  ( BANDWIDTH ),
+    .BW  ( BW ),
     .UW  ( UW ),
     .IW  ( IW ),
     .EW  ( EW ),
@@ -72,8 +72,8 @@ module datamover_streamer
   // "Virtual" TCDM interface, used to embody data after mixing loads and
   // stores, but before the TCDM FIFO (if present).
   hci_core_intf #(
-    .DW ( BW ),
-    .BW ( BW_INT ),
+    .DW ( BANDWIDTH ),
+    .BW ( BW ),
     .UW ( UW ),
     .IW ( IW ),
     .EW ( EW ),
@@ -87,8 +87,8 @@ module datamover_streamer
   // an array of interfaces, with one single instance inside. This is
   // useful because HCI muxes expect an array of output interfaces.
   hci_core_intf #(
-    .DW  ( BW ),
-    .BW  ( BW_INT ),
+    .DW  ( BANDWIDTH ),
+    .BW  ( BW ),
     .UW  ( UW                        ),
     .IW  ( IW                        ),
     .EW  ( EW                        ),
@@ -145,8 +145,8 @@ module datamover_streamer
       // a STORE-exclusive channel. It will couple any valid response to
       // the LOAD channel exclusively.
       hci_core_load_store_mixer #(
-        .DW ( BW ),
-        .BW ( BW_INT ),
+        .DW ( BANDWIDTH ),
+        .BW ( BW ),
         .UW ( UW ),
         .EW ( EW )
       ) i_ld_st_mux_static (
