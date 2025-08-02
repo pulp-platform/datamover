@@ -18,6 +18,8 @@ sources:
   - rtl/datamover_streamer.sv
   # Level 2
   - rtl/datamover_top.sv
+  # Level 3
+  - rtl/datamover_top_wrap.sv
   - target: datamover_test
     files:
       - verif/tb/tb_package.sv
