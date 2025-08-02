@@ -24,8 +24,8 @@ module datamover_top
   import datamover_package::*;
 #(
   parameter int unsigned ID = 10,                 // control slave peripheral ID width
-  parameter int unsigned BANDWIDTH = 288,         // total bandwidth to TCDM (in bits)
-  parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a word
+  parameter int unsigned BANDWIDTH = 288,         // total bandwidth of HWPE to TCDM (in bits)
+  parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a memory bank word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
   parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
   parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
@@ -231,7 +231,7 @@ module datamover_top
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
     if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
-      engine_ctrl.transp_len = BANDWIDTH_ALIGNED/8;
+      engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;
     end
     else begin // in case of leftover, use the reg content as length
       engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];

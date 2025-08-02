@@ -13,7 +13,8 @@
  * specific language governing permissions and limitations under the License.
  */
 package tb_package;
-  localparam int ID = 10;
+  localparam int ADDR_WIDTH = 32;
+  localparam int PERIPH_ID = 10;
   localparam int MEMORY_SIZE=256*1024;
   // // ATI timing parameters.
   timeunit 1ps;
@@ -29,10 +30,10 @@ package tb_package;
     logic          wen;
     logic [3:0]    be;
     logic [31:0]   data;
-    logic [ID-1:0] id;
+    logic [PERIPH_ID-1:0] id;
     logic [31:0]   r_data;
     logic          r_valid;
-    logic [ID-1:0] r_id;
+    logic [PERIPH_ID-1:0] r_id;
   } periph_bus_t;
 
   // periph_bus_t periph_bus;
@@ -63,7 +64,7 @@ package tb_package;
       periph_bus.wen  = 1'b0;             // Enable write operation
       periph_bus.be   = 4'b1111;          // Enable all bytes
       periph_bus.data = data;             // Set write data
-      periph_bus.id   = ID;               // Reset transaction ID
+      periph_bus.id   = PERIPH_ID;        // Reset transaction ID
 
 
       // Wait for grant signal
@@ -105,7 +106,7 @@ package tb_package;
       periph_bus.add  = base_addr + offset; // Set target address
       periph_bus.wen  = 1'b1;             // Enable read operation
       periph_bus.be   = 4'b1111;          // Enable all bytes
-      periph_bus.id   = ID;               // Reset transaction ID
+      periph_bus.id   = PERIPH_ID;        // Reset transaction ID
 
 
       // Wait for grant signal

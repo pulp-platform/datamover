@@ -35,8 +35,8 @@ module datamover_top_wrap
 `endif
   parameter int unsigned ADDR_WIDTH = 32,         // width of addres bus
   parameter int unsigned ID = 10,                 // control slave peripheral ID width
-  parameter int unsigned BANDWIDTH = 288,         // total bandwidth to TCDM (in bits)
-  parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a word
+  parameter int unsigned BANDWIDTH = 288,         // total bandwidth of HWPE to TCDM (in bits)
+  parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a memory bank word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
   parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
   parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
@@ -78,7 +78,7 @@ module datamover_top_wrap
   // TCDM interface //
   ////////////////////
 
-  localparam hci_size_ter_t `HCI_SIZE_PARAM(tcdm) = '{
+  localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '{
     DW:  BANDWIDTH,
     AW:  ADDR_WIDTH,
     BW:  ELEM_WIDTH,
