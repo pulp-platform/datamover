@@ -13,6 +13,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
+/*
+ * Authors:  Francesco Conti <f.conti@unibo.it>
+ */
+
 package datamover_package;
 
   typedef struct packed {
@@ -25,13 +29,13 @@ package datamover_package;
     logic tcdm_fifo_empty;
   } flags_streamer_t;
 
-  parameter int unsigned MAX_BW = 512; // support maximum 512bits of bandwidth
+  parameter int unsigned MAX_BANDWIDTH = 512; // support maximum 512bits of bandwidth
 
   typedef enum logic[1:0] { TRANSP_4ELEM, TRANSP_2ELEM, TRANSP_1ELEM, TRANSP_NONE } transp_mode_e;
   typedef struct packed {
-    transp_mode_e              transp_mode;
-    logic [$clog2(MAX_BW/8):0] transp_len;
-    logic [2:0]                transp_stride; // 1, 2, or 4
+    transp_mode_e                     transp_mode;
+    logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
+    logic [2:0]                       transp_stride; // 1, 2, or 4
   } ctrl_engine_t;
 
   parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset

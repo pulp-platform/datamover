@@ -22,7 +22,7 @@ module datamover_engine
   import datamover_package::*;
 #(
   parameter int unsigned FIFO_DEPTH = 2,
-  parameter int unsigned BW_ALIGNED = 32,
+  parameter int unsigned BANDWIDTH_ALIGNED = 32,
   parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
   parameter int unsigned ELEM_WIDTH = 8,     // element width (in bits)
   // Dependent parameters: do not modify!
@@ -44,7 +44,7 @@ module datamover_engine
 );
 
   // number of elements (in the full bandwidth, not a single bank word)
-  localparam NB_ELEMENTS = BW_ALIGNED / ELEM_WIDTH;
+  localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
 
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
@@ -94,21 +94,21 @@ module datamover_engine
 
   // internal interfaces and unrolling
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH (BW_ALIGNED ),
-    .STRB_WIDTH (BW_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH (BANDWIDTH_ALIGNED ),
+    .STRB_WIDTH (BANDWIDTH_ALIGNED / ELEM_WIDTH)
   ) data_in_postfifo (
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH (BW_ALIGNED ),
-    .STRB_WIDTH (BW_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH (BANDWIDTH_ALIGNED ),
+    .STRB_WIDTH (BANDWIDTH_ALIGNED / ELEM_WIDTH)
   ) data_out_prefifo (
     .clk ( clk_i )
   );
 
   // decouple in/out with FIFOs
   hwpe_stream_fifo #(
-    .DATA_WIDTH ( BW_ALIGNED ),
+    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
     .FIFO_DEPTH ( FIFO_DEPTH )
   ) i_fifo_in (
     .clk_i   ( clk_i            ),
@@ -122,7 +122,7 @@ module datamover_engine
   assign data_in_valid = data_in_postfifo.valid;
   assign data_in_postfifo.ready = data_in_ready;
   hwpe_stream_fifo #(
-    .DATA_WIDTH ( BW_ALIGNED ),
+    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
     .FIFO_DEPTH ( FIFO_DEPTH )
   ) i_fifo_out (
     .clk_i   ( clk_i            ),
@@ -231,10 +231,10 @@ module datamover_engine
 `ifndef VERILATOR
 `ifndef VCS
   initial begin
-    assert (BW_ALIGNED <= MAX_BW)
-      else $fatal("BW_ALIGNED (%0d) must not be greater than MAX_BW (%0d)", BW_ALIGNED, MAX_BW);
-    assert ((BW_ALIGNED % WORD_WIDTH) == 0)
-      else $fatal("BW_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BW_ALIGNED, WORD_WIDTH);
+    assert (BANDWIDTH_ALIGNED <= MAX_BANDWIDTH)
+      else $fatal("BANDWIDTH_ALIGNED (%0d) must not be greater than MAX_BANDWIDTH (%0d)", BANDWIDTH_ALIGNED, MAX_BANDWIDTH);
+    assert ((BANDWIDTH_ALIGNED % WORD_WIDTH) == 0)
+      else $fatal("BANDWIDTH_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH_ALIGNED, WORD_WIDTH);
     assert (NUM_ELEM_WORD <= MAX_SHIFTING)
       else $fatal("NUM_ELEM_WORD (%0d) must not be greater than MAX_SHIFTING (%0d)", NUM_ELEM_WORD, MAX_SHIFTING);
   end
