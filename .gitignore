@@ -5,3 +5,4 @@ test/BUILD
 **.txt
 **__pycache**
 verif/python/generated/**
+install

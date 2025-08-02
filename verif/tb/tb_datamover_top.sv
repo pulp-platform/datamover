@@ -25,10 +25,15 @@ import tb_package::*;
   // parameters
   parameter PROB_STALL = 0.1;
   parameter BASE_ADDR = 0;
-  parameter MP = 4;
-  parameter NC = 1;
+  parameter BANDWIDTH = 128; // in bits
+  parameter NUM_ELEM_WORD = 4; // number of element in a memory bank word
+  parameter ELEM_WIDTH = 8; // width of an element (e.g., a byte is 8 bits)
+  parameter N_CORES = 1;
   string STIMULI_PATH  = `STIMULI_PATH;
   string GOLDEN_PATH = `GOLDEN_PATH;
+
+  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH; // should correspond to bank width
+  localparam int unsigned BANDWIDTH_WORDS = BANDWIDTH / WORD_WIDTH;
 
   // global signals
   logic                         clk_i  = 1'b0;
@@ -41,16 +46,16 @@ import tb_package::*;
   logic randomize_mem      = 1'b0;
   logic stallable_mem      = 1'b1;
 
-  hwpe_stream_intf_tcdm tcdm [MP-1:0] (.clk(clk_i));
+  hwpe_stream_intf_tcdm tcdm [BANDWIDTH_WORDS-1:0] (.clk(clk_i));
 
-  logic [MP-1:0]       tcdm_req;
-  logic [MP-1:0]       tcdm_gnt;
-  logic [MP-1:0][31:0] tcdm_add;
-  logic [MP-1:0]       tcdm_wen;
-  logic [MP-1:0][3:0]  tcdm_be;
-  logic [MP-1:0][31:0] tcdm_data;
-  logic [MP-1:0][31:0] tcdm_r_data;
-  logic [MP-1:0]       tcdm_r_valid;
+  logic [BANDWIDTH_WORDS-1:0]                 tcdm_req;
+  logic [BANDWIDTH_WORDS-1:0]                 tcdm_gnt;
+  logic [BANDWIDTH_WORDS-1:0][ADDR_WIDTH-1:0] tcdm_add;
+  logic [BANDWIDTH_WORDS-1:0]                 tcdm_wen;
+  logic [BANDWIDTH_WORDS-1:0][3:0]            tcdm_be;
+  logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0] tcdm_data;
+  logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0] tcdm_r_data;
+  logic [BANDWIDTH_WORDS-1:0]                 tcdm_r_valid;
 
   logic          periph_req;
   logic          periph_gnt;
@@ -58,10 +63,10 @@ import tb_package::*;
   logic          periph_wen;
   logic [3:0]    periph_be;
   logic [31:0]   periph_data;
-  logic [ID-1:0] periph_id;
+  logic [PERIPH_ID-1:0] periph_id;
   logic [31:0]   periph_r_data;
   logic          periph_r_valid;
-  logic [ID-1:0] periph_r_id;
+  logic [PERIPH_ID-1:0] periph_r_id;
 
 
 
@@ -88,7 +93,7 @@ import tb_package::*;
   endtask
 
   generate
-    for(genvar ii=0; ii<MP; ii++) begin : tcdm_binding
+    for(genvar ii=0; ii<BANDWIDTH_WORDS; ii++) begin : tcdm_binding
       assign tcdm[ii].req  = tcdm_req  [ii];
       assign tcdm[ii].add  = {8'b0, tcdm_add [ii][23:0]};
       assign tcdm[ii].wen  = tcdm_wen  [ii];
@@ -128,38 +133,43 @@ import tb_package::*;
     .WAIVE_RSP3_ASSERT ( 1'b1 ),
     .WAIVE_RSP5_ASSERT ( 1'b1 ),
 `endif
-    .N_CORES          ( NC ),
-    .MP               ( MP ),
-    .ID               ( ID )
+    .ADDR_WIDTH          ( ADDR_WIDTH ),
+    .ID                  ( PERIPH_ID ),
+    .BANDWIDTH           ( BANDWIDTH ),
+    .NUM_ELEM_WORD       ( NUM_ELEM_WORD ),
+    .ELEM_WIDTH          ( ELEM_WIDTH ),
+    .N_CORES             ( N_CORES ),
+    .N_CONTEXT           ( 2 ),
+    .MISALIGNED_ACCESSES ( 0 )
   ) i_hwpe_top_wrap (
     .clk_i          ( clk_i          ),
     .rst_ni         ( rst_ni         ),
     .test_mode_i    ( 1'b0           ),
+    .evt_o          ( evt            ),
+    .tcdm_req       ( tcdm_req       ),
+    .tcdm_gnt       ( tcdm_gnt       ),
     .tcdm_add       ( tcdm_add       ),
+    .tcdm_wen       ( tcdm_wen       ),
     .tcdm_be        ( tcdm_be        ),
     .tcdm_data      ( tcdm_data      ),
-    .tcdm_gnt       ( tcdm_gnt       ),
-    .tcdm_wen       ( tcdm_wen       ),
-    .tcdm_req       ( tcdm_req       ),
     .tcdm_r_data    ( tcdm_r_data    ),
     .tcdm_r_valid   ( tcdm_r_valid   ),
+    .periph_req     ( periph_req     ),
+    .periph_gnt     ( periph_gnt     ),
     .periph_add     ( periph_add     ),
+    .periph_wen     ( periph_wen     ),
     .periph_be      ( periph_be      ),
     .periph_data    ( periph_data    ),
-    .periph_gnt     ( periph_gnt     ),
-    .periph_wen     ( periph_wen     ),
-    .periph_req     ( periph_req     ),
     .periph_id      ( periph_id      ),
     .periph_r_data  ( periph_r_data  ),
     .periph_r_valid ( periph_r_valid ),
-    .periph_r_id    ( periph_r_id    ),
-    .evt_o          ( evt            )
+    .periph_r_id    ( periph_r_id    )
   );
 
   logic busy = 1'b0;
 
   tb_dummy_memory #(
-    .MP          ( MP          ),
+    .MP          ( BANDWIDTH_WORDS ),
     .MEMORY_SIZE ( MEMORY_SIZE ),
     .BASE_ADDR   ( BASE_ADDR   ),
     .PROB_STALL  ( PROB_STALL  ),

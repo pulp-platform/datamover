@@ -101,8 +101,10 @@ module datamover_streamer
   // the HWPE-Stream, since the source also performs realignment, it will
   // expose a 1-word-larger HCI TCDM interface.
   hci_core_source #(
-    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) ),
-    .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES)
+    .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
+    .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
+    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_source (
     .clk_i       ( clk_i                         ),
     .rst_ni      ( rst_ni                        ),
