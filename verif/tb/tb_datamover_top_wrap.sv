@@ -13,7 +13,8 @@
 
 /*
  * Authors: Sergio Mazzola <smazzola@iis.ee.ethz.ch>
- *          Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>s
+ *          Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
+ *          Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 
@@ -233,9 +234,10 @@ import tb_package::*;
     $readmemh(STIMULI_PATH, tb_datamover_top_wrap.i_testbench_memory.memory);
 
     // soft clear
-    periph_write(datamover_package::DATAMOVER_SOFT_CLEAR, datamover_package::HWPE_REGISTER_OFFS, 32'habcdefab,  clk_i, periph_bus);   
+    periph_write(datamover_package::DATAMOVER_SOFT_CLEAR, datamover_package::HWPE_REGISTER_OFFS, 32'habcdefab,  clk_i, periph_bus);
     #(100*TCP);
 
+    $display("[%0t] acquiring job...\n", $time);
     // acquire job
     $info("Acquiring job...\n");
     while(status !== 32'h00)
@@ -287,7 +289,7 @@ import tb_package::*;
     );
 
     $finish;
-    
+
   end : main_execution
 
 endmodule // tb_datamover_top_wrap
