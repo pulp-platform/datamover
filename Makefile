@@ -17,6 +17,7 @@ SYNTH_PATH  = synopsys
 
 BENDER_TARGETS = -t rtl -t test -t datamover_test
 
+GUI    ?= 1
 target ?= sim_tb_datamover_top
 
 VLOG_FLAGS += -svinputport=compat
@@ -28,6 +29,9 @@ STIMULI_FILE_PATH ?= ${STIMULI_DIR}/initial_memory.txt
 GOLDEN_FILE_PATH ?= ${STIMULI_DIR}/updated_memory.txt
 TESTBENCH_DEFINES  ?= -DSTIMULI_PATH=\\\"${STIMULI_FILE_PATH}\\\"
 TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"${GOLDEN_FILE_PATH}\\\"
+
+# D0, D1, TOT lengths must fit in 12 bits (4096 max)
+# Strides and base addresses must fit in 32 bits
 
 STIM_READ_BASE_ADDR ?= 0
 STIM_READ_D0_LENGTH ?= 4
@@ -75,7 +79,7 @@ sim-script: clean-sim
 
 sim: stimuli sim-script
 	cd modelsim && \
-	$(MAKE) $(target) buildpath=$(ROOT_DIR)/$(SIM_PATH)
+	GUI=$(GUI) $(MAKE) $(target) buildpath=$(ROOT_DIR)/$(SIM_PATH)
 
 stimuli: 
 	python -m verif.python.generate_stimuli \

@@ -26,6 +26,7 @@ To simulate the RTL, execute:
 ```sh
 make sim
 ```
+By default QuestaSim GUI is active. You can simulate the RTL in CLI mode with `GUI=0 make sim`.
 
 ## Test Results
 If the tests pass successfully, you should see the following message displayed at the end:
