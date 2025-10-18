@@ -20,31 +20,16 @@
 module tb_datamover_top;
 import datamover_package::*;
 import tb_package::*;
-
-
-  // parameters
-  parameter PROB_STALL = 0.1;
-  parameter BASE_ADDR = 0;
-  parameter BANDWIDTH = 128; // in bits
-  parameter NUM_ELEM_WORD = 4; // number of element in a memory bank word
-  parameter ELEM_WIDTH = 8; // width of an element (e.g., a byte is 8 bits)
-  parameter N_CORES = 1;
-  string STIMULI_PATH  = `STIMULI_PATH;
-  string GOLDEN_PATH = `GOLDEN_PATH;
-
-  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH; // should correspond to bank width
-  localparam int unsigned BANDWIDTH_WORDS = BANDWIDTH / WORD_WIDTH;
-
   // global signals
-  logic                         clk_i  = 1'b0;
-  logic                         rst_ni = 1'b1;
-  logic                         test_mode_i = 1'b0;
+  logic clk_i  = 1'b0;
+  logic rst_ni = 1'b1;
+  logic test_mode_i = 1'b0;
   // local enable
-  logic                         enable_i = 1'b1;
-  logic                         clear_i  = 1'b0;
+  logic enable_i = 1'b1;
+  logic clear_i  = 1'b0;
 
-  logic randomize_mem      = 1'b0;
-  logic stallable_mem      = 1'b1;
+  logic randomize_mem = 1'b0;
+  logic stallable_mem = 1'b1;
 
   hwpe_stream_intf_tcdm tcdm [BANDWIDTH_WORDS-1:0] (.clk(clk_i));
 
@@ -57,15 +42,15 @@ import tb_package::*;
   logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0] tcdm_r_data;
   logic [BANDWIDTH_WORDS-1:0]                 tcdm_r_valid;
 
-  logic          periph_req;
-  logic          periph_gnt;
-  logic [31:0]   periph_add;
-  logic          periph_wen;
-  logic [3:0]    periph_be;
-  logic [31:0]   periph_data;
+  logic                 periph_req;
+  logic                 periph_gnt;
+  logic [31:0]          periph_add;
+  logic                 periph_wen;
+  logic [3:0]           periph_be;
+  logic [31:0]          periph_data;
   logic [PERIPH_ID-1:0] periph_id;
-  logic [31:0]   periph_r_data;
-  logic          periph_r_valid;
+  logic [31:0]          periph_r_data;
+  logic                 periph_r_valid;
   logic [PERIPH_ID-1:0] periph_r_id;
 
 
@@ -168,16 +153,19 @@ import tb_package::*;
 
   logic busy = 1'b0;
 
-  tb_dummy_memory #(
-    .MP          ( BANDWIDTH_WORDS ),
-    .MEMORY_SIZE ( MEMORY_SIZE ),
-    .BASE_ADDR   ( BASE_ADDR   ),
-    .PROB_STALL  ( PROB_STALL  ),
-    .TCP         ( TCP         ),
-    .TA          ( TA          ),
-    .TT          ( TT          )
-  ) i_dummy_memory (
+  testbench_memory #(
+    .BANDWIDTH_WORDS ( BANDWIDTH_WORDS ),
+    .NUM_ELEM_WORD   ( NUM_ELEM_WORD   ),
+    .ELEM_WIDTH      ( ELEM_WIDTH      ),
+    .MEMORY_SIZE     ( MEMORY_SIZE     ),
+    .BASE_ADDR       ( BASE_ADDR       ),
+    .PROB_STALL      ( PROB_STALL      ),
+    .TCP             ( TCP             ),
+    .TA              ( TA              ),
+    .TT              ( TT              )
+  ) i_testbench_memory (
     .clk_i       ( clk_i         ),
+    .clk_delayed_i ( ),
     .randomize_i ( randomize_mem ),
     .enable_i    ( enable_mem    ),
     .stallable_i ( busy          ),
@@ -229,13 +217,13 @@ import tb_package::*;
 
     #(100*TCP); // enough time to wait for the reset to complete;
     status = -1;
-    periph_bus.req  <= #TA '0;
-    periph_bus.add  <= #TA '0;
-    periph_bus.wen  <= #TA '0;
-    periph_bus.be   <= #TA '0;
-    periph_bus.id   <= #TA '0;
+    periph_bus.req <= #TA '0;
+    periph_bus.add <= #TA '0;
+    periph_bus.wen <= #TA '0;
+    periph_bus.be  <= #TA '0;
+    periph_bus.id  <= #TA '0;
 
-    $readmemh(STIMULI_PATH, tb_datamover_top.i_dummy_memory.memory);
+    $readmemh(STIMULI_PATH, tb_datamover_top.i_testbench_memory.memory);
 
     // soft clear
     periph_write(datamover_package::DATAMOVER_SOFT_CLEAR, datamover_package::HWPE_REGISTER_OFFS, 32'habcdefab,  clk_i, periph_bus);   
@@ -269,7 +257,7 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h4, clk_i, periph_bus);
 
     // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
-    periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, {29'b0, TRANSP_MODE}, clk_i, periph_bus);
 
     periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
 
@@ -283,14 +271,13 @@ import tb_package::*;
 
     $info("Datamover finished transfer. Checking output...\n");
 
-    check_output(GOLDEN_PATH,  // File containing golden reference data
+    check_output(
+      GOLDEN_PATH,  // File containing golden reference data
       32'h0,  // Start address in memory
-      MEMORY_SIZE >> 2,  // Number of entries to check
-      tb_datamover_top.i_dummy_memory.memory,  // Reference to memory array
+      MEMORY_SIZE,  // Number of entries to check
+      tb_datamover_top.i_testbench_memory.memory,  // Reference to memory array
       error_status
     );
-
-    
 
     $finish;
     

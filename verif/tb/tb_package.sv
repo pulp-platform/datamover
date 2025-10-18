@@ -13,9 +13,28 @@
  * specific language governing permissions and limitations under the License.
  */
 package tb_package;
+  /* Configuration */
+
   localparam int ADDR_WIDTH = 32;
   localparam int PERIPH_ID = 10;
-  localparam int MEMORY_SIZE=256*1024;
+  localparam int MEMORY_SIZE= `STIM_MEM_SIZE;
+
+  parameter PROB_STALL = 0.1;
+  parameter BASE_ADDR = 0;
+  parameter N_CORES = 1;
+
+  parameter BANDWIDTH = `BANDWIDTH;
+  parameter NUM_ELEM_WORD = `NUM_ELEM_WORD;
+  parameter ELEM_WIDTH = `ELEM_WIDTH;
+
+  parameter logic [2:0] TRANSP_MODE = `STIM_TRANSP_MODE;
+
+  string STIMULI_PATH = `STIMULI_PATH;
+  string GOLDEN_PATH = `GOLDEN_PATH;
+
+  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH; // should correspond to bank width
+  localparam int unsigned BANDWIDTH_WORDS = BANDWIDTH / WORD_WIDTH;
+
   // // ATI timing parameters.
   timeunit 1ps;
   timeprecision 1ps;
@@ -38,7 +57,7 @@ package tb_package;
 
   // periph_bus_t periph_bus;
 
-  task automatic periph_write(
+  task automatic periph_write (
     input  logic [31:0] base_addr,      // Base address
     input  logic [31:0] offset,         // Offset
     input  logic [31:0] data,           // Write data
@@ -129,16 +148,16 @@ package tb_package;
       periph_bus.be   = 4'b1111;          // Maintain byte enable
   endtask : periph_read
 
-  task automatic check_output(
+  task automatic check_output (
       input string golden_fname,  // File containing golden data
       input logic [31:0] start_addr,  // Start address in memory
       input logic [31:0] length,  // Number of entries to check
-      logic [31:0] memory [MEMORY_SIZE],  // Reference to memory array
+      logic [WORD_WIDTH-1:0] memory [MEMORY_SIZE],  // Reference to memory array
       output int status
   );
       integer file, i;
-      logic [31:0] golden_data;
-      logic [31:0] read_data;
+      logic [WORD_WIDTH-1:0] golden_data;
+      logic [WORD_WIDTH-1:0] read_data;
 
       status = 0; // Assume pass initially
 

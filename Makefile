@@ -33,6 +33,7 @@ TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"${GOLDEN_FILE_PATH}\\\"
 # D0, D1, TOT lengths must fit in 12 bits (4096 max)
 # Strides and base addresses must fit in 32 bits
 
+# Tb stimuli config
 STIM_READ_BASE_ADDR ?= 0
 STIM_READ_D0_LENGTH ?= 4
 STIM_READ_D0_STRIDE ?= 4
@@ -48,6 +49,14 @@ STIM_WRITE_D1_STRIDE ?= 64
 STIM_WRITE_TOT_LENGTH ?= 16
 STIM_MEM_SIZE ?= 65536
 
+STIM_TRANSP_MODE ?= 0 # 3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem
+
+# Datamover hw config
+BANDWIDTH ?= 128   # in bits
+NUM_ELEM_WORD ?= 4 # number of element in a memory bank word (powers of 2,: 1,2,4 support transpose modes, more no)
+ELEM_WIDTH ?= 8    # width of an element (e.g., a byte is 8 bits)
+
+# Propagate paramters to testbench
 TESTBENCH_DEFINES += -DSTIM_READ_BASE_ADDR=${STIM_READ_BASE_ADDR}
 TESTBENCH_DEFINES += -DSTIM_READ_D0_STRIDE=${STIM_READ_D0_STRIDE}
 TESTBENCH_DEFINES += -DSTIM_READ_D0_LENGTH=${STIM_READ_D0_LENGTH}
@@ -61,6 +70,15 @@ TESTBENCH_DEFINES += -DSTIM_WRITE_D0_LENGTH=${STIM_WRITE_D0_LENGTH}
 TESTBENCH_DEFINES += -DSTIM_WRITE_D1_STRIDE=${STIM_WRITE_D1_STRIDE}
 TESTBENCH_DEFINES += -DSTIM_WRITE_D1_LENGTH=${STIM_WRITE_D1_LENGTH}
 TESTBENCH_DEFINES += -DSTIM_WRITE_TOT_LENGTH=${STIM_WRITE_TOT_LENGTH}
+
+TESTBENCH_DEFINES += -DSTIM_MEM_SIZE=${STIM_MEM_SIZE}
+
+TESTBENCH_DEFINES += -DSTIM_TRANSP_MODE=${STIM_TRANSP_MODE}
+
+TESTBENCH_DEFINES += -DBANDWIDTH=${BANDWIDTH}
+TESTBENCH_DEFINES += -DNUM_ELEM_WORD=${NUM_ELEM_WORD}
+TESTBENCH_DEFINES += -DELEM_WIDTH=${ELEM_WIDTH}
+
 
 # .PHONY: clean-sim sim-script sim synopsys-script
 all: testvector sim
@@ -94,6 +112,10 @@ stimuli:
 	--write_d0_length $(STIM_WRITE_D0_LENGTH) \
 	--write_d1_stride $(STIM_WRITE_D1_STRIDE) \
 	--write_d1_length $(STIM_WRITE_D1_LENGTH) \
+	--bandwidth_bits $(BANDWIDTH) \
+	--num_elem_word $(NUM_ELEM_WORD) \
+	--elem_width $(ELEM_WIDTH) \
+	--transp_mode $(STIM_TRANSP_MODE) \
 	--output_dir "verif/python/generated"
 
 # Bender
