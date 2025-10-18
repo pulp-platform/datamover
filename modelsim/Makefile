@@ -6,13 +6,20 @@
 all: lib build
 
 QUESTA_SEPP ?= questa-2023.4
+GUI         ?= 1
+
 buildpath   ?= vsim
 VOPT        ?= $(QUESTA_SEPP) vopt
 VSIM        ?= $(QUESTA_SEPP) vsim
 VLIB        ?= $(QUESTA_SEPP) vlib
 VMAP        ?= $(QUESTA_SEPP) vmap
-VSIM_FLAGS  ?= -gui
 DEBUG       ?= ON
+VSIM_FLAGS  ?=
+ifeq ($(GUI), 1)
+	VSIM_FLAGS += -gui
+else
+	VSIM_FLAGS += -c
+endif
 
 lib:
 	cd $(buildpath) && $(VLIB) work && $(VMAP) work work
