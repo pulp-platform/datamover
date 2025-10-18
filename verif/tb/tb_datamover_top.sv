@@ -111,9 +111,9 @@ import tb_package::*;
     logic [31:0] base_addr;
     logic [31:0] d0_stride;
     logic [31:0] d1_stride;
-    logic [31:0] d0_length;
-    logic [31:0] d1_length;
-    logic [31:0] tot_length;
+    logic [11:0] d0_length;
+    logic [11:0] d1_length;
+    logic [11:0] tot_length;
   } addressgen_t;
 
   addressgen_t read_addr, write_addr;
@@ -185,8 +185,8 @@ import tb_package::*;
   );
 
   initial begin
-    $display("stimuli path : %s\n", STIMULI_PATH);
-    $display("golden path : %s\n", GOLDEN_PATH);
+    $display("Stimuli path: %s\n", STIMULI_PATH);
+    $display("Golden path: %s\n", GOLDEN_PATH);
     #(20*TCP);
 
     // Reset phase.
@@ -219,9 +219,13 @@ import tb_package::*;
   logic [31:0] status;
 
 
-int error_status;
+  int error_status;
 
-  initial begin : main_execution 
+  initial begin : main_execution
+    logic [31:0] len0_reg;
+    logic [31:0] len1_reg;
+
+    $info("Start execution...\n");
 
     #(100*TCP); // enough time to wait for the reset to complete;
     status = -1;
@@ -238,33 +242,47 @@ int error_status;
     #(100*TCP);
 
     // acquire job
+    $info("Acquiring job...\n");
     while(status !== 32'h00)
       periph_read(datamover_package::DATAMOVER_ACQUIRE, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);   
+    $info("Job acquired, configuring datamover...\n");
     
 
-    periph_write(datamover_package::DATAMOVER_REG_IN_PTR,       datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.base_addr,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_OUT_PTR,      datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_PTR,  datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.base_addr, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_PTR, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr, clk_i, periph_bus);
     
-    periph_write(datamover_package::DATAMOVER_REG_LEN0,         datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_length,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_IN_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_stride,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_LEN1,         datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_length,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_IN_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_stride,  clk_i, periph_bus);
+    // Configure packed length registers (see datamover_package.sv)
+    len0_reg = {read_addr.d1_length[7:0], read_addr.d0_length[11:0], read_addr.tot_length[11:0]};
+    len1_reg = {read_addr.d1_length[11:8], write_addr.d1_length[11:0], write_addr.d0_length[11:0]};
+    // Make sure tot_length is the same for read and write
+    assert (read_addr.tot_length == write_addr.tot_length) else $fatal("Read and write total lengths do not match!");
+
+    periph_write(datamover_package::DATAMOVER_REG_LEN0, datamover_package::DATAMOVER_REGISTER_OFFS, len0_reg, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_LEN1, datamover_package::DATAMOVER_REGISTER_OFFS, len1_reg, clk_i, periph_bus);
+
+    periph_write(datamover_package::DATAMOVER_REG_IN_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_stride, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_stride, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_IN_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);
 
-    periph_write(datamover_package::DATAMOVER_REG_LEN0,         datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_length,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_stride,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_LEN1,         datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_length,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_stride,  clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h4,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_stride, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_stride, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h4, clk_i, periph_bus);
 
-    periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);
+    // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
+    periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
+
+    periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
 
     while(status === 32'h00)
-      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);
+      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status, clk_i, periph_bus);
+
+     $info("Datamover working...\n");
     
     while(status !== 32'h00)
-      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS,  status,  clk_i, periph_bus);
-    
+      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status, clk_i, periph_bus);
+
+    $info("Datamover finished transfer. Checking output...\n");
+
     check_output(GOLDEN_PATH,  // File containing golden reference data
       32'h0,  // Start address in memory
       MEMORY_SIZE >> 2,  // Number of entries to check
