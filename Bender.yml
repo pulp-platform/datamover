@@ -23,5 +23,5 @@ sources:
   - target: datamover_test
     files:
       - verif/tb/tb_package.sv
-      - verif/tb/tb_dummy_memory.sv
+      - verif/tb/testbench_memory.sv
       - verif/tb/tb_datamover_top.sv
