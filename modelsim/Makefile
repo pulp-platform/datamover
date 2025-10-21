@@ -21,6 +21,13 @@ else
 	VSIM_FLAGS += -c
 endif
 
+VSIM_FLAGS  ?=
+ifeq ($(GUI), 1)
+	VSIM_FLAGS += -gui
+else
+	VSIM_FLAGS += -c
+endif
+
 lib:
 	cd $(buildpath) && $(VLIB) work && $(VMAP) work work
 
