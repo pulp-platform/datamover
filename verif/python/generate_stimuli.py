@@ -18,14 +18,23 @@ def generate_addresses(start, d0_stride, d0_length, d1_stride, d1_length, transa
     addr = start
     count = 0
 
+    print(f"Generating addresses starting from {hex(start)} with N={N} words per transaction")
+    print(f"d0_stride: {d0_stride}, d0_length: {d0_length}, d1_stride: {d1_stride}, d1_length: {d1_length}")
+
     for d1 in range(d1_length):
         addr_d1 = addr + d1 * d1_stride
+        print(f"Generating addresses for d1={d1} at {hex(addr_d1)}")
         for d0 in range(d0_length):
-            addr_d0 = addr_d1 + d0 * d0_stride
+            addr_d0 = addr_d1 + d0 * d0_stride      # ToDo(cdurrer): shouldnt this be addr_d1* + d0 * d0_stride?
             if addr_d0 + N <= MEMORY_SIZE:  # Ensure full block fits
+                block = [addr_d0 + i for i in range(N)]
+                print(f"Appending address block: {', '.join(hex(a) for a in block)}")
                 addresses.append([addr_d0 + i for i in range(N)])  # Read/Write N words
                 count += 1
+            else:
+                print(f"Warning: Address block starting at {hex(addr_d0)} exceeds memory size. Skipping.")
             if count == transactions:  # Stop when enough transactions are generated
+                print(f"Transaction limit reached! Generated total of {count} transactions.")
                 return addresses
 
     return addresses
@@ -36,6 +45,7 @@ def update_memory(memory, write_addresses, extracted_data):
         for addr, value in zip(addr_block, data_block):
             if addr < len(memory):
                 memory[addr] = value  # Write N words at a time
+                print(f"Writing value {value} to address {hex(addr)}")
 
 def write_file(output_dir, filename, content):
     """Write list content to a file."""
@@ -82,6 +92,8 @@ def main():
         raise NotImplementedError("Transposition modes other than 'none' are not currently supported.")
 
     bandwidth_N = args.bandwidth_bits // WORD_SIZE_BITS
+
+    print(f"Memory Size: {MEMORY_SIZE} entries")
 
     # Step 1: Generate initial memory
     memory = generate_random_hex_32bit(MEMORY_SIZE)
