@@ -25,6 +25,21 @@ module datamover_top #(
   parameter int unsigned N_CORES   = 8,
   parameter int unsigned N_CONTEXT = 2,
   parameter int unsigned MISALIGNED_ACCESSES = 0,
+  parameter  logic [6:0] Opcode                = 7'b1011011,
+  parameter  logic [2:0] InOutPtrFunct3        = 3'b111,
+  parameter  logic [2:0] LenCfgFunct3          = 3'b110,
+  parameter  logic [2:0] InPatternFunct3       = 3'b100,
+  parameter  logic [2:0] OutPatternFunct3      = 3'b000,
+  // XIF parameters
+  parameter int unsigned XifNumHarts           = 1,
+  parameter int unsigned XifIdWidth            = 1,
+  parameter int unsigned XifIssueRegisterSplit = 0,
+  // XIF types
+  parameter type         x_issue_req_t         = logic,
+  parameter type         x_issue_resp_t        = logic,
+  parameter type         x_register_t          = logic,
+  parameter type         x_commit_t            = logic,
+  parameter type         x_result_t            = logic,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
   // global signals
@@ -33,10 +48,21 @@ module datamover_top #(
   input  logic                    test_mode_i,
   // events
   output logic [N_CORES-1:0][1:0] evt_o,
+
+  input   x_issue_req_t           x_issue_req_i,
+  output  x_issue_resp_t          x_issue_resp_o,
+  input   logic                   x_issue_valid_i,
+  output  logic                   x_issue_ready_o,
+  input   x_register_t            x_register_i,
+  input   logic                   x_register_valid_i,
+  output  logic                   x_register_ready_o,
+  input   x_commit_t              x_commit_i,
+  input   logic                   x_commit_valid_i,
+  output  x_result_t              x_result_o,
+  output  logic                   x_result_valid_o,
+  input   logic                   x_result_ready_i,
   // tcdm master ports
-  hci_core_intf.initiator         tcdm,
-  // periph slave port
-  hwpe_ctrl_intf_periph.slave     periph
+  hci_core_intf.initiator         tcdm
 );
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
@@ -57,15 +83,12 @@ module datamover_top #(
   // Bit field to control the engine.
   ctrl_engine_t engine_ctrl;
 
-  // These are the bit fields used to propagate flags from/to the peripheral
-  // interconnect slave interface.
-  ctrl_slave_t slave_ctrl;
-  flags_slave_t slave_flags;
-  ctrl_regfile_t reg_file;
+  datamover_config_t datamover_config;
+  logic              datamover_config_valid;
 
   // Data in and data out internal HWPE-Streams. Notice that the data width
   // is set to 256 bits by default, 32 bits less than the default external
-  // bandwidth. The additional 32 bits of memory bandwidth are used to 
+  // bandwidth. The additional 32 bits of memory bandwidth are used to
   // support access to non-word-aligned data packets.
   hwpe_stream_intf_stream #(
     .DATA_WIDTH(BW_ALIGNED)
@@ -115,25 +138,41 @@ module datamover_top #(
     .data_in    ( data_in        ),
     .data_out   ( data_out       )
   );
-  
-  // The slave module exposes a peripheral interconnect HWPE-Periph plug;
-  // in the default configuration, it provides 2 contexts with 13 registers
-  // each, which are exposed into `reg_file.hwpe_params`
-  hwpe_ctrl_slave #(
-    .REGFILE_SCM    ( 0  ),
-    .N_CORES        ( 8  ),
-    .N_CONTEXT      ( 4  ),
-    .N_IO_REGS      ( 11 ),
-    .N_GENERIC_REGS ( 8  ),
-    .ID_WIDTH       ( ID )
-  ) i_slave (
-    .clk_i   ( clk_i       ),
-    .rst_ni  ( rst_ni      ),
-    .clear_o ( clear       ),
-    .cfg     ( periph      ),
-    .ctrl_i  ( slave_ctrl  ),
-    .flags_o ( slave_flags ),
-    .reg_file( reg_file    )
+
+  datamover_inst_decoder #(
+    .InstFifoDepth         ( 4                     ),
+    .Opcode                ( Opcode                ),
+    .InOutPtrFunct3        ( InOutPtrFunct3        ),
+    .LenCfgFunct3          ( LenCfgFunct3          ),
+    .InPatternFunct3       ( InPatternFunct3       ),
+    .OutPatternFunct3      ( OutPatternFunct3      ),
+    .XifIdWidth            ( XifIdWidth            ),
+    .XifNumHarts           ( XifNumHarts           ),
+    .XifIssueRegisterSplit ( XifIssueRegisterSplit ),
+    .x_issue_req_t         ( x_issue_req_t         ),
+    .x_issue_resp_t        ( x_issue_resp_t        ),
+    .x_register_t          ( x_register_t          ),
+    .x_commit_t            ( x_commit_t            ),
+    .x_result_t            ( x_result_t            )
+  ) i_inst_decoder (
+    .clk_i              ( clk_i                                        ),
+    .rst_ni             ( rst_ni                                       ),
+    .clear_i            ( '0                                           ),
+    .busy_i             ( state_q != DM_IDLE && state_q != DM_FINISHED ),
+    .config_valid_o     ( datamover_config_valid                       ),
+    .config_o           ( datamover_config                             ),
+    .x_issue_req_i      ( x_issue_req_i                                ),
+    .x_issue_resp_o     ( x_issue_resp_o                               ),
+    .x_issue_valid_i    ( x_issue_valid_i                              ),
+    .x_issue_ready_o    ( x_issue_ready_o                              ),
+    .x_register_i       ( x_register_i                                 ),
+    .x_register_valid_i ( x_register_valid_i                           ),
+    .x_register_ready_o ( x_register_ready_o                           ),
+    .x_commit_i         ( x_commit_i                                   ),
+    .x_commit_valid_i   ( x_commit_valid_i                             ),
+    .x_result_o         ( x_result_o                                   ),
+    .x_result_valid_o   ( x_result_valid_o                             ),
+    .x_result_ready_i   ( x_result_ready_i                             )
   );
 
   // Datamover FSM: sequential process.
@@ -152,7 +191,7 @@ module datamover_top #(
   begin : fsm_ns_comb
     state_d = state_q;
     if(state_q == DM_IDLE) begin
-      if(slave_flags.start)
+      if(datamover_config_valid)
         state_d = DM_STARTING;
     end
     else if(state_q == DM_STARTING) begin
@@ -170,14 +209,10 @@ module datamover_top #(
   // Datamover FSM: combinational output calculation process.
   always_comb
   begin : fsm_out_comb
-    slave_ctrl = '0;
     streamer_ctrl = streamer_ctrl_cfg;
     if(state_q == DM_STARTING) begin
       streamer_ctrl.data_in_source_ctrl.req_start = 1'b1;
       streamer_ctrl.data_out_sink_ctrl.req_start = 1'b1;
-    end
-    else if (state_q == DM_FINISHED) begin
-      slave_ctrl.done = 1'b1;
     end
   end
 
@@ -190,43 +225,43 @@ module datamover_top #(
     streamer_ctrl_cfg = '0;
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = '1;
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = '1;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][23:12];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D0_STRIDE >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = { reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][27:24], reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][31:24] };
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D1_STRIDE >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D2_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][11:0];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][23:12];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D2_STRIDE >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr     = datamover_config.in_ptr;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr      = datamover_config.out_ptr;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len       = datamover_config.tot_len;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len        = datamover_config.tot_len;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len        = datamover_config.in_d0_len;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride     = datamover_config.in_d0_stride;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len        = datamover_config.in_d1_len;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride     = datamover_config.in_d1_stride;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride     = datamover_config.in_d2_stride;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len         = datamover_config.out_d0_len;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride      = datamover_config.out_d0_stride;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len         = datamover_config.out_d1_len;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride      = datamover_config.out_d1_stride;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride      = datamover_config.out_d2_stride;
   end
 
   // Binding of engine configuration
   always_comb
   begin
     engine_ctrl = '0;
-    engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? TRANSP_NONE :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? TRANSP_8B :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? TRANSP_16B : TRANSP_32B;
-    engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? 1 :
-                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
-                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
-    if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
+    engine_ctrl.transp_mode = datamover_config.transp_mode == 3'b000 ? TRANSP_NONE :
+                              datamover_config.transp_mode == 3'b001 ? TRANSP_8B :
+                              datamover_config.transp_mode == 3'b010 ? TRANSP_16B : TRANSP_32B;
+    engine_ctrl.transp_stride = datamover_config.transp_mode == 3'b000 ? 1 :
+                                datamover_config.transp_mode == 3'b001 ? 1 :
+                                datamover_config.transp_mode == 3'b010 ? 2 : 4;
+    if(datamover_config.leftover == '0) begin // no leftover
       engine_ctrl.transp_len = BW_ALIGNED/8;
     end
     else begin // in case of leftover, use the reg content as length
-      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];
+      engine_ctrl.transp_len = datamover_config.leftover;
     end
   end
 
   // Bind the output event, which is propagated to the event unit and used
   // to implement HWPE datamover barriers.
-  assign evt_o = slave_flags.evt[7:0];
+  assign evt_o = {15'b0, state_q == DM_FINISHED};
 
 
   localparam int unsigned DEBUG_DW  = `HCI_SIZE_GET_DW(tcdm);

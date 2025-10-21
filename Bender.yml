@@ -17,6 +17,7 @@ sources:
   - rtl/datamover_package.sv
   # Level 1
   - rtl/datamover_engine.sv
+  - rtl/datamover_inst_decoder.sv
   # Level 2
   - rtl/datamover_streamer.sv
   # Level 3
