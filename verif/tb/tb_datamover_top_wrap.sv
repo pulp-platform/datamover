@@ -17,7 +17,7 @@
  */
 
 
-module tb_datamover_top;
+module tb_datamover_top_wrap;
 import datamover_package::*;
 import tb_package::*;
   // global signals
@@ -33,14 +33,14 @@ import tb_package::*;
 
   hwpe_stream_intf_tcdm tcdm [BANDWIDTH_WORDS-1:0] (.clk(clk_i));
 
-  logic [BANDWIDTH_WORDS-1:0]                 tcdm_req;
-  logic [BANDWIDTH_WORDS-1:0]                 tcdm_gnt;
-  logic [BANDWIDTH_WORDS-1:0][ADDR_WIDTH-1:0] tcdm_add;
-  logic [BANDWIDTH_WORDS-1:0]                 tcdm_wen;
-  logic [BANDWIDTH_WORDS-1:0][3:0]            tcdm_be;
-  logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0] tcdm_data;
-  logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0] tcdm_r_data;
-  logic [BANDWIDTH_WORDS-1:0]                 tcdm_r_valid;
+  logic [BANDWIDTH_WORDS-1:0]                    tcdm_req;
+  logic [BANDWIDTH_WORDS-1:0]                    tcdm_gnt;
+  logic [BANDWIDTH_WORDS-1:0][ADDR_WIDTH-1:0]    tcdm_add;
+  logic [BANDWIDTH_WORDS-1:0]                    tcdm_wen;
+  logic [BANDWIDTH_WORDS-1:0][NUM_ELEM_WORD-1:0] tcdm_be;
+  logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0]    tcdm_data;
+  logic [BANDWIDTH_WORDS-1:0][WORD_WIDTH-1:0]    tcdm_r_data;
+  logic [BANDWIDTH_WORDS-1:0]                    tcdm_r_valid;
 
   logic                 periph_req;
   logic                 periph_gnt;
@@ -130,7 +130,7 @@ import tb_package::*;
     .clk_i          ( clk_i          ),
     .rst_ni         ( rst_ni         ),
     .test_mode_i    ( 1'b0           ),
-    .evt_o          ( evt            ),
+    .evt_o          ( /* Unconnected */),
     .tcdm_req       ( tcdm_req       ),
     .tcdm_gnt       ( tcdm_gnt       ),
     .tcdm_add       ( tcdm_add       ),
@@ -223,7 +223,7 @@ import tb_package::*;
     periph_bus.be  <= #TA '0;
     periph_bus.id  <= #TA '0;
 
-    $readmemh(STIMULI_PATH, tb_datamover_top.i_testbench_memory.memory);
+    $readmemh(STIMULI_PATH, tb_datamover_top_wrap.i_testbench_memory.memory);
 
     // soft clear
     periph_write(datamover_package::DATAMOVER_SOFT_CLEAR, datamover_package::HWPE_REGISTER_OFFS, 32'habcdefab,  clk_i, periph_bus);   
@@ -241,7 +241,7 @@ import tb_package::*;
     
     // Configure packed length registers (see datamover_package.sv)
     len0_reg = {read_addr.d1_length[7:0], read_addr.d0_length[11:0], read_addr.tot_length[11:0]};
-    len1_reg = {read_addr.d1_length[11:8], write_addr.d1_length[11:0], write_addr.d0_length[11:0]};
+    len1_reg = {4'b0, read_addr.d1_length[11:8], write_addr.d1_length[11:0], write_addr.d0_length[11:0]};
     // Make sure tot_length is the same for read and write
     assert (read_addr.tot_length == write_addr.tot_length) else $fatal("Read and write total lengths do not match!");
 
@@ -275,7 +275,7 @@ import tb_package::*;
       GOLDEN_PATH,  // File containing golden reference data
       32'h0,  // Start address in memory
       MEMORY_SIZE,  // Number of entries to check
-      tb_datamover_top.i_testbench_memory.memory,  // Reference to memory array
+      tb_datamover_top_wrap.i_testbench_memory.memory,  // Reference to memory array
       error_status
     );
 
@@ -283,4 +283,4 @@ import tb_package::*;
     
   end : main_execution
 
-endmodule // tb_datamover_top
+endmodule // tb_datamover_top_wrap

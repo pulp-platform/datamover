@@ -18,7 +18,7 @@ SYNTH_PATH  = synopsys
 BENDER_TARGETS = -t rtl -t test -t datamover_test
 
 GUI    ?= 1
-target ?= sim_tb_datamover_top
+target ?= sim_tb_datamover_top_wrap
 
 VLOG_FLAGS += -svinputport=compat
 VLOG_FLAGS += -timescale 1ns/1ps

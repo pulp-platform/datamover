@@ -27,5 +27,5 @@ lib:
 build:
 	cd $(buildpath) && $(VSIM) -c -do 'source compile.tcl; quit'
 
-sim_tb_datamover_top: lib build
-	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source ../sim_tb_datamover_top.tcl'
+sim_tb_datamover_top_wrap: lib build
+	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source ../sim_tb_datamover_top_wrap.tcl'
