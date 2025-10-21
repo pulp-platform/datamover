@@ -17,11 +17,12 @@ if {$DEBUG == "ON"} {
 
 quit -sim
 
-vsim -voptargs=$VOPT_ARG $DB_SW -pedanticerrors -lib $LIB tb_datamover_top
+vsim -voptargs=$VOPT_ARG $DB_SW -pedanticerrors -lib $LIB tb_datamover_top_wrap
 
 if {$DEBUG == "ON"} {
     add log -r /*
-    # source ../sim_ita_tb_wave.tcl
+    source ../waves.tcl
+    run -a
 }
 
 # run -a

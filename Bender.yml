@@ -24,4 +24,4 @@ sources:
     files:
       - verif/tb/tb_package.sv
       - verif/tb/testbench_memory.sv
-      - verif/tb/tb_datamover_top.sv
+      - verif/tb/tb_datamover_top_wrap.sv
