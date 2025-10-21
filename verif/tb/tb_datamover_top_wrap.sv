@@ -237,7 +237,7 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_SOFT_CLEAR, datamover_package::HWPE_REGISTER_OFFS, 32'habcdefab,  clk_i, periph_bus);
     #(100*TCP);
 
-    $display("[%0t] acquiring job...\n", $time);
+    $info("[%0t] Acquiring job...\n", $time);
     // acquire job
     $info("Acquiring job...\n");
     while(status !== 32'h00)

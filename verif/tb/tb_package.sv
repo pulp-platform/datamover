@@ -1,4 +1,4 @@
-/* 
+/*
  * tb_package.sv
  * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  *
@@ -13,8 +13,14 @@
  * specific language governing permissions and limitations under the License.
  */
 package tb_package;
-  /* Configuration */
+  // ATI timing parameters
+  timeunit 1ps;
+  timeprecision 1ps;
+  localparam TCP = 1.0ns; // clock period, 1 GHz clock
+  localparam TA  = 0.2ns; // application time
+  localparam TT  = 0.8ns; // test time
 
+  /* Configuration */
   localparam int ADDR_WIDTH = 32;
   localparam int PERIPH_ID = 10;
   localparam int MEMORY_SIZE= `STIM_MEM_SIZE;
@@ -35,12 +41,8 @@ package tb_package;
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH; // should correspond to bank width
   localparam int unsigned BANDWIDTH_WORDS = BANDWIDTH / WORD_WIDTH;
 
-  // // ATI timing parameters.
-  timeunit 1ps;
-  timeprecision 1ps;
-  localparam TCP = 1.0ns; // clock period, 1 GHz clock
-  localparam TA  = 0.2ns; // application time
-  localparam TT  = 0.8ns; // test time
+  localparam int ID = 10;
+  localparam int MEMORY_SIZE=256*1024;
 
   typedef struct{
     logic          req;
@@ -161,7 +163,7 @@ package tb_package;
 
       status = 0; // Assume pass initially
 
-      
+
       // Open the golden reference file for reading
       file = $fopen(golden_fname, "r");
       if (file == 0) begin
@@ -204,6 +206,6 @@ package tb_package;
       end
   endtask
 
-  
+
 
 endpackage
