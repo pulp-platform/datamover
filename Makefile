@@ -2,6 +2,8 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
+include config.mk
+
 SHELL = /usr/bin/env bash
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
@@ -29,32 +31,6 @@ STIMULI_FILE_PATH ?= ${STIMULI_DIR}/initial_memory.txt
 GOLDEN_FILE_PATH ?= ${STIMULI_DIR}/updated_memory.txt
 TESTBENCH_DEFINES  ?= -DSTIMULI_PATH=\\\"${STIMULI_FILE_PATH}\\\"
 TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"${GOLDEN_FILE_PATH}\\\"
-
-# D0, D1, TOT lengths must fit in 12 bits (4096 max)
-# Strides and base addresses must fit in 32 bits
-
-# Tb stimuli config
-STIM_READ_BASE_ADDR ?= 0
-STIM_READ_D0_LENGTH ?= 4
-STIM_READ_D0_STRIDE ?= 4
-STIM_READ_D1_LENGTH ?= 4
-STIM_READ_D1_STRIDE ?= 16
-STIM_READ_TOT_LENGTH ?= 16
-
-STIM_WRITE_BASE_ADDR ?= 128
-STIM_WRITE_D0_LENGTH ?= 4
-STIM_WRITE_D0_STRIDE ?= 16
-STIM_WRITE_D1_LENGTH ?= 4
-STIM_WRITE_D1_STRIDE ?= 64
-STIM_WRITE_TOT_LENGTH ?= 16
-STIM_MEM_SIZE ?= 65536
-
-STIM_TRANSP_MODE ?= 0 # 3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem
-
-# Datamover hw config
-BANDWIDTH ?= 128   # in bits
-NUM_ELEM_WORD ?= 4 # number of element in a memory bank word (powers of 2,: 1,2,4 support transpose modes, more no)
-ELEM_WIDTH ?= 8    # width of an element (e.g., a byte is 8 bits)
 
 # Propagate paramters to testbench
 TESTBENCH_DEFINES += -DSTIM_READ_BASE_ADDR=${STIM_READ_BASE_ADDR}
@@ -99,7 +75,10 @@ sim: stimuli sim-script
 	cd modelsim && \
 	GUI=$(GUI) $(MAKE) $(target) buildpath=$(ROOT_DIR)/$(SIM_PATH)
 
-stimuli: 
+clean-stimuli:
+	rm -rf $(STIMULI_DIR)
+
+stimuli: clean-stimuli
 	python -m verif.python.generate_stimuli \
 	--mem_size $(STIM_MEM_SIZE) \
 	--read_base_addr $(STIM_READ_BASE_ADDR) \
