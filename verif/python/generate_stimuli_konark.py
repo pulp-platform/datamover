@@ -30,7 +30,7 @@ def generate_counting_bytes_hex_32bit(size):
 #         result.append(f"{word:08X}")
 #     return result
 
-def generate_addresses(start, d0_stride, d0_length, d1_stride, d1_length, d2_stride, d2_length, transactions, N):
+def generate_addresses_2d(start, d0_stride, d0_length, d1_stride, d1_length, transactions, N):
     """
     Generate addresses ensuring total transactions match, processing N words per transaction.
     Strides are adjusted with `>> 2` to align with word-based addressing.
@@ -39,7 +39,37 @@ def generate_addresses(start, d0_stride, d0_length, d1_stride, d1_length, d2_str
     addr = start
     count = 0
 
-    print(f"Generating addresses starting from {hex(start)} with N={N} words per transaction")
+    print(f"Generating addresses (2D) starting from {hex(start)} with N={N} words per transaction")
+    print(f"d0_stride: {d0_stride}, d0_length: {d0_length}, d1_stride: {d1_stride}, d1_length: {d1_length}")
+
+    for d1 in range(d1_length):
+        addr_d1 = addr + d1 * d1_stride
+        print(f"Generating addresses for d1={d1} at {hex(addr_d1)}")
+        for d0 in range(d0_length):
+            addr_d0 = addr_d1 + d0 * d0_stride      # ToDo(cdurrer): shouldnt this be addr_d1* + d0 * d0_stride?
+            if addr_d0 + N <= MEMORY_SIZE:  # Ensure full block fits
+                block = [addr_d0 + i for i in range(N)]
+                print(f"Appending address block: {', '.join(hex(a) for a in block)}")
+                addresses.append([addr_d0 + i for i in range(N)])  # Read/Write N words
+                count += 1
+            else:
+                print(f"Warning: Address block starting at {hex(addr_d0)} exceeds memory size. Skipping.")
+            if count == transactions:  # Stop when enough transactions are generated
+                print(f"Transaction limit reached! Generated total of {count} transactions.")
+                return addresses
+
+    return addresses
+
+def generate_addresses_3d(start, d0_stride, d0_length, d1_stride, d1_length, d2_stride, d2_length, transactions, N):
+    """
+    Generate addresses ensuring total transactions match, processing N words per transaction.
+    Strides are adjusted with `>> 2` to align with word-based addressing.
+    """
+    addresses = []
+    addr = start
+    count = 0
+
+    print(f"Generating addresses (3D) starting from {hex(start)} with N={N} words per transaction")
     print(f"d0_stride: {d0_stride}, d0_length: {d0_length}, d1_stride: {d1_stride}, d1_length: {d1_length}, d2_stride: {d2_stride}, d2_length: {d2_length}")
 
     for d2 in range(d2_length):
@@ -126,8 +156,10 @@ def main():
 
     # Step 2: Generate read addresses (Word-aligned)
     read_transactions = args.read_d0_length * args.read_d1_length * read_d2_length
-    read_addresses = generate_addresses(args.read_base_addr, args.read_d0_stride, args.read_d0_length,
-        args.read_d1_stride, args.read_d1_length, read_d2_stride, read_d2_length, read_transactions, args.bandwidth_N)
+    read_addresses = generate_addresses_2d(args.read_base_addr, args.read_d0_stride, args.read_d0_length,
+        args.read_d1_stride, args.read_d1_length, read_transactions, args.bandwidth_N)
+    # read_addresses = generate_addresses_3d(args.read_base_addr, args.read_d0_stride, args.read_d0_length,
+    #     args.read_d1_stride, args.read_d1_length, read_d2_stride, read_d2_length, read_transactions, args.bandwidth_N)
 
     # Step 3: Extract memory values based on read addresses
     extracted_data = [[memory[addr] for addr in block] for block in read_addresses if all(addr < MEMORY_SIZE for addr in block)]
@@ -144,10 +176,10 @@ def main():
 
     # Step 6: Generate write addresses (Word-aligned)
     write_transactions = read_transactions
-    write_addresses = generate_addresses(
-        args.write_base_addr, args.write_d0_stride, args.write_d0_length,
-        args.write_d1_stride, args.write_d1_length, write_d2_stride, write_d2_length, write_transactions, args.bandwidth_N
-    )
+    write_addresses = generate_addresses_2d(args.write_base_addr, args.write_d0_stride, args.write_d0_length,
+        args.write_d1_stride, args.write_d1_length, write_transactions, args.bandwidth_N)
+    # write_addresses = generate_addresses_3d(args.write_base_addr, args.write_d0_stride, args.write_d0_length,
+    #     args.write_d1_stride, args.write_d1_length, write_d2_stride, write_d2_length, write_transactions, args.bandwidth_N)
 
     # Step 7: Update memory with extracted data at write addresses
     update_memory(memory, write_addresses, extracted_data)
