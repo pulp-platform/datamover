@@ -94,14 +94,16 @@ module datamover_engine
 
   // internal interfaces and unrolling
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH (BANDWIDTH_ALIGNED ),
-    .STRB_WIDTH (BANDWIDTH_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
+    .STRB_WIDTH ( NB_ELEMENTS )
   ) data_in_postfifo (
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH (BANDWIDTH_ALIGNED ),
-    .STRB_WIDTH (BANDWIDTH_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
+    .STRB_WIDTH ( NB_ELEMENTS )
   ) data_out_prefifo (
     .clk ( clk_i )
   );
@@ -109,6 +111,7 @@ module datamover_engine
   // decouple in/out with FIFOs
   hwpe_stream_fifo #(
     .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
     .FIFO_DEPTH ( FIFO_DEPTH )
   ) i_fifo_in (
     .clk_i   ( clk_i            ),
@@ -123,6 +126,7 @@ module datamover_engine
   assign data_in_postfifo.ready = data_in_ready;
   hwpe_stream_fifo #(
     .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
     .FIFO_DEPTH ( FIFO_DEPTH )
   ) i_fifo_out (
     .clk_i   ( clk_i            ),

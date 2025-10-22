@@ -5,8 +5,8 @@ package:
     - "Sergio Mazzola <smazzola@iis.ee.ethz.ch>"
 
 dependencies:
-  hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 460aad6994f527c1de0dd8353df38d31fff10f55 } # branch: prasadar/multi-precision
-  hci:         { git: "https://github.com/pulp-platform/hci.git", rev: e27804bbe9588b0261469dc2ff7dbecdf7067ea0 } # branch: prasadar/multi-precision
+  hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 40ab0fe1433dc080a49aa1926ce09df9ab3f5fb5 } # branch: prasadar/multi-precision
+  hci:         { git: "https://github.com/pulp-platform/hci.git", rev: 9844a893c34612ac66697e8dcd60214296f2634c } # branch: prasadar/multi-precision
   hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 2.0 }
 
 

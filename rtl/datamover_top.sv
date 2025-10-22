@@ -75,15 +75,22 @@ module datamover_top
   // is set to 256 bits by default, 32 bits less than the default external
   // bandwidth. The additional 32 bits of memory bandwidth are used to 
   // support access to non-word-aligned data packets.
+
+  // number of elements (in the full bandwidth, not a single bank word)
+  localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
+
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH(BANDWIDTH_ALIGNED),
-    .STRB_WIDTH(BANDWIDTH_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
+    .STRB_WIDTH ( NB_ELEMENTS )
   ) data_in  (
     .clk(clk_i)
   );
+
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH(BANDWIDTH_ALIGNED),
-    .STRB_WIDTH(BANDWIDTH_ALIGNED / ELEM_WIDTH)
+    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
+    .STRB_WIDTH ( NB_ELEMENTS )
   ) data_out (
     .clk(clk_i)
   );

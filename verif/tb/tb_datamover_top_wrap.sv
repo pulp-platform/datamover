@@ -31,7 +31,14 @@ import tb_package::*;
   logic randomize_mem = 1'b0;
   logic stallable_mem = 1'b1;
 
-  hwpe_stream_intf_tcdm tcdm [BANDWIDTH_WORDS-1:0] (.clk(clk_i));
+  hwpe_stream_intf_tcdm #(
+    .DATA_WIDTH ( WORD_WIDTH ),
+    .ELEMENT_WIDTH ( ELEM_WIDTH ),
+    .STRB_WIDTH ( NUM_ELEM_WORD )
+  )
+  tcdm [BANDWIDTH_WORDS-1:0] (
+    .clk(clk_i)
+  );
 
   logic [BANDWIDTH_WORDS-1:0]                    tcdm_req;
   logic [BANDWIDTH_WORDS-1:0]                    tcdm_gnt;
