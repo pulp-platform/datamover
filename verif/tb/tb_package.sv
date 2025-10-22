@@ -41,9 +41,6 @@ package tb_package;
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH; // should correspond to bank width
   localparam int unsigned BANDWIDTH_WORDS = BANDWIDTH / WORD_WIDTH;
 
-  localparam int ID = 10;
-  localparam int MEMORY_SIZE=256*1024;
-
   typedef struct{
     logic          req;
     logic          gnt;
