@@ -61,7 +61,8 @@ import tb_package::*;
   logic                 periph_r_valid;
   logic [PERIPH_ID-1:0] periph_r_id;
 
-
+  logic [2:0]           transp_mode;
+  logic [15:0]          transp_len;
 
   // Performs one entire clock cycle.
   task cycle;
@@ -115,6 +116,9 @@ import tb_package::*;
   assign write_addr = '{`STIM_WRITE_BASE_ADDR, `STIM_WRITE_D0_STRIDE, `STIM_WRITE_D1_STRIDE, `STIM_WRITE_D0_LENGTH, `STIM_WRITE_D1_LENGTH, `STIM_WRITE_TOT_LENGTH};
   // assign read_addr = '{`STIM_READ_BASE_ADDR, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
   // assign write_addr = '{32'h40, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
+
+  assign transp_mode = `STIM_TRANSP_MODE;
+  assign transp_len  = `STIM_TRANSP_LEN;
 
 
   datamover_top_wrap #(
@@ -220,6 +224,7 @@ import tb_package::*;
   initial begin : main_execution
     logic [31:0] len0_reg;
     logic [31:0] len1_reg;
+    logic [31:0] transp_mode_reg;
 
     $info("Start execution...\n");
 
@@ -240,17 +245,18 @@ import tb_package::*;
     $info("[%0t] Acquiring job...\n", $time);
     // acquire job
     $info("Acquiring job...\n");
-    while(status !== 32'h00)
-      periph_read(datamover_package::DATAMOVER_ACQUIRE, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);   
+    while(status != 32'h00)
+      periph_read(datamover_package::DATAMOVER_ACQUIRE, datamover_package::HWPE_REGISTER_OFFS, status,  clk_i, periph_bus);
     $info("Job acquired, configuring datamover...\n");
-    
+
 
     periph_write(datamover_package::DATAMOVER_REG_IN_PTR,  datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.base_addr, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_OUT_PTR, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr, clk_i, periph_bus);
-    
+
     // Configure packed length registers (see datamover_package.sv)
     len0_reg = {read_addr.d1_length[7:0], read_addr.d0_length[11:0], read_addr.tot_length[11:0]};
     len1_reg = {4'b0, read_addr.d1_length[11:8], write_addr.d1_length[11:0], write_addr.d0_length[11:0]};
+    transp_mode_reg = {transp_len, 13'b0, transp_mode}; // ToDo(cdurrer): Leftover = transp_len???
     // Make sure tot_length is the same for read and write
     assert (read_addr.tot_length == write_addr.tot_length) else $fatal("Read and write total lengths do not match!");
 
@@ -266,16 +272,16 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h4, clk_i, periph_bus);
 
     // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
-    periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, {29'b0, TRANSP_MODE}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, transp_mode_reg, clk_i, periph_bus);
 
     periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
 
-    while(status === 32'h00)
+    while(status == 32'h00)
       periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status, clk_i, periph_bus);
 
      $info("Datamover working...\n");
-    
-    while(status !== 32'h00)
+
+    while(status != 32'h00)
       periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status, clk_i, periph_bus);
 
     $info("Datamover finished transfer. Checking output...\n");

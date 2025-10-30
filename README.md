@@ -24,6 +24,7 @@ The following parameters are used to generate the testbench stimuli and to confi
 `STIM_*_STRIDE` = stride between element across dimensions d0/d1 (element-addressed, e.g., stride d1 would be the distance in an element-addressed offset between A[row=0][col=0] and A[row=1][col=0])
 `STIM_MEM_SIZE` = number of words of the testbench memory
 `STIM_TRANSP_MODE` = transposition mode to configure for the datamover (`3'b000` = none, `3'b001` = 1 elem, `3'b010` = 2 elem, `3'b100` = 4 elem)
+`STIM_TRANSP_LEN` = transposition length (if set to 0: transp_len = BANDWIDTH_ALIGNED / ELEM_WIDTH)
 
 For the complete list of the datamover configuration registers, cf. `datamover_package.sv`.
 
@@ -75,5 +76,5 @@ PASSED!!!!
 This repository makes use of two licenses:
 - for all *software*: Apache License Version 2.0
 - for all *hardware*: Solderpad Hardware License Version 0.51
- 
+
 For further information have a look at the license files: `LICENSE.hw`, `LICENSE.sw`

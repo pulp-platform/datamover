@@ -50,6 +50,7 @@ TESTBENCH_DEFINES += -DSTIM_WRITE_TOT_LENGTH=${STIM_WRITE_TOT_LENGTH}
 TESTBENCH_DEFINES += -DSTIM_MEM_SIZE=${STIM_MEM_SIZE}
 
 TESTBENCH_DEFINES += -DSTIM_TRANSP_MODE=${STIM_TRANSP_MODE}
+TESTBENCH_DEFINES += -DSTIM_TRANSP_LEN=${STIM_TRANSP_LEN}
 
 TESTBENCH_DEFINES += -DBANDWIDTH=${BANDWIDTH}
 TESTBENCH_DEFINES += -DNUM_ELEM_WORD=${NUM_ELEM_WORD}
@@ -79,7 +80,7 @@ clean-stimuli:
 	rm -rf $(STIMULI_DIR)
 
 stimuli: clean-stimuli
-	python -m verif.python.generate_stimuli \
+	python -m verif.python.generate_stimuli_test \
 	--mem_size $(STIM_MEM_SIZE) \
 	--read_base_addr $(STIM_READ_BASE_ADDR) \
 	--read_d0_stride $(STIM_READ_D0_STRIDE) \
@@ -95,6 +96,7 @@ stimuli: clean-stimuli
 	--num_elem_word $(NUM_ELEM_WORD) \
 	--elem_width $(ELEM_WIDTH) \
 	--transp_mode $(STIM_TRANSP_MODE) \
+	--transp_len $(STIM_TRANSP_LEN) \
 	--output_dir "verif/python/generated"
 
 # Bender

@@ -1,4 +1,5 @@
 .bender
+.github
 modelsim/vsim
 test/BUILD
 **.log
