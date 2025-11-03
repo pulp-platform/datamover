@@ -88,7 +88,7 @@ module datamover_top #(
   logic              datamover_config_valid;
 
   logic busy;
-  assign busy = state_q != DM_IDLE && state_q != DM_FINISHED;
+  assign busy = state_q != DM_IDLE;
 
   logic clk_acc;
 
