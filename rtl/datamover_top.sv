@@ -75,6 +75,7 @@ module datamover_top #(
 
   // Software-generated clear signal.
   logic clear;
+  assign clear = '0;
 
   // These are the bit fields used to control the streamer.
   ctrl_streamer_t  streamer_ctrl, streamer_ctrl_cfg;
@@ -86,6 +87,18 @@ module datamover_top #(
   datamover_config_t datamover_config;
   logic              datamover_config_valid;
 
+  logic busy;
+  assign busy = state_q != DM_IDLE && state_q != DM_FINISHED;
+
+  logic clk_acc;
+
+  tc_clk_gating i_acc_clock_gating (
+    .clk_i     ( clk_i   ),
+    .en_i      ( busy    ),
+    .test_en_i ( '0      ),
+    .clk_o     ( clk_acc )
+  );
+
   // Data in and data out internal HWPE-Streams. Notice that the data width
   // is set to 256 bits by default, 32 bits less than the default external
   // bandwidth. The additional 32 bits of memory bandwidth are used to
@@ -93,12 +106,12 @@ module datamover_top #(
   hwpe_stream_intf_stream #(
     .DATA_WIDTH(BW_ALIGNED)
   ) data_in  (
-    .clk(clk_i)
+    .clk(clk_acc)
   );
   hwpe_stream_intf_stream #(
     .DATA_WIDTH(BW_ALIGNED)
   ) data_out (
-    .clk(clk_i)
+    .clk(clk_acc)
   );
 
   // The streamer exposes on the memory side a single TCDM 288-bit interface
@@ -111,7 +124,7 @@ module datamover_top #(
     .MISALIGNED_ACCESSES(MISALIGNED_ACCESSES),
     .TCDM_FIFO_DEPTH ( 0  )
   ) i_streamer (
-    .clk_i      ( clk_i          ),
+    .clk_i      ( clk_acc        ),
     .rst_ni     ( rst_ni         ),
     .test_mode_i( test_mode_i    ),
     .enable_i   ( 1'b1           ),
@@ -129,7 +142,7 @@ module datamover_top #(
     .FIFO_DEPTH ( 4          ),
     .BW_ALIGNED ( BW_ALIGNED )
   ) i_engine (
-    .clk_i      ( clk_i          ),
+    .clk_i      ( clk_acc        ),
     .rst_ni     ( rst_ni         ),
     .test_mode_i( test_mode_i    ),
     .enable_i   ( 1'b1           ),
@@ -155,28 +168,28 @@ module datamover_top #(
     .x_commit_t            ( x_commit_t            ),
     .x_result_t            ( x_result_t            )
   ) i_inst_decoder (
-    .clk_i              ( clk_i                                        ),
-    .rst_ni             ( rst_ni                                       ),
-    .clear_i            ( '0                                           ),
-    .busy_i             ( state_q != DM_IDLE && state_q != DM_FINISHED ),
-    .config_valid_o     ( datamover_config_valid                       ),
-    .config_o           ( datamover_config                             ),
-    .x_issue_req_i      ( x_issue_req_i                                ),
-    .x_issue_resp_o     ( x_issue_resp_o                               ),
-    .x_issue_valid_i    ( x_issue_valid_i                              ),
-    .x_issue_ready_o    ( x_issue_ready_o                              ),
-    .x_register_i       ( x_register_i                                 ),
-    .x_register_valid_i ( x_register_valid_i                           ),
-    .x_register_ready_o ( x_register_ready_o                           ),
-    .x_commit_i         ( x_commit_i                                   ),
-    .x_commit_valid_i   ( x_commit_valid_i                             ),
-    .x_result_o         ( x_result_o                                   ),
-    .x_result_valid_o   ( x_result_valid_o                             ),
-    .x_result_ready_i   ( x_result_ready_i                             )
+    .clk_i              ( clk_i                  ),
+    .rst_ni             ( rst_ni                 ),
+    .clear_i            ( '0                     ),
+    .busy_i             ( busy                   ),
+    .config_valid_o     ( datamover_config_valid ),
+    .config_o           ( datamover_config       ),
+    .x_issue_req_i      ( x_issue_req_i          ),
+    .x_issue_resp_o     ( x_issue_resp_o         ),
+    .x_issue_valid_i    ( x_issue_valid_i        ),
+    .x_issue_ready_o    ( x_issue_ready_o        ),
+    .x_register_i       ( x_register_i           ),
+    .x_register_valid_i ( x_register_valid_i     ),
+    .x_register_ready_o ( x_register_ready_o     ),
+    .x_commit_i         ( x_commit_i             ),
+    .x_commit_valid_i   ( x_commit_valid_i       ),
+    .x_result_o         ( x_result_o             ),
+    .x_result_valid_o   ( x_result_valid_o       ),
+    .x_result_ready_i   ( x_result_ready_i       )
   );
 
   // Datamover FSM: sequential process.
-  always_ff @(posedge clk_i or negedge rst_ni)
+  always_ff @(posedge clk_acc or negedge rst_ni)
   begin : fsm_seq
     if(~rst_ni)
       state_q <= DM_IDLE;

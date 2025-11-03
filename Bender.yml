@@ -4,9 +4,10 @@ package:
     - "Francesco Conti <f.conti@unibo.it>"
 
 dependencies:
-  hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.6 }
-  hci:         { git: "https://github.com/pulp-platform/hci.git", version: 2.1.1 }
-  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 2.0 }
+  hwpe-stream:        { git: "https://github.com/pulp-platform/hwpe-stream.git", version: 1.6 }
+  hci:                { git: "https://github.com/pulp-platform/hci.git", version: 2.1.1 }
+  hwpe-ctrl:          { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 2.0 }
+  tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13 }
 
 
 sources:
