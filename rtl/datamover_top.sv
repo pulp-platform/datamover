@@ -23,7 +23,7 @@ module datamover_top #(
   parameter int unsigned ID        = 10,
   parameter int unsigned BW        = 288,
   parameter int unsigned N_CORES   = 8,
-  parameter int unsigned N_CONTEXT = 2,
+  parameter int unsigned N_CONTEXT = 4,
   parameter int unsigned MISALIGNED_ACCESSES = 0,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
@@ -121,8 +121,8 @@ module datamover_top #(
   // each, which are exposed into `reg_file.hwpe_params`
   hwpe_ctrl_slave #(
     .REGFILE_SCM    ( 0  ),
-    .N_CORES        ( 8  ),
-    .N_CONTEXT      ( 4  ),
+    .N_CORES        ( N_CORES  ),
+    .N_CONTEXT      ( N_CONTEXT  ),
     .N_IO_REGS      ( 11 ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
@@ -226,7 +226,7 @@ module datamover_top #(
 
   // Bind the output event, which is propagated to the event unit and used
   // to implement HWPE datamover barriers.
-  assign evt_o = slave_flags.evt[7:0];
+  assign evt_o = slave_flags.evt[N_CORES-1:0];
 
 
   localparam int unsigned DEBUG_DW  = `HCI_SIZE_GET_DW(tcdm);
