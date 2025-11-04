@@ -28,7 +28,7 @@ module datamover_top
   parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a memory bank word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
   parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
-  parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
+  parameter int unsigned N_CONTEXT = 4,           // number of context for control slave regfile
   parameter int unsigned MISALIGNED_ACCESSES = 0, // enable misaligned accesses on TCDM interface
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
@@ -138,12 +138,16 @@ module datamover_top
   );
   
   // The slave module exposes a peripheral interconnect HWPE-Periph plug;
-  // in the default configuration, it provides 2 contexts with 13 registers
+  // in the default configuration, it provides 4 contexts with 11 registers
   // each, which are exposed into `reg_file.hwpe_params`
+
+  // Previously it was 2 contexts with 13 registers: since the datamover is used for relatively
+  // fine-grained jobs, the new config makes offloading faster by compacting the LEN registers
+  // and allows for more contexts
   hwpe_ctrl_slave #(
     .REGFILE_SCM    ( 0  ),
-    .N_CORES        ( 8  ),
-    .N_CONTEXT      ( 4  ),
+    .N_CORES        ( N_CORES   ),
+    .N_CONTEXT      ( N_CONTEXT ),
     .N_IO_REGS      ( 11 ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
@@ -247,7 +251,7 @@ module datamover_top
 
   // Bind the output event, which is propagated to the event unit and used
   // to implement HWPE datamover barriers.
-  assign evt_o = slave_flags.evt[7:0];
+  assign evt_o = slave_flags.evt[N_CORES-1:0];
 
 
   localparam int unsigned DEBUG_DW  = `HCI_SIZE_GET_DW(tcdm);
