@@ -7,7 +7,7 @@ package:
 dependencies:
   hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 40ab0fe1433dc080a49aa1926ce09df9ab3f5fb5 } # branch: prasadar/multi-precision
   hci:         { git: "https://github.com/pulp-platform/hci.git", rev: 9844a893c34612ac66697e8dcd60214296f2634c } # branch: prasadar/multi-precision
-  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 2.0 }
+  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", rev: 4977b6cf42b96f3fefd1973281d5c4b8259c50d5 } # branch: master
 
 
 sources:
