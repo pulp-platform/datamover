@@ -15,12 +15,12 @@ import os
 # BANDWIDTH_ELEMS = BANDWIDTH // ELEM_WIDTH
 # BANDWIDTH_WORDS = BANDWIDTH_ELEMS // NUM_ELEM_WORD
 
-# MATRIX_SIZE_D0 = 16     # in elements
-# MATRIX_SIZE_D1 = 4      # in elements
+# MATRIX_SIZE_N = 16     # in elements
+# MATRIX_SIZE_M = 4      # in elements
 
 # READ_BASE_ADDR = 0  # in bytes
-# READ_D0_LENGTH = MATRIX_SIZE_D0 // BANDWIDTH_ELEMS  # Nof accesses with bandwidth BW per D0-transfer ("row")
-# READ_D1_LENGTH = MATRIX_SIZE_D1
+# READ_D0_LENGTH = MATRIX_SIZE_N // BANDWIDTH_ELEMS  # Nof accesses with bandwidth BW per D0-transfer ("row")
+# READ_D1_LENGTH = MATRIX_SIZE_M
 
 # WRITE_BASE_ADDR = 128  # in bytes
 # WRITE_D0_LENGTH = READ_D1_LENGTH
@@ -134,8 +134,11 @@ def main():
     READ_D1_LENGTH = args.read_d1_length
     WRITE_BASE_ADDR = args.write_base_addr
     TRANSP_MODE = args.transp_mode
-    MATRIX_SIZE_D0 = READ_D0_LENGTH * BANDWIDTH_ELEMS
-    MATRIX_SIZE_D1 = READ_D1_LENGTH
+    # MATRIX_SIZE_N = READ_D0_LENGTH * BANDWIDTH_ELEMS
+    # MATRIX_SIZE_M = READ_D1_LENGTH
+    MATRIX_SIZE_N = READ_D1_LENGTH * BANDWIDTH_ELEMS
+    MATRIX_SIZE_M = READ_D0_LENGTH
+
     OUTPUT_DIR = args.output_dir
 
     # num_elem_word must be power of two and greater than zero
@@ -149,16 +152,17 @@ def main():
     print(f"Memory Size: {MEMORY_SIZE} entries")
     print(f"Word Size: {WORD_SIZE_BITS} bits")
 
-    memory = generate_counting_hex(MEMORY_SIZE, ELEM_WIDTH, WORD_WIDTH)  # For debugging with 8-bit elements
+    # memory = generate_counting_hex(MEMORY_SIZE, ELEM_WIDTH, WORD_WIDTH)
+    memory = generate_counting_hex(MEMORY_SIZE, ELEM_WIDTH*TRANSP_MODE, WORD_WIDTH)
 
     write_file(OUTPUT_DIR, "initial_memory.txt", memory)
 
     # Extract matrix (read dimensions) from memory
     input_matrix = []
-    for d1 in range(READ_D1_LENGTH):
+    for d1 in range(MATRIX_SIZE_M):
         row = []
-        for d0 in range(READ_D0_LENGTH*BANDWIDTH_WORDS):
-            word = memory[(READ_BASE_ADDR // (WORD_WIDTH // 8) + d1 * (READ_D0_LENGTH*BANDWIDTH_WORDS) + d0)]
+        for d0 in range(MATRIX_SIZE_N // NUM_ELEM_WORD):
+            word = memory[(READ_BASE_ADDR // (WORD_WIDTH // 8) + d1 * (MATRIX_SIZE_N // NUM_ELEM_WORD) + d0)]
             word_elements = extract_elements_from_word(word, NUM_ELEM_WORD*ELEM_WIDTH, ELEM_WIDTH)
             for elem in range(NUM_ELEM_WORD):
                 row.append(word_elements[elem])
@@ -168,6 +172,9 @@ def main():
     print("Input Matrix:")
     for i, row in enumerate(input_matrix):
         print(f"Row {i}: {row}")
+    print("\n")
+    for i, row in enumerate(input_matrix):
+        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
 
     # for d0 in range(d0_length):
     #     for d1 in range(d1_length):
@@ -176,10 +183,13 @@ def main():
     # for row in input_matrix:
     #     print(row)
 
-    transposed_matrix = transpose(input_matrix, MATRIX_SIZE_D0, MATRIX_SIZE_D1, TRANSP_MODE)
+    transposed_matrix = transpose(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, TRANSP_MODE)
     print("\nTransposed Matrix:")
     for i, row in enumerate(transposed_matrix):
         print(f"Row {i}: {row}")
+    print("\n")
+    for i, row in enumerate(transposed_matrix):
+        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
 
     # Convert transposed matrix back to words
     transposed_hex_words = matrix_to_hex_words(transposed_matrix, ELEM_WIDTH, WORD_WIDTH)
@@ -189,6 +199,7 @@ def main():
 
     # Write back transposed matrix to memory at WRITE_BASE_ADDR
     for i, word in enumerate(transposed_hex_words):
+        print(f"Writing word {word} to memory address {WRITE_BASE_ADDR + i * (WORD_WIDTH // 8)}")
         memory[(WRITE_BASE_ADDR // (WORD_WIDTH // 8) + i)] = word
         # print(f"Writing word {word} to memory address {WRITE_BASE_ADDR + i}")
 
