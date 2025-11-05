@@ -110,6 +110,7 @@ def main():
     parser.add_argument("--read_d1_length", type=int, default=4, help="Length for d1 read")
     parser.add_argument("--write_d0_stride", type=int, default=4, help="Stride for d0 write (in bytes)")
     parser.add_argument("--write_d1_stride", type=int, default=16, help="Stride for d1 write (in bytes)")
+    parser.add_argument("--write_d2_stride", type=int, default=64, help="Stride for d2 write (in bytes)")
     parser.add_argument("--write_d0_length", type=int, default=4, help="Length for d0 write")
     parser.add_argument("--write_d1_length", type=int, default=4, help="Length for d1 write")
     parser.add_argument("--bandwidth_bits", type=int, default=4, help="Number of bits per transaction")

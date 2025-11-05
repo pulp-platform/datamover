@@ -49,7 +49,7 @@ module datamover_top
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
   // realignment at a word boundary if the access are misaligned.
-  localparam BANDWIDTH_ALIGNED = MISALIGNED_ACCESSES === 0 ? BANDWIDTH : BANDWIDTH-WORD_WIDTH;
+  localparam BANDWIDTH_ALIGNED = MISALIGNED_ACCESSES == 0 ? BANDWIDTH : BANDWIDTH-WORD_WIDTH;
 
   // State for the FSM declared directly in datamover_top.
   typedef enum { DM_IDLE, DM_STARTING, DM_WORKING, DM_FINISHED } dm_state;
@@ -73,7 +73,7 @@ module datamover_top
 
   // Data in and data out internal HWPE-Streams. Notice that the data width
   // is set to 256 bits by default, 32 bits less than the default external
-  // bandwidth. The additional 32 bits of memory bandwidth are used to 
+  // bandwidth. The additional 32 bits of memory bandwidth are used to
   // support access to non-word-aligned data packets.
 
   // number of elements (in the full bandwidth, not a single bank word)
@@ -136,7 +136,7 @@ module datamover_top
     .data_in    ( data_in        ),
     .data_out   ( data_out       )
   );
-  
+
   // The slave module exposes a peripheral interconnect HWPE-Periph plug;
   // in the default configuration, it provides 4 contexts with 11 registers
   // each, which are exposed into `reg_file.hwpe_params`
@@ -213,8 +213,8 @@ module datamover_top
   always_comb
   begin
     streamer_ctrl_cfg = '0;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = '1;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = '1;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = 4'b0001; // Reading operation needs 2 dimensions (activating only d0, and d1 is controlled by tot_len)
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = 4'b0011; // Writing operation needs 3 dimensions (activating d0 and d1, d2 is controlled by tot_len)
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
@@ -242,10 +242,10 @@ module datamover_top
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
     if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
-      engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;
+      engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): why?
     end
     else begin // in case of leftover, use the reg content as length
-      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];
+      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];   // ToDo(cdurrer): mention this option in config/pkg/TB
     end
   end
 
