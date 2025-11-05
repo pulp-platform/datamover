@@ -14,7 +14,7 @@ WORD_WIDTH = 32  # in bits
 ELEM_WIDTH = 8   # in bits
 MEMORY_SIZE = 8192  # in words
 
-TRANSP_MODE = 1  # 0 = none, 1 = 1 elem, 2 = 2 elem, 4 = 4 elem
+TRANSP_MODE = 4 # 0 = none, 1 = 1 elem, 2 = 2 elem, 4 = 4 elem
 
 # Derived constants from basic parameters
 # BANDWIDTH_WORDS := $(shell echo $$(($(BANDWIDTH) / $(WORD_WIDTH))))  # Number of words per bandwidth
@@ -26,8 +26,8 @@ NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  # Number of 
 #########################
 
 # Base matrix dimensions (in elements)
-MATRIX_SIZE_N ?= 128  # Matrix width in elements
-MATRIX_SIZE_M ?= 64   # Matrix height in elements
+MATRIX_SIZE_M ?= 128   	# Matrix height in elements
+MATRIX_SIZE_N ?= 64 	# Matrix width in elements
 
 # Derived stride calculations
 # ELEM_STRIDE_D0 := $(ELEM_WIDTH)                                    # Element-to-element stride in bits
@@ -35,22 +35,22 @@ MATRIX_SIZE_M ?= 64   # Matrix height in elements
 
 # ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (4*32b)
 # N (bandwidth) consecutive words are read/written in one transaction
-STIM_READ_BASE_ADDR ?= 0							# Element-addressed
-STIM_READ_D0_LENGTH ?= $(MATRIX_SIZE_M) # $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS))))  # Nof accesses with bandwidth BW per D0-transfer ("row")
-STIM_READ_D0_STRIDE ?= $(MATRIX_SIZE_N) # $(BANDWIDTH_ELEMS)			# Elements
-STIM_READ_D1_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS)))) # $(MATRIX_SIZE_M)			# Number of full D0-transfers ("rows")
-STIM_READ_D1_STRIDE ?= $(BANDWIDTH_ELEMS) # $(MATRIX_SIZE_N) 			# Elements -> manually compute "next row" stride
-STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))  # Total memory accesses
+STIM_READ_BASE_ADDR ?= 0																# Element-addressed
+STIM_READ_D0_LENGTH ?= $(MATRIX_SIZE_M) 												# [Nof accesses with bandwidth BW per D0-transfer ("row")]
+STIM_READ_D0_STRIDE ?= $(MATRIX_SIZE_N) 												# [Elements]
+STIM_READ_D1_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS)))) 		# [Number of full D0-transfers ("rows")]
+STIM_READ_D1_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements] -> manually compute "next row" stride
+STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))  # [Total memory accesses]
 
 STIM_WRITE_BASE_ADDR ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N))))			# Element-addressed
-STIM_WRITE_D0_LENGTH ?= $(BANDWIDTH_ELEMS)												# Transpose tile width corresponds to bandwidth
-STIM_WRITE_D0_STRIDE ?= $(MATRIX_SIZE_M) 												# Transpose: Input matrix height corresponds to output matrix width
-STIM_WRITE_D1_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_M) / $(BANDWIDTH_ELEMS)))) 		# Transpose: Input matrix height corresponds to output matrix width
-STIM_WRITE_D1_STRIDE ?= $(BANDWIDTH_ELEMS) 												# Transpose tile height corresponds to bandwidth
-STIM_WRITE_D2_STRIDE ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(STIM_WRITE_D0_LENGTH))))	# D2 length is controlled by total length
+STIM_WRITE_D0_LENGTH ?= $(shell echo $$(($(BANDWIDTH_ELEMS) / $(TRANSP_MODE))))			# Transpose tile width corresponds to bandwidth
+STIM_WRITE_D0_STRIDE ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(TRANSP_MODE)))) 			# Transpose: Input matrix height corresponds to output matrix width
+STIM_WRITE_D1_LENGTH ?= $(shell echo $$(($(STIM_WRITE_D0_STRIDE) / $(BANDWIDTH_ELEMS))))# Transpose: Input matrix height corresponds to output matrix width
+STIM_WRITE_D1_STRIDE ?= $(BANDWIDTH_ELEMS)												# Transpose tile height corresponds to bandwidth
+STIM_WRITE_D2_STRIDE ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(BANDWIDTH_ELEMS))))		# D2 length is controlled by total length
 STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)										# Same total length as read
 
-STIM_MEM_SIZE ?= $(MEMORY_SIZE)  # in words
+STIM_MEM_SIZE ?= $(MEMORY_SIZE)  # [Words]
 
 STIM_TRANSP_MODE ?= $(TRANSP_MODE)       			# 3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem
 STIM_TRANSP_LEN  ?= 0  								# If 0: BANDWIDTH_ALIGNED / ELEM_WIDTH

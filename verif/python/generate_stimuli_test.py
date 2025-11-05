@@ -2,6 +2,8 @@ import random
 import argparse
 import os
 
+RANDOM_STIMULI = False  # If False, counting stimuli are generated in a counting fashion
+
 # OUTPUT_DIR = "generated"
 
 # BANDWIDTH = 128     # in bits
@@ -26,6 +28,8 @@ import os
 # WRITE_D0_LENGTH = READ_D1_LENGTH
 # WRITE_D1_LENGTH = READ_D0_LENGTH
 
+# ToDo(cdurrer): small matrices (N < BW) not working
+
 def extract_elements_from_word(word, word_width, elem_width):
     """Extract elements from a word based on the specified widths."""
     word_int = int(word, 16)  # Convert hex string to integer
@@ -36,6 +40,13 @@ def extract_elements_from_word(word, word_width, elem_width):
         elem_val = (word_int >> (i * elem_width)) & ((1 << elem_width) - 1)
         elements.append(elem_val)
     return elements
+
+def generate_random_hex(size, word_width):
+    """Generate random word_width hex values."""
+    def ceildiv(a, b):
+        return -(a // -b)
+    hex_length = ceildiv(word_width, 4)  # Each hex digit represents 4 bits
+    return [f"{random.randint(0, 2**word_width - 1):0{hex_length}X}" for _ in range(size)]
 
 def generate_counting_hex(size, elem_width, word_width):
     """
@@ -148,13 +159,22 @@ def main():
     # bandwidth width must be a multiple of word size
     if args.bandwidth_bits % WORD_SIZE_BITS != 0:
         raise ValueError("bandwidth_bits must be a multiple of the word size (num_elem_word * elem_width).")
+    # bandwidth width must be a multiple of word size
+    if ((MATRIX_SIZE_N * ELEM_WIDTH) < args.bandwidth_bits):
+        raise ValueError("Matrix width (N) in bits must be at least as large as bandwidth_bits.")
+    # transp_mode must be valid (0=none, 1=1elem, 2=2elem, 4=4elem)
+    if args.transp_mode not in [0, 1, 2, 4]:
+        raise ValueError("transp_mode must be 0 (none), 1 (1 elem), 2 (2 elem), or 4 (4 elem).")
 
 
     print(f"Memory Size: {MEMORY_SIZE} entries")
     print(f"Word Size: {WORD_SIZE_BITS} bits")
 
     # memory = generate_counting_hex(MEMORY_SIZE, ELEM_WIDTH, WORD_WIDTH)
-    memory = generate_counting_hex(MEMORY_SIZE, ELEM_WIDTH*TRANSP_MODE, WORD_WIDTH)
+    if RANDOM_STIMULI:
+        memory = generate_random_hex(MEMORY_SIZE, WORD_SIZE_BITS)  # for testing
+    else:
+        memory = generate_counting_hex(MEMORY_SIZE, ELEM_WIDTH, WORD_WIDTH) # for debugging
 
     write_file(OUTPUT_DIR, "initial_memory.txt", memory)
 
