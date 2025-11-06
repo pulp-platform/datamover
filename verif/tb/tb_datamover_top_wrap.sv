@@ -105,16 +105,16 @@ import tb_package::*;
     logic [31:0] base_addr;
     logic [31:0] d0_stride;
     logic [31:0] d1_stride;
+    logic [31:0] d2_stride;
     logic [11:0] d0_length;
     logic [11:0] d1_length;
-    logic [11:0] d2_stride;
     logic [11:0] tot_length;
   } addressgen_t;
 
   addressgen_t read_addr, write_addr;
 
-  assign read_addr = '{`STIM_READ_BASE_ADDR, `STIM_READ_D0_STRIDE, `STIM_READ_D1_STRIDE, `STIM_READ_D0_LENGTH, `STIM_READ_D1_LENGTH, '0, `STIM_READ_TOT_LENGTH};
-  assign write_addr = '{`STIM_WRITE_BASE_ADDR, `STIM_WRITE_D0_STRIDE, `STIM_WRITE_D1_STRIDE, `STIM_WRITE_D0_LENGTH, `STIM_WRITE_D1_LENGTH, `STIM_WRITE_D2_STRIDE, `STIM_WRITE_TOT_LENGTH};
+  assign read_addr = '{`STIM_READ_BASE_ADDR, `STIM_READ_D0_STRIDE, `STIM_READ_D1_STRIDE, '0, `STIM_READ_D0_LENGTH, `STIM_READ_D1_LENGTH, `STIM_READ_TOT_LENGTH};
+  assign write_addr = '{`STIM_WRITE_BASE_ADDR, `STIM_WRITE_D0_STRIDE, `STIM_WRITE_D1_STRIDE, `STIM_WRITE_D2_STRIDE, `STIM_WRITE_D0_LENGTH, `STIM_WRITE_D1_LENGTH, `STIM_WRITE_TOT_LENGTH};
   // assign read_addr = '{`STIM_READ_BASE_ADDR, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
   // assign write_addr = '{32'h40, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
 
