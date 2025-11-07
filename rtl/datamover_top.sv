@@ -213,7 +213,7 @@ module datamover_top
   always_comb
   begin
     streamer_ctrl_cfg = '0;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = 4'b0001; // Reading operation needs 2 dimensions (activating only d0, and d1 is controlled by tot_len)
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = 4'b0011; // Reading operation needs 3 dimensions (activating d0 and d1, d2 is controlled by tot_len)
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = 4'b0011; // Writing operation needs 3 dimensions (activating d0 and d1, d2 is controlled by tot_len)
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];

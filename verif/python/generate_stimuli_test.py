@@ -112,13 +112,14 @@ def transpose(matrix, size_d0, size_d1, transp_mode):
 def main():
         # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Memory Read/Write Simulation with Word-Aligned Strides")
-    parser.add_argument("--mem_size", type=int, default=0x30, help="Memory size in entries")
+    parser.add_argument("--mem_size", type=int, default=0x30, help="Memory size in words")
     parser.add_argument("--read_base_addr", type=int, default=0x00, help="Base address for read operations")
     parser.add_argument("--write_base_addr", type=int, default=0x20, help="Base address for write operations")
     parser.add_argument("--read_d0_stride", type=int, default=4, help="Stride for d0 read (in bytes)")
     parser.add_argument("--read_d1_stride", type=int, default=16, help="Stride for d1 read (in bytes)")
     parser.add_argument("--read_d0_length", type=int, default=4, help="Length for d0 read")
     parser.add_argument("--read_d1_length", type=int, default=4, help="Length for d1 read")
+    parser.add_argument("--read_tot_length", type=int, default=16, help="Total read length")
     parser.add_argument("--write_d0_stride", type=int, default=4, help="Stride for d0 write (in bytes)")
     parser.add_argument("--write_d1_stride", type=int, default=16, help="Stride for d1 write (in bytes)")
     parser.add_argument("--write_d2_stride", type=int, default=64, help="Stride for d2 write (in bytes)")
@@ -155,16 +156,19 @@ def main():
 
     # num_elem_word must be power of two and greater than zero
     if args.num_elem_word & (args.num_elem_word - 1) != 0 or args.num_elem_word <= 0:
-        raise ValueError("num_elem_word must be a power of two and greater than zero.")
+        raise ValueError("[GM] num_elem_word must be a power of two and greater than zero.")
     # bandwidth width must be a multiple of word size
     if args.bandwidth_bits % WORD_SIZE_BITS != 0:
-        raise ValueError("bandwidth_bits must be a multiple of the word size (num_elem_word * elem_width).")
+        raise ValueError("[GM] bandwidth_bits must be a multiple of the word size (num_elem_word * elem_width).")
     # bandwidth width must be a multiple of word size
     if ((MATRIX_SIZE_N * ELEM_WIDTH) < args.bandwidth_bits):
-        raise ValueError("Matrix width (N) in bits must be at least as large as bandwidth_bits.")
+        raise ValueError("[GM] Matrix width (N) in bits must be at least as large as bandwidth_bits.")
     # transp_mode must be valid (0=none, 1=1elem, 2=2elem, 4=4elem)
     if args.transp_mode not in [0, 1, 2, 4]:
-        raise ValueError("transp_mode must be 0 (none), 1 (1 elem), 2 (2 elem), or 4 (4 elem).")
+        raise ValueError("[GM] transp_mode must be 0 (none), 1 (1 elem), 2 (2 elem), or 4 (4 elem).")
+    # read_tot_length must not exceed 12-bit register capacity (4096)
+    if ((args.read_tot_length >= 4096) & (TRANSP_MODE != 0)):
+        raise ValueError("[GM] read_tot_length (MxN / BW_ELEM) must be less than 4096 in transpose mode (12-bit register limit).")
 
 
     print(f"Memory Size: {MEMORY_SIZE} entries")
@@ -190,39 +194,36 @@ def main():
         input_matrix.append(row)
 
     # Print input matrix
-    print("Input Matrix:")
-    for i, row in enumerate(input_matrix):
-        print(f"Row {i}: {row}")
-    print("\n")
-    for i, row in enumerate(input_matrix):
-        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
-
-    # for d0 in range(d0_length):
-    #     for d1 in range(d1_length):
-    #         input_matrix[d0][d1] = d0*d1_length + d1
     # print("Input Matrix:")
-    # for row in input_matrix:
-    #     print(row)
+    # # for i, row in enumerate(input_matrix):
+    # #     print(f"Row {i}: {row}")
+    # # print("\n")
+    # for i, row in enumerate(input_matrix):
+    #     print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
 
-    transposed_matrix = transpose(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, TRANSP_MODE)
-    print("\nTransposed Matrix:")
-    for i, row in enumerate(transposed_matrix):
-        print(f"Row {i}: {row}")
-    print("\n")
-    for i, row in enumerate(transposed_matrix):
-        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
+    if TRANSP_MODE != 0:
+        transposed_matrix = transpose(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, TRANSP_MODE)
+        # print("\nTransposed Matrix:")
+        # # for i, row in enumerate(transposed_matrix):
+        # #     print(f"Row {i}: {row}")
+        # # print("\n")
+        # for i, row in enumerate(transposed_matrix):
+        #     print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
+        output_matrix = transposed_matrix
+    else:
+        output_matrix = input_matrix
 
-    # Convert transposed matrix back to words
-    transposed_hex_words = matrix_to_hex_words(transposed_matrix, ELEM_WIDTH, WORD_WIDTH)
-    # print(f"\nTransposed Matrix as Hex Words:")
-    # for i, word in enumerate(transposed_hex_words):
+    # # Convert output matrix back to words
+    output_hex_words = matrix_to_hex_words(output_matrix, ELEM_WIDTH, WORD_WIDTH)
+    # print(f"\nOutput Matrix as Hex Words:")
+    # for i, word in enumerate(output_hex_words):
     #     print(f"Word {i}: {word}")
 
-    # Write back transposed matrix to memory at WRITE_BASE_ADDR
-    for i, word in enumerate(transposed_hex_words):
-        print(f"Writing word {word} to memory address {WRITE_BASE_ADDR + i * (WORD_WIDTH // 8)}")
+    # Write back output matrix to memory at WRITE_BASE_ADDR
+    for i, word in enumerate(output_hex_words):
         memory[(WRITE_BASE_ADDR // (WORD_WIDTH // 8) + i)] = word
-        # print(f"Writing word {word} to memory address {WRITE_BASE_ADDR + i}")
+        # print(f"Writing word {word} to memory address [Byte-address] {WRITE_BASE_ADDR + i * (WORD_WIDTH // 8)}")
+        # print(f"Writing word {word} to memory address [Word-address] {WRITE_BASE_ADDR + i}")
 
     write_file(OUTPUT_DIR, "updated_memory.txt", memory)
 

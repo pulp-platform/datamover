@@ -295,6 +295,14 @@ import tb_package::*;
       error_status
     );
 
+    // Check if there were any errors and fail the simulation if so
+    if (error_status != 0) begin
+      $error("Test FAILED: Output mismatch detected (error_status = %0d)", error_status);
+      $fatal(1, "Simulation terminated due to output verification failure");
+    end else begin
+      $info("Test PASSED: All output verification checks successful");
+    end
+
     $finish;
 
   end : main_execution

@@ -5,33 +5,30 @@
 # This file contains the configuration parameter for
 # the standalone simulation of the datamover HWPE
 
+# Include configuration presets (optional)
+-include config_presets.mk
+
 #######################
-# Datamover hw config #
+# Datamover HW Config #
 #######################
 
-BANDWIDTH = 128   # in bits
-WORD_WIDTH = 32  # in bits
-ELEM_WIDTH = 8   # in bits
-MEMORY_SIZE = 8192  # in words
+# Hardware configuration (can be overridden by presets or command line)
+BANDWIDTH ?= 512   		# in bits, multiple of WORD_WIDTH
+WORD_WIDTH ?= 32  		# in bits, multiple of ELEM_WIDTH
+ELEM_WIDTH ?= 8   		# in bits
+MEMORY_SIZE ?= 65536  	# in words
 
-TRANSP_MODE = 4 # 0 = none, 1 = 1 elem, 2 = 2 elem, 4 = 4 elem
+TRANSP_MODE ?= 1		# 0 = none (copy), 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
+
+# Input matrix dimensions (in elements)
+MATRIX_SIZE_M ?= 256   	# Matrix height in elements
+MATRIX_SIZE_N ?= 256 	# Matrix width in elements
+
+WRITE_BASE_ADDR = $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N))))			# Element-addressed
 
 # Derived constants from basic parameters
-# BANDWIDTH_WORDS := $(shell echo $$(($(BANDWIDTH) / $(WORD_WIDTH))))  # Number of words per bandwidth
-BANDWIDTH_ELEMS := $(shell echo $$(($(BANDWIDTH) / $(ELEM_WIDTH))))  # Number of elements per bandwidth
-NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  # Number of elements per word
-
-#########################
-# Stimuli configuration #
-#########################
-
-# Base matrix dimensions (in elements)
-MATRIX_SIZE_M ?= 128   	# Matrix height in elements
-MATRIX_SIZE_N ?= 64 	# Matrix width in elements
-
-# Derived stride calculations
-# ELEM_STRIDE_D0 := $(ELEM_WIDTH)                                    # Element-to-element stride in bits
-# ROW_STRIDE_BYTES := $(shell echo $$(($(MATRIX_SIZE_N) * $(ELEM_WIDTH) / 8)))  # Bytes per row
+BANDWIDTH_ELEMS := $(shell echo $$(($(BANDWIDTH) / $(ELEM_WIDTH))))  	# Number of elements per bandwidth
+NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  	# Number of elements per word
 
 # ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (4*32b)
 # N (bandwidth) consecutive words are read/written in one transaction
@@ -42,43 +39,58 @@ STIM_READ_D1_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS))))
 STIM_READ_D1_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements] -> manually compute "next row" stride
 STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))  # [Total memory accesses]
 
-STIM_WRITE_BASE_ADDR ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N))))			# Element-addressed
+STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
+STIM_TRANSP_MODE ?= $(TRANSP_MODE)       												# 3'b000 = none (copy), 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem, other values: not accepted
+STIM_TRANSP_LEN  ?= 0  																	# If 0: BANDWIDTH_ALIGNED / ELEM_WIDTH
+
+ifneq "$(strip $(TRANSP_MODE))" "0"
+$(info Transpose mode $(TRANSP_MODE) enabled)
+STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)												# Element-addressed
 STIM_WRITE_D0_LENGTH ?= $(shell echo $$(($(BANDWIDTH_ELEMS) / $(TRANSP_MODE))))			# Transpose tile width corresponds to bandwidth
 STIM_WRITE_D0_STRIDE ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(TRANSP_MODE)))) 			# Transpose: Input matrix height corresponds to output matrix width
 STIM_WRITE_D1_LENGTH ?= $(shell echo $$(($(STIM_WRITE_D0_STRIDE) / $(BANDWIDTH_ELEMS))))# Transpose: Input matrix height corresponds to output matrix width
 STIM_WRITE_D1_STRIDE ?= $(BANDWIDTH_ELEMS)												# Transpose tile height corresponds to bandwidth
 STIM_WRITE_D2_STRIDE ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(BANDWIDTH_ELEMS))))		# D2 length is controlled by total length
 STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)										# Same total length as read
-
-STIM_MEM_SIZE ?= $(MEMORY_SIZE)  # [Words]
-
-STIM_TRANSP_MODE ?= $(TRANSP_MODE)       			# 3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem
-STIM_TRANSP_LEN  ?= 0  								# If 0: BANDWIDTH_ALIGNED / ELEM_WIDTH
+else
+$(info Transpose mode disabled, using copy mode)
+STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)
+STIM_WRITE_D0_LENGTH ?= $(STIM_READ_D0_LENGTH)
+STIM_WRITE_D0_STRIDE ?= $(STIM_READ_D0_STRIDE)
+STIM_WRITE_D1_LENGTH ?= $(STIM_READ_D1_LENGTH)
+STIM_WRITE_D1_STRIDE ?= $(STIM_READ_D1_STRIDE)
+STIM_WRITE_D2_STRIDE ?= 0
+STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)
+endif
 
 # Debug: Print computed values (uncomment to see values during make)
-$(info BANDWIDTH_ELEMS: $(BANDWIDTH_ELEMS))
-$(info WORD_WIDTH: $(WORD_WIDTH))
-$(info ELEM_WIDTH: $(ELEM_WIDTH))
-
-$(info BANDWIDTH_ELEMS: $(BANDWIDTH_ELEMS))
-$(info NUM_ELEM_WORD: $(NUM_ELEM_WORD))
-
-$(info MATRIX_SIZE_N: $(MATRIX_SIZE_N))
-$(info MATRIX_SIZE_M: $(MATRIX_SIZE_M))
-
-$(info STIM_READ_BASE_ADDR: $(STIM_READ_BASE_ADDR))
-$(info STIM_READ_D0_LENGTH: $(STIM_READ_D0_LENGTH))
-$(info STIM_WRITE_D0_STRIDE: $(STIM_WRITE_D0_STRIDE))
-$(info STIM_READ_D1_LENGTH: $(STIM_READ_D1_LENGTH))
-$(info STIM_READ_D1_STRIDE: $(STIM_READ_D1_STRIDE))
-$(info STIM_READ_TOT_LENGTH: $(STIM_READ_TOT_LENGTH))
-
-$(info STIM_WRITE_BASE_ADDR: $(STIM_WRITE_BASE_ADDR))
-$(info STIM_WRITE_D0_LENGTH: $(STIM_WRITE_D0_LENGTH))
-$(info STIM_WRITE_D0_STRIDE: $(STIM_WRITE_D0_STRIDE))
-$(info STIM_WRITE_D1_LENGTH: $(STIM_WRITE_D1_LENGTH))
-$(info STIM_WRITE_D1_STRIDE: $(STIM_WRITE_D1_STRIDE))
-$(info STIM_WRITE_D2_STRIDE: $(STIM_WRITE_D2_STRIDE))
-$(info STIM_WRITE_TOT_LENGTH: $(STIM_WRITE_TOT_LENGTH))
-
-$(info STIM_TRANSP_MODE: $(STIM_TRANSP_MODE))
+$(info ========================================)
+$(info Hardware Configuration:)
+$(info   BANDWIDTH: $(BANDWIDTH) bits)
+$(info   WORD_WIDTH: $(WORD_WIDTH) bits)
+$(info   ELEM_WIDTH: $(ELEM_WIDTH) bits)
+$(info   BANDWIDTH_ELEMS: $(BANDWIDTH_ELEMS))
+$(info   NUM_ELEM_WORD: $(NUM_ELEM_WORD))
+$(info   TRANSP_MODE: $(TRANSP_MODE))
+$(info )
+$(info Matrix Configuration:)
+$(info   MATRIX_SIZE: $(MATRIX_SIZE_M) x $(MATRIX_SIZE_N))
+$(info   MEMORY_SIZE: $(MEMORY_SIZE) words)
+$(info )
+$(info Read Configuration:)
+$(info   BASE_ADDR: $(STIM_READ_BASE_ADDR))
+$(info   D0_LENGTH: $(STIM_READ_D0_LENGTH), D0_STRIDE: $(STIM_READ_D0_STRIDE))
+$(info   D1_LENGTH: $(STIM_READ_D1_LENGTH), D1_STRIDE: $(STIM_READ_D1_STRIDE))
+$(info   TOT_LENGTH: $(STIM_READ_TOT_LENGTH))
+$(info )
+$(info Write Configuration:)
+$(info   BASE_ADDR: $(STIM_WRITE_BASE_ADDR))
+$(info   D0_LENGTH: $(STIM_WRITE_D0_LENGTH), D0_STRIDE: $(STIM_WRITE_D0_STRIDE))
+$(info   D1_LENGTH: $(STIM_WRITE_D1_LENGTH), D1_STRIDE: $(STIM_WRITE_D1_STRIDE))
+$(info   D2_STRIDE: $(STIM_WRITE_D2_STRIDE))
+$(info   TOT_LENGTH: $(STIM_WRITE_TOT_LENGTH))
+$(info )
+$(info Transpose Configuration:)
+$(info   TRANSP_MODE: $(STIM_TRANSP_MODE))
+$(info   TRANSP_LEN: $(STIM_TRANSP_LEN))
+$(info ========================================)
