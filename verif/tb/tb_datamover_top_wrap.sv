@@ -298,9 +298,11 @@ import tb_package::*;
     // Check if there were any errors and fail the simulation if so
     if (error_status != 0) begin
       $error("Test FAILED: Output mismatch detected (error_status = %0d)", error_status);
-      $fatal(1, "Simulation terminated due to output verification failure");
+      $display("DATAMOVER_TEST_FAILED");
+      $stop(1);
     end else begin
       $info("Test PASSED: All output verification checks successful");
+      $display("DATAMOVER_TEST_PASSED");
     end
 
     $finish;

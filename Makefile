@@ -62,14 +62,14 @@ TESTBENCH_DEFINES += -DELEM_WIDTH=${ELEM_WIDTH}
 all: testvector sim
 
 # Configuration help target
-help-config:
+help:
 	@echo "=========================================="
 	@echo "Datamover Configuration System"
 	@echo "=========================================="
 	@echo ""
 	@echo "Available presets:"
 	@echo "  small-matrix    : 4x4 matrix"
-	@echo "  medium-matrix   : 32x32 matrix"
+	@echo "  medium-matrix   : 64x64 matrix"
 	@echo "  large-matrix    : 448x448 matrix"
 	@echo "  transpose-test  : 32x32 matrix"
 	@echo "  rect-wide       : 64x256 wide rectangular matrix"
@@ -84,8 +84,9 @@ help-config:
 	@echo "  make sim MATRIX_SIZE_M=64 MATRIX_SIZE_N=32"
 	@echo ""
 	@echo "Test targets:"
-	@echo "  make test-all-presets         : Test all presets (detailed reporting)"
-	@echo "  make test-transpose-modes     : Test all transpose modes"
+	@echo "  make test-all-presets              : Test all presets (detailed reporting)"
+	@echo "  make test-transpose-modes          : Test all transpose modes"
+	@echo "  make test-config-grid              : Test all bandwidth/transpose/word width combinations"
 	@echo ""
 	@echo "For detailed documentation, see CONFIG_USAGE.md"
 	@echo "=========================================="
@@ -132,6 +133,43 @@ test-transpose-modes:
 		echo ""; \
 		echo "====== SUMMARY: All transpose modes PASSED! ======"; \
 	fi
+
+
+test-config-grid:
+	@echo "Testing configuration parameter combinations (grid)..."
+	@failed_tests=""; \
+	total_tests=0; \
+	passed_tests=0; \
+	for bandwidth in 256 512; do \
+		for mode in 0 1 2 4; do \
+			for word_width in 16 32 64; do \
+				total_tests=$$((total_tests + 1)); \
+				echo "=== Testing BANDWIDTH=$$bandwidth TRANSP_MODE=$$mode WORD_WIDTH=$$word_width ==="; \
+				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth TRANSP_MODE=$$mode WORD_WIDTH=$$word_width; then \
+					echo "✓ BANDWIDTH=$$bandwidth TRANSP_MODE=$$mode WORD_WIDTH=$$word_width: PASSED"; \
+					passed_tests=$$((passed_tests + 1)); \
+				else \
+					echo "✗ BANDWIDTH=$$bandwidth TRANSP_MODE=$$mode WORD_WIDTH=$$word_width: FAILED"; \
+					failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/TRANSP_MODE=$$mode/WORD_WIDTH=$$word_width"; \
+				fi; \
+			done; \
+		done; \
+	done; \
+	echo ""; \
+	echo "====== TEST SUMMARY ======"; \
+	echo "Total tests: $$total_tests"; \
+	echo "Passed: $$passed_tests"; \
+	echo "Failed: $$((total_tests - passed_tests))"; \
+	if [ -n "$$failed_tests" ]; then \
+		echo ""; \
+		echo "FAILED combinations:$$failed_tests"; \
+		exit 1; \
+	else \
+		echo ""; \
+		echo "====== SUMMARY: All bandwidth/transpose/word width combinations PASSED! ======"; \
+	fi
+
+
 
 # Validate current configuration
 validate-config:
@@ -205,4 +243,4 @@ $(BENDER_INSTALL_DIR)/bender:
 	mkdir -p $(BENDER_INSTALL_DIR) && cd $(BENDER_INSTALL_DIR) && \
 	curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh -s -- $(BENDER_VERSION)
 
-.PHONY: all help-config test-all-presets test-transpose-modes validate-config clean-sim sim-script sim clean-stimuli stimuli bender check-bender
+.PHONY: all help test-all-presets test-transpose-modes test-config-grid validate-config clean-sim sim-script sim clean-stimuli stimuli bender check-bender

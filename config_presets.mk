@@ -11,7 +11,7 @@
 
 # Available presets:
 # - small-matrix    : Small 4x4 matrix for quick testing
-# - medium-matrix   : Medium 32x32 matrix for moderate testing
+# - medium-matrix   : Medium 64x64 matrix for moderate testing
 # - large-matrix    : Large 448x448 matrix for stress testing
 # - transpose-test  : Optimized for transpose functionality verification
 # - rect-wide       : Wide rectangular matrix (64x256)
@@ -36,14 +36,14 @@ ifeq ($(CONFIG_PRESET),small-matrix)
 endif
 
 ifeq ($(CONFIG_PRESET),medium-matrix)
-    BANDWIDTH = 64
+    BANDWIDTH = 128
     WORD_WIDTH = 32
     ELEM_WIDTH = 8
-    MEMORY_SIZE = 1024
+    MEMORY_SIZE = 4096
     TRANSP_MODE = 1
-    MATRIX_SIZE_M = 32
-    MATRIX_SIZE_N = 32
-    CONFIG_DESC = "Medium 32x32 matrix, 1-element transpose"
+    MATRIX_SIZE_M = 64
+    MATRIX_SIZE_N = 64
+    CONFIG_DESC = "Medium 64x64 matrix, 1-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),large-matrix)
@@ -70,13 +70,13 @@ endif
 
 ifeq ($(CONFIG_PRESET),rect-wide)
     BANDWIDTH = 256
-    WORD_WIDTH = 32
+    WORD_WIDTH = 16
     ELEM_WIDTH = 8
     MEMORY_SIZE = 32768
-    TRANSP_MODE = 1
+    TRANSP_MODE = 4
     MATRIX_SIZE_M = 64
     MATRIX_SIZE_N = 256
-    CONFIG_DESC = "Wide rectangular matrix 64x256, 1-element transpose"
+    CONFIG_DESC = "Wide rectangular matrix 64x256, 4-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),rect-tall)

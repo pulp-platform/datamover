@@ -62,6 +62,38 @@ make sim
 ```
 By default QuestaSim GUI is active. You can simulate the RTL in CLI mode with `GUI=0 make sim`.
 
+## Testing and Validation
+
+The datamover HWPE provides several test targets for comprehensive validation:
+
+### Configuration Testing
+```sh
+# Test all configuration presets
+make test-all-presets
+
+# Test all transpose modes
+make test-transpose-modes
+
+# Test configuration parameter combinations (grid testing)
+make test-config-grid
+
+# Show available configurations
+make help
+```
+
+### Configuration Presets
+The system includes predefined test configurations:
+- `small-matrix`: 4×4 matrix (quick testing)
+- `medium-matrix`: 64×64 matrix (moderate testing)
+- `large-matrix`: 448×448 matrix (stress testing)
+- `transpose-test`: 32×32 matrix (transpose focus)
+- `rect-wide`: 64×256 matrix (4-element transpose)
+- `rect-tall`: 256×64 matrix (2-element transpose)
+- `rect-narrow`: 16×128 matrix (1-element transpose)
+- `rect-elongated`: 128×32 matrix (2-element transpose)
+
+For detailed configuration documentation, see `CONFIG_USAGE.md`.
+
 ## Test Results
 If the tests pass successfully, you should see the following message displayed at the end:
 ```

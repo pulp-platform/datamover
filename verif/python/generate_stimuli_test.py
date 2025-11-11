@@ -2,7 +2,7 @@ import random
 import argparse
 import os
 
-RANDOM_STIMULI = False  # If False, counting stimuli are generated in a counting fashion
+RANDOM_STIMULI = True  # If False, counting stimuli are generated in a counting fashion
 
 # OUTPUT_DIR = "generated"
 

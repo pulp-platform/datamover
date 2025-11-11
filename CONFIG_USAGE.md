@@ -6,7 +6,7 @@ This document describes how to use the flexible configuration system for the dat
 
 ```bash
 # Show configuration help
-make help-config
+make help
 
 # Validate current config
 make validate-config
@@ -22,6 +22,9 @@ make test-all-presets
 
 # Test transpose modes
 make test-transpose-modes
+
+# Test configuration combinations (grid)
+make test-config-grid
 ```
 
 ## Quick Start
@@ -89,14 +92,14 @@ Parameters are resolved in this order (highest priority first):
 
 | Preset | Description | Matrix Size | Memory | Transpose |
 |--------|-------------|-------------|---------|-----------|
-| `small-matrix` | Quick testing | 4x4 | 512w | Mode 1 |
-| `medium-matrix` | Moderate testing | 32x32 | 1024w | Mode 1 |
-| `large-matrix` | Stress testing | 448x448 | 128KB | Mode 1 |
-| `transpose-test` | Transpose focus | 32x32 | 16KB | Mode 2 |
-| `rect-wide` | Wide rectangle | 64x256 | 32KB | Mode 1 |
-| `rect-tall` | Tall rectangle | 256x64 | 32KB | Mode 2 |
-| `rect-narrow` | Narrow rectangle | 16x128 | 8KB | Mode 1 |
-| `rect-elongated` | Elongated rectangle | 128x32 | 16KB | Mode 2 |
+| `small-matrix` | Quick testing | 4x4 | 2KB | Mode 1 |
+| `medium-matrix` | Moderate testing | 64x64 | 16KB | Mode 1 |
+| `large-matrix` | Stress testing | 448x448 | 512KB | Mode 1 |
+| `transpose-test` | Transpose focus | 32x32 | 64KB | Mode 2 |
+| `rect-wide` | Wide rectangle | 64x256 | 128KB | Mode 4 |
+| `rect-tall` | Tall rectangle | 256x64 | 128KB | Mode 2 |
+| `rect-narrow` | Narrow rectangle | 16x128 | 32KB | Mode 1 |
+| `rect-elongated` | Elongated rectangle | 128x32 | 64KB | Mode 2 |
 | `custom` | User-defined | Variable | Variable | Variable |
 
 ## 🔧 Key Parameters
@@ -104,12 +107,12 @@ Parameters are resolved in this order (highest priority first):
 | Parameter | Values | Description |
 |-----------|---------|-------------|
 | `TRANSP_MODE` | 0,1,2,4 | Transpose elements per cycle |
-| `ELEM_WIDTH` | 8,16,32 | Element width in bits |
-| `BANDWIDTH` | 256,512,1024 | Memory bandwidth in bits |
+| `ELEM_WIDTH` | 8 | Element width in bits |
+| `BANDWIDTH` | 64,128,256,512,1024 | Memory bandwidth in bits |
 | `MATRIX_SIZE_M` | Any | Matrix height in elements |
 | `MATRIX_SIZE_N` | Any | Matrix width in elements |
 | `MEMORY_SIZE` | Any | Available memory in words |
-| `WORD_WIDTH` | 32 | Word width in bits (typically 32) |
+| `WORD_WIDTH` | 16,32,64 | Word width in bits (typically 32) |
 
 ## Built-in Test Targets
 
@@ -121,6 +124,9 @@ make test-all-presets
 
 # Test all transpose modes with transpose-test preset
 make test-transpose-modes
+
+# Test configuration parameter combinations (bandwidth/transpose/word width grid)
+make test-config-grid
 
 # Validate configuration without running simulation
 make validate-config CONFIG_PRESET=<preset-name>
@@ -215,7 +221,7 @@ To see all computed values and configuration info:
 
 ```bash
 # Show configuration details
-make help-config
+make help
 
 # Validate configuration with detailed output
 make validate-config CONFIG_PRESET=small-matrix
@@ -237,7 +243,7 @@ make sim CONFIG_PRESET=custom BANDWIDTH=1024 ELEM_WIDTH=32
 
 # Validation and help
 make validate-config CONFIG_PRESET=transpose-test
-make help-config
+make help
 ```
 
 ## Tips and Best Practices
@@ -271,6 +277,9 @@ make test-all-presets
 
 # Test specific functionality
 make test-transpose-modes
+
+# Comprehensive parameter grid testing
+make test-config-grid
 ```
 
 ### Custom Research Configuration
