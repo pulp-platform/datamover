@@ -58,7 +58,7 @@ module datamover_engine
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_out_unrolled;
   logic                     data_out_valid;
   logic                     data_out_ready;
-  
+
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
   begin
@@ -165,11 +165,11 @@ module datamover_engine
   // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
   // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
   // and those < 8b are not interesting in our use case.
-  localparam MAX_SHIFTING = 4; // in "number of elements per word"
+  localparam MAX_SHIFTING = (NUM_ELEM_WORD > 4) ? NUM_ELEM_WORD : 4;
   // e.g., in a classical configuration (ELEM_WIDTH = 8), MAX_SHIFTING is
   // in bytes, i.e., "4" for 32b transpose (includes shifting by 0 bytes)
   logic [MAX_SHIFTING-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_shifted;
-  
+
   for(genvar ii=0; ii<MAX_SHIFTING; ii++) begin : gen_data_shifting_x
     for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_data_shifting_y
 
@@ -198,7 +198,7 @@ module datamover_engine
     // select appropriately shifted rows
     logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_selected;
     assign data_in_selected = ctrl_i.transp_mode == TRANSP_4ELEM? data_in_shifted[ii % 4] :
-                              ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] : 
+                              ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] :
                                                                    data_in_shifted[0];
 
     for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_y
@@ -239,7 +239,7 @@ module datamover_engine
       else $fatal("BANDWIDTH_ALIGNED (%0d) must not be greater than MAX_BANDWIDTH (%0d)", BANDWIDTH_ALIGNED, MAX_BANDWIDTH);
     assert ((BANDWIDTH_ALIGNED % WORD_WIDTH) == 0)
       else $fatal("BANDWIDTH_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH_ALIGNED, WORD_WIDTH);
-    assert (NUM_ELEM_WORD <= MAX_SHIFTING)
+    assert (NUM_ELEM_WORD <= MAX_SHIFTING)    // ToDo(cdurrer): obsolete?
       else $fatal("NUM_ELEM_WORD (%0d) must not be greater than MAX_SHIFTING (%0d)", NUM_ELEM_WORD, MAX_SHIFTING);
   end
 `endif
