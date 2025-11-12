@@ -113,7 +113,7 @@ import tb_package::*;
 
   addressgen_t read_addr, write_addr;
 
-  assign read_addr = '{`STIM_READ_BASE_ADDR, `STIM_READ_D0_STRIDE, `STIM_READ_D1_STRIDE, '0, `STIM_READ_D0_LENGTH, `STIM_READ_D1_LENGTH, `STIM_READ_TOT_LENGTH};
+  assign read_addr = '{`STIM_READ_BASE_ADDR, `STIM_READ_D0_STRIDE, `STIM_READ_D1_STRIDE, `STIM_READ_D2_STRIDE, `STIM_READ_D0_LENGTH, `STIM_READ_D1_LENGTH, `STIM_READ_TOT_LENGTH};
   assign write_addr = '{`STIM_WRITE_BASE_ADDR, `STIM_WRITE_D0_STRIDE, `STIM_WRITE_D1_STRIDE, `STIM_WRITE_D2_STRIDE, `STIM_WRITE_D0_LENGTH, `STIM_WRITE_D1_LENGTH, `STIM_WRITE_TOT_LENGTH};
   // assign read_addr = '{`STIM_READ_BASE_ADDR, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
   // assign write_addr = '{32'h40, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
@@ -266,7 +266,7 @@ import tb_package::*;
 
     periph_write(datamover_package::DATAMOVER_REG_IN_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_stride, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_IN_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_stride, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_IN_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, 32'h0,  clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d2_stride, clk_i, periph_bus);
 
     periph_write(datamover_package::DATAMOVER_REG_OUT_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_stride, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_OUT_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_stride, clk_i, periph_bus);

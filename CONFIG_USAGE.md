@@ -24,7 +24,8 @@ make test-all-presets
 make test-transpose-modes
 
 # Test configuration combinations (grid)
-make test-config-grid
+make test-transpose-grid
+make test-cim-grid
 ```
 
 ## Quick Start
@@ -51,6 +52,15 @@ make sim CONFIG_PRESET=rect-wide
 make sim CONFIG_PRESET=rect-tall
 make sim CONFIG_PRESET=rect-narrow
 make sim CONFIG_PRESET=rect-elongated
+
+# Copy mode testing
+make sim CONFIG_PRESET=copy-small
+make sim CONFIG_PRESET=copy-medium
+
+# CIM mode testing
+make sim CONFIG_PRESET=cim-small
+make sim CONFIG_PRESET=cim-medium
+make sim CONFIG_PRESET=cim-large
 ```
 
 ### Command Line Overrides
@@ -90,23 +100,57 @@ Parameters are resolved in this order (highest priority first):
 
 ## Available Presets
 
-| Preset | Description | Matrix Size | Memory | Transpose |
-|--------|-------------|-------------|---------|-----------|
-| `small-matrix` | Quick testing | 4x4 | 2KB | Mode 1 |
-| `medium-matrix` | Moderate testing | 64x64 | 16KB | Mode 1 |
-| `large-matrix` | Stress testing | 448x448 | 512KB | Mode 1 |
-| `transpose-test` | Transpose focus | 32x32 | 64KB | Mode 2 |
-| `rect-wide` | Wide rectangle | 64x256 | 128KB | Mode 4 |
-| `rect-tall` | Tall rectangle | 256x64 | 128KB | Mode 2 |
-| `rect-narrow` | Narrow rectangle | 16x128 | 32KB | Mode 1 |
-| `rect-elongated` | Elongated rectangle | 128x32 | 64KB | Mode 2 |
+| Preset | Description | Matrix Size | Memory | Mode |
+|--------|-------------|-------------|--------|------|
+| `small-matrix` | Quick testing | 4x4 | 2KB | Transpose |
+| `medium-matrix` | Moderate testing | 64x64 | 16KB | Transpose |
+| `large-matrix` | Stress testing | 448x448 | 512KB | Transpose |
+| `transpose-test` | Transpose focus | 32x32 | 64KB | Transpose |
+| `rect-wide` | Wide rectangle | 64x256 | 128KB | Transpose |
+| `rect-tall` | Tall rectangle | 256x64 | 128KB | Transpose |
+| `rect-narrow` | Narrow rectangle | 16x128 | 32KB | Transpose |
+| `rect-elongated` | Elongated rectangle | 128x32 | 64KB | Transpose |
+| `copy-small` | Copy mode testing | 4x4 | 2KB | Copy |
+| `copy-medium` | Copy mode testing | 64x64 | 16KB | Copy |
+| `cim-small` | CIM mode testing | 32x128 | 32KB | CIM |
+| `cim-medium` | CIM mode testing | 64x256 | 64KB | CIM |
+| `cim-large` | CIM mode testing | 128x512 | 256KB | CIM |
 | `custom` | User-defined | Variable | Variable | Variable |
 
-## 🔧 Key Parameters
+## � Datamover Modes
+
+The datamover supports three main operation modes:
+
+### Copy Mode (DATAMOVER_MODE=0)
+- **Purpose**: Direct memory-to-memory copy operations
+- **Use case**: Basic data movement without transformation
+- **Presets**: `copy-small`, `copy-medium`
+- **Example**: `make sim CONFIG_PRESET=copy-small`
+
+### Transpose Mode (DATAMOVER_MODE=1)
+- **Purpose**: Matrix transposition during data movement
+- **Use case**: Data layout transformations for optimized access patterns
+- **Transpose elements**: 1, 2, or 4 elements per cycle (`TRANSP_MODE`)
+- **Presets**: `small-matrix`, `medium-matrix`, `large-matrix`, `transpose-test`, `rect-*`
+- **Example**: `make sim CONFIG_PRESET=transpose-test TRANSP_MODE=2`
+
+### CIM Mode (DATAMOVER_MODE=2)
+- **Purpose**: Compute-In-Memory data layout conversion
+- **Use case**: Converting row-major data to CIM accelerator layouts
+- **CIM layouts**: A-Layout (`CIM_MODE=0`) or B-Layout (`CIM_MODE=1`)
+- **Dimensions**: Configurable `CIM_INNER_DIM` and `CIM_OUTER_DIM`
+- **Presets**: `cim-small`, `cim-medium`, `cim-large`
+- **Example**: `make sim CONFIG_PRESET=cim-medium`
+
+##  Key Parameters
 
 | Parameter | Values | Description |
 |-----------|---------|-------------|
+| `DATAMOVER_MODE` | 0,1,2 | Operation mode (0=Copy, 1=Transpose, 2=CIM) |
 | `TRANSP_MODE` | 0,1,2,4 | Transpose elements per cycle |
+| `CIM_MODE` | 0,1 | CIM layout (0=A-Layout, 1=B-Layout) |
+| `CIM_INNER_DIM` | 32,64,... | CIM inner dimension in elements |
+| `CIM_OUTER_DIM` | 16,32,64,... | CIM outer dimension in elements |
 | `ELEM_WIDTH` | 8 | Element width in bits |
 | `BANDWIDTH` | 64,128,256,512,1024 | Memory bandwidth in bits |
 | `MATRIX_SIZE_M` | Any | Matrix height in elements |
@@ -126,7 +170,10 @@ make test-all-presets
 make test-transpose-modes
 
 # Test configuration parameter combinations (bandwidth/transpose/word width grid)
-make test-config-grid
+make test-transpose-grid
+
+# Test CIM configuration parameter combinations (bandwidth/CIM dimensions/word width grid)
+make test-cim-grid
 
 # Validate configuration without running simulation
 make validate-config CONFIG_PRESET=<preset-name>
@@ -279,7 +326,8 @@ make test-all-presets
 make test-transpose-modes
 
 # Comprehensive parameter grid testing
-make test-config-grid
+make test-transpose-grid
+make test-cim-grid
 ```
 
 ### Custom Research Configuration

@@ -4,30 +4,6 @@ import os
 
 RANDOM_STIMULI = True  # If False, counting stimuli are generated in a counting fashion
 
-# OUTPUT_DIR = "generated"
-
-# BANDWIDTH = 128     # in bits
-# WORD_WIDTH = 32     # in bits
-# ELEM_WIDTH = 8      # in bits
-# MEMORY_SIZE = 512   # in words
-
-# TRANSP_MODE = 4  # 0 = none, 1 = 1 elem, 2 = 2 elem, 4 = 4 elem
-
-# NUM_ELEM_WORD = WORD_WIDTH // ELEM_WIDTH   # e.g., 4 for 32-bit words with 8-bit elements
-# BANDWIDTH_ELEMS = BANDWIDTH // ELEM_WIDTH
-# BANDWIDTH_WORDS = BANDWIDTH_ELEMS // NUM_ELEM_WORD
-
-# MATRIX_SIZE_N = 16     # in elements
-# MATRIX_SIZE_M = 4      # in elements
-
-# READ_BASE_ADDR = 0  # in bytes
-# READ_D0_LENGTH = MATRIX_SIZE_N // BANDWIDTH_ELEMS  # Nof accesses with bandwidth BW per D0-transfer ("row")
-# READ_D1_LENGTH = MATRIX_SIZE_M
-
-# WRITE_BASE_ADDR = 128  # in bytes
-# WRITE_D0_LENGTH = READ_D1_LENGTH
-# WRITE_D1_LENGTH = READ_D0_LENGTH
-
 # ToDo(cdurrer): small matrices (N < BW) not working
 
 def extract_elements_from_word(word, word_width, elem_width):
@@ -109,6 +85,15 @@ def transpose(matrix, size_d0, size_d1, transp_mode):
                 transposed[d0][(d1*transp_mode)+i] = matrix[d1][(d0*transp_mode)+i]
     return transposed
 
+def cim_layout(matrix, size_n, size_m, cim_mode, cim_inner_dim, cim_outer_dim):
+    # ToDo(cdurrer): implement CIM mode
+    cim_matrix = [[0 for _ in range(size_m * cim_inner_dim)] for _ in range(size_n // cim_inner_dim)]
+    for d2 in range(size_n // cim_inner_dim):
+        for d1 in range(size_m):
+            cim_matrix[d2][(d1*cim_inner_dim):(d1*cim_inner_dim+cim_inner_dim)] = matrix[d1][d2*(cim_inner_dim):(d2*cim_inner_dim+cim_inner_dim)]
+
+    return cim_matrix
+
 def main():
         # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Memory Read/Write Simulation with Word-Aligned Strides")
@@ -117,6 +102,7 @@ def main():
     parser.add_argument("--write_base_addr", type=int, default=0x20, help="Base address for write operations")
     parser.add_argument("--read_d0_stride", type=int, default=4, help="Stride for d0 read (in bytes)")
     parser.add_argument("--read_d1_stride", type=int, default=16, help="Stride for d1 read (in bytes)")
+    parser.add_argument("--read_d2_stride", type=int, default=64, help="Stride for d2 read (in bytes)")
     parser.add_argument("--read_d0_length", type=int, default=4, help="Length for d0 read")
     parser.add_argument("--read_d1_length", type=int, default=4, help="Length for d1 read")
     parser.add_argument("--read_tot_length", type=int, default=16, help="Total read length")
@@ -128,8 +114,14 @@ def main():
     parser.add_argument("--bandwidth_bits", type=int, default=4, help="Number of bits per transaction")
     parser.add_argument("--num_elem_word", type=int, default=4, help="Number of elements in a memory bank word")
     parser.add_argument("--elem_width", type=int, default=8, help="Width of each element (in bits)")
+    parser.add_argument("--datamover_mode", type=int, default=0, help="Datamover mode (0=normal, 1=CIM)")
     parser.add_argument("--transp_mode", type=int, default=0, help="Transposition mode (3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem)")
     parser.add_argument("--transp_len", type=int, default=0, help="Transposition length")
+    parser.add_argument("--cim_mode", type=int, default=0, help="CIM mode (0=normal, 1=CIM)")
+    parser.add_argument("--cim_inner_dim", type=int, default=4, help="CIM inner dimension")
+    parser.add_argument("--cim_outer_dim", type=int, default=4, help="CIM outer dimension")
+    parser.add_argument("--matrix_size_m", type=int, default=64, help="Matrix height in elements")
+    parser.add_argument("--matrix_size_n", type=int, default=64, help="Matrix width in elements")
     parser.add_argument("--output_dir", type=str, default="output", help="Directory for storing output files")
 
     args = parser.parse_args()
@@ -149,8 +141,8 @@ def main():
     TRANSP_MODE = args.transp_mode
     # MATRIX_SIZE_N = READ_D0_LENGTH * BANDWIDTH_ELEMS
     # MATRIX_SIZE_M = READ_D1_LENGTH
-    MATRIX_SIZE_N = READ_D1_LENGTH * BANDWIDTH_ELEMS
-    MATRIX_SIZE_M = READ_D0_LENGTH
+    MATRIX_SIZE_N = args.matrix_size_n
+    MATRIX_SIZE_M = args.matrix_size_m
 
     OUTPUT_DIR = args.output_dir
 
@@ -194,14 +186,16 @@ def main():
         input_matrix.append(row)
 
     # Print input matrix
-    # print("Input Matrix:")
+    print("Input Matrix:")
     # # for i, row in enumerate(input_matrix):
     # #     print(f"Row {i}: {row}")
     # # print("\n")
-    # for i, row in enumerate(input_matrix):
-    #     print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
+    for i, row in enumerate(input_matrix):
+        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
 
-    if TRANSP_MODE != 0:
+    if args.datamover_mode == 0: # Copy mode
+        output_matrix = input_matrix
+    elif args.datamover_mode == 1: # Transpose mode
         transposed_matrix = transpose(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, TRANSP_MODE)
         # print("\nTransposed Matrix:")
         # # for i, row in enumerate(transposed_matrix):
@@ -210,8 +204,17 @@ def main():
         # for i, row in enumerate(transposed_matrix):
         #     print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
         output_matrix = transposed_matrix
+
+    elif args.datamover_mode == 2: # CIM mode
+        output_matrix = cim_layout(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
     else:
-        output_matrix = input_matrix
+        raise ValueError("[GM] datamover_mode must be 0 (copy), 1 (transpose), or 2 (CIM).")
+
+    # Print output matrix
+    print("\nOutput Matrix:")
+    for i, row in enumerate(output_matrix):
+        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
+    print("\n")
 
     # # Convert output matrix back to words
     output_hex_words = matrix_to_hex_words(output_matrix, ELEM_WIDTH, WORD_WIDTH)

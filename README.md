@@ -75,7 +75,8 @@ make test-all-presets
 make test-transpose-modes
 
 # Test configuration parameter combinations (grid testing)
-make test-config-grid
+make test-transpose-grid
+make test-cim-grid
 
 # Show available configurations
 make help
@@ -91,6 +92,11 @@ The system includes predefined test configurations:
 - `rect-tall`: 256×64 matrix (2-element transpose)
 - `rect-narrow`: 16×128 matrix (1-element transpose)
 - `rect-elongated`: 128×32 matrix (2-element transpose)
+- `copy-small`: 4×4 matrix (copy mode testing)
+- `copy-medium`: 64×64 matrix (copy mode testing)
+- `cim-small`: 32×128 matrix (CIM mode, 32 inner_dim, 128-bit bandwidth)
+- `cim-medium`: 64×256 matrix (CIM mode, 64 inner_dim, 256-bit bandwidth)
+- `cim-large`: 128×512 matrix (CIM mode, 64 inner_dim, 512-bit bandwidth)
 
 For detailed configuration documentation, see `CONFIG_USAGE.md`.
 
