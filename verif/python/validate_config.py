@@ -65,14 +65,14 @@ def validate_config(bandwidth, word_width, elem_width, memory_size,
         errors.append(f"Memory size ({memory_size} words) insufficient for matrices "
                      f"({total_memory_needed} words needed for {matrix_size_m}x{matrix_size_n} input+output)")
 
-    # Matrix dimension alignment errors
-    if matrix_size_n % bandwidth_elems != 0:
-        errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
-                       f"({bandwidth_elems} elements)")
+    # # Matrix dimension alignment errors
+    # if matrix_size_n % bandwidth_elems != 0:
+    #     errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
+    #                    f"({bandwidth_elems} elements)")
 
-    if matrix_size_m % bandwidth_elems != 0:
-        errors.append(f"Matrix height ({matrix_size_m}) not aligned to bandwidth "
-                       f"({bandwidth_elems} elements)")
+    # if matrix_size_m % bandwidth_elems != 0:
+    #     errors.append(f"Matrix height ({matrix_size_m}) not aligned to bandwidth "
+    #                    f"({bandwidth_elems} elements)")
 
     # Transpose-specific validation
     if datamover_mode == 1 and transp_mode > 0:
