@@ -57,6 +57,7 @@ TESTBENCH_DEFINES += -DSTIM_TRANSP_LEN=${STIM_TRANSP_LEN}
 TESTBENCH_DEFINES += -DBANDWIDTH=${BANDWIDTH}
 TESTBENCH_DEFINES += -DNUM_ELEM_WORD=${NUM_ELEM_WORD}
 TESTBENCH_DEFINES += -DELEM_WIDTH=${ELEM_WIDTH}
+TESTBENCH_DEFINES += -DMISALIGNED_ACCESSES=${MISALIGNED_ACCESSES}
 
 
 # .PHONY: clean-sim sim-script sim synopsys-script
@@ -125,7 +126,7 @@ test-transpose-modes:
 	@failed_tests=""; \
 	for mode in 1 2 4; do \
 		echo "=== Testing TRANSP_MODE=$$mode ==="; \
-		if $(MAKE) sim CONFIG_PRESET=transpose-test TRANSP_MODE=$$mode; then \
+		if $(MAKE) sim CONFIG_PRESET=transpose-test DATAMOVER_MODE=1 TRANSP_MODE=$$mode; then \
 			echo "✓ TRANSP_MODE=$$mode: PASSED"; \
 		else \
 			echo "✗ TRANSP_MODE=$$mode: FAILED"; \
@@ -153,7 +154,7 @@ test-transpose-grid:
 				total_tests=$$((total_tests + 1)); \
 				echo "=== Testing BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
 				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
-					echo "✓ BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
+					echo "✓ BANDWIDTH=$$bandwidth DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
 					passed_tests=$$((passed_tests + 1)); \
 				else \
 					echo "✗ BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: FAILED"; \
@@ -240,6 +241,7 @@ validate-config:
 		--word_width $(WORD_WIDTH) \
 		--elem_width $(ELEM_WIDTH) \
 		--memory_size $(MEMORY_SIZE) \
+		--misaligned_accesses $(MISALIGNED_ACCESSES) \
 		--datamover_mode $(DATAMOVER_MODE) \
 		--transp_mode $(TRANSP_MODE) \
 		--cim_mode $(CIM_MODE) \
@@ -286,6 +288,7 @@ stimuli: clean-stimuli
 	--bandwidth_bits $(BANDWIDTH) \
 	--num_elem_word $(NUM_ELEM_WORD) \
 	--elem_width $(ELEM_WIDTH) \
+	--misaligned_accesses $(MISALIGNED_ACCESSES) \
 	--datamover_mode $(DATAMOVER_MODE) \
 	--transp_mode $(STIM_TRANSP_MODE) \
 	--transp_len $(STIM_TRANSP_LEN) \

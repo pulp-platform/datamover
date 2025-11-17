@@ -138,7 +138,7 @@ import tb_package::*;
     .ELEM_WIDTH          ( ELEM_WIDTH ),
     .N_CORES             ( N_CORES ),
     .N_CONTEXT           ( 2 ),
-    .MISALIGNED_ACCESSES ( 0 )
+    .MISALIGNED_ACCESSES ( MISALIGNED_ACCESSES )
   ) i_hwpe_top_wrap (
     .clk_i          ( clk_i          ),
     .rst_ni         ( rst_ni         ),

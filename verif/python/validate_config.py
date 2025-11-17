@@ -88,6 +88,7 @@ def main():
     parser.add_argument("--word_width", type=int, required=True)
     parser.add_argument("--elem_width", type=int, required=True)
     parser.add_argument("--memory_size", type=int, required=True)
+    parser.add_argument("--misaligned_accesses", type=int, required=True)
     parser.add_argument("--datamover_mode", type=int, required=True)
     parser.add_argument("--transp_mode", type=int, required=True)
     parser.add_argument("--cim_mode", type=int, required=True)

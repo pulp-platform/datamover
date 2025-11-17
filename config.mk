@@ -13,25 +13,28 @@
 #######################
 
 # Hardware configuration (can be overridden by presets or command line)
-BANDWIDTH ?= 512   		# in bits, multiple of WORD_WIDTH
-WORD_WIDTH ?= 64  		# in bits, multiple of ELEM_WIDTH
+BANDWIDTH ?= 64   		# in bits, multiple of WORD_WIDTH
+WORD_WIDTH ?= 32  		# in bits, multiple of ELEM_WIDTH
 ELEM_WIDTH ?= 8   		# in bits
-MEMORY_SIZE ?= 131072  	# in words
+MEMORY_SIZE ?= 512  	# in words
+MISALIGNED_ACCESSES ?= 1
 
-DATAMOVER_MODE ?= 2     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion
-TRANSP_MODE ?= 0		# 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
+DATAMOVER_MODE ?= 0     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion
+TRANSP_MODE ?= 4		# 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
 CIM_MODE ?= 0        	# Data layout conversion mode: 0: row-major -> A-Layout, 1: row-major -> B-Layout
-CIM_INNER_DIM ?= 64    	# Inner dimension of the CIM accelerator (in elements): 64 for 64x8 CIM macro
-CIM_OUTER_DIM ?= 64    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
+CIM_INNER_DIM ?= 32    	# Inner dimension of the CIM accelerator (in elements): 64 for 64x8 CIM macro
+CIM_OUTER_DIM ?= 32    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
 
 # Input matrix dimensions (in elements)
-MATRIX_SIZE_M ?= 448   	# Matrix height in elements
-MATRIX_SIZE_N ?= 512 	# Matrix width in elements
+MATRIX_SIZE_M ?= 8   	# Matrix height in elements
+MATRIX_SIZE_N ?= 8 		# Matrix width in elements
 
 WRITE_BASE_ADDR = $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N))))			# Element-addressed
 
 # Derived constants from basic parameters
-BANDWIDTH_ELEMS := $(shell echo $$(($(BANDWIDTH) / $(ELEM_WIDTH))))  	# Number of elements per bandwidth
+BANDWIDTH_REDUCTION := $(shell echo $$(($(MISALIGNED_ACCESSES) * $(WORD_WIDTH))))	# in bits
+BANDWIDTH_ALIGNED := $(shell echo $$(($(BANDWIDTH) - $(BANDWIDTH_REDUCTION))))  	# in bytes
+BANDWIDTH_ELEMS := $(shell echo $$(($(BANDWIDTH_ALIGNED) / $(ELEM_WIDTH))))  	# Number of elements per bandwidth
 NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  	# Number of elements per word
 
 # ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (4*32b)
@@ -40,10 +43,10 @@ NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  	# Number of
 ifeq "$(strip $(DATAMOVER_MODE))" "0"	# Copy mode
 $(info Copy mode enabled)
 STIM_READ_BASE_ADDR ?= 0																# Element-addressed
-STIM_READ_D0_LENGTH ?= $(MATRIX_SIZE_M) 												# [Nof accesses with bandwidth BW per D0-transfer ("row")]
-STIM_READ_D0_STRIDE ?= $(MATRIX_SIZE_N) 												# [Elements]
-STIM_READ_D1_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS)))) 		# [Number of full D0-transfers ("rows")]
-STIM_READ_D1_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements] -> manually compute "next row" stride
+STIM_READ_D0_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS)))) 												# [Nof accesses with bandwidth BW per D0-transfer ("row")]
+STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements]
+STIM_READ_D1_LENGTH ?= $(MATRIX_SIZE_M) 		            # [Number of full D0-transfers ("rows")]
+STIM_READ_D1_STRIDE ?= $(MATRIX_SIZE_N) 												# [Elements] -> manually compute "next row" stride
 STIM_READ_D2_LENGTH ?= 0																# Not used for copy mode
 STIM_READ_D2_STRIDE ?= 0																# Not used for copy mode
 STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))  # [Total memory accesses]
@@ -122,6 +125,8 @@ endif
 $(info ========================================)
 $(info Hardware Configuration:)
 $(info   BANDWIDTH: $(BANDWIDTH) bits)
+$(info   MISALIGNED_ACCESSES: $(MISALIGNED_ACCESSES))
+$(info   BANDWIDTH_ALIGNED: $(BANDWIDTH_ALIGNED) bits)
 $(info   WORD_WIDTH: $(WORD_WIDTH) bits)
 $(info   ELEM_WIDTH: $(ELEM_WIDTH) bits)
 $(info   BANDWIDTH_ELEMS: $(BANDWIDTH_ELEMS))

@@ -32,6 +32,7 @@ package tb_package;
   parameter BANDWIDTH = `BANDWIDTH;
   parameter NUM_ELEM_WORD = `NUM_ELEM_WORD;
   parameter ELEM_WIDTH = `ELEM_WIDTH;
+  parameter MISALIGNED_ACCESSES = `MISALIGNED_ACCESSES;
 
   parameter logic [2:0] TRANSP_MODE = `STIM_TRANSP_MODE;
 

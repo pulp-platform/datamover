@@ -109,6 +109,8 @@ PASSED!!!!
 ## Contributors
 - Francesco Conti, University of Bologna (*f.conti@unibo.it*)
 - Arpan Suravi Prasad, ETH Zurich (*prasadar@iis.ee.ethz.ch*)
+- Sergio Mazzola, ETH Zurich (*smazzola@iis.ee.ethz.ch*)
+- Cyrill Durrer, ETH Zurich (*cdurrer@iis.ee.ethz.ch*)
 
 ## License
 This repository makes use of two licenses:

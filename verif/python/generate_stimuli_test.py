@@ -4,13 +4,13 @@ import os
 import math
 
 RANDOM_STIMULI = False  # If False, counting stimuli are generated in a counting fashion
+WORD_ALIGNED = False     # If True, matrices are aligned to word boundaries by zero-padding
 
 # ToDo(cdurrer): small matrices (N < BW) not working
 
 def extract_elements_from_word(word, word_width, elem_width):
     """Extract elements from a word based on the specified widths."""
     word_int = int(word, 16)  # Convert hex string to integer
-
     elements = []
     for i in range(word_width // elem_width):
         # Extract each element using shift and mask
@@ -44,17 +44,14 @@ def generate_counting_hex(size, elem_width, word_width):
             elem_val = (i * elems_per_word + j) & ((1 << elem_width) - 1)
             word_val |= (elem_val << (j * elem_width))
         result.append(f"{word_val:0{word_width // 4}X}")  # Format as hex string
-
     return result
 
 def pack_elements_to_word(elements, elem_width, word_width):
     """Pack multiple elements into a single word."""
     elems_per_word = word_width // elem_width
     word_val = 0
-
     for i, elem in enumerate(elements[:elems_per_word]):  # Take only what fits in a word
         word_val |= (elem << (i * elem_width))
-
     return f"{word_val:0{word_width // 4}X}"
 
 def matrix_to_hex_words(matrix, elem_width, word_width):
@@ -62,11 +59,27 @@ def matrix_to_hex_words(matrix, elem_width, word_width):
     elems_per_word = word_width // elem_width
     hex_words = []
     matrix_flat = sum(matrix, [])
-
     for i in range(math.ceil(len(matrix_flat) / elems_per_word)):
         hex_word = pack_elements_to_word(matrix_flat[i*elems_per_word:i*elems_per_word+elems_per_word], elem_width, word_width)
         hex_words.append(hex_word)
+    return hex_words
 
+def matrix_to_hex_words_word_aligned(matrix, elem_width, word_width):
+    """Convert a matrix of elements to a list of hex words - aligned to word boundaries by zero-padding."""
+    elems_per_word = word_width // elem_width
+    hex_words = []
+    for row in matrix:
+        # Process each row, grouping elements into words
+        for i in range(0, len(row), elems_per_word):
+            elements_for_word = row[i:i + elems_per_word]
+
+            # Pad with zeros if the row doesn't fill a complete word
+            while len(elements_for_word) < elems_per_word:
+                elements_for_word.append(0)
+
+            # Pack elements into a word
+            hex_word = pack_elements_to_word(elements_for_word, elem_width, word_width)
+            hex_words.append(hex_word)
     return hex_words
 
 def write_file(output_dir, filename, content):
@@ -114,6 +127,7 @@ def main():
     parser.add_argument("--bandwidth_bits", type=int, default=4, help="Number of bits per transaction")
     parser.add_argument("--num_elem_word", type=int, default=4, help="Number of elements in a memory bank word")
     parser.add_argument("--elem_width", type=int, default=8, help="Width of each element (in bits)")
+    parser.add_argument("--misaligned_accesses", type=int, default=0, help="Enable misaligned accesses (0=disabled, 1=enabled)")
     parser.add_argument("--datamover_mode", type=int, default=0, help="Datamover mode (0=normal, 1=CIM)")
     parser.add_argument("--transp_mode", type=int, default=0, help="Transposition mode (3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem)")
     parser.add_argument("--transp_len", type=int, default=0, help="Transposition length")
@@ -126,8 +140,9 @@ def main():
 
     args = parser.parse_args()
 
+    BANDWIDTH_ALIGNED = args.bandwidth_bits - (args.misaligned_accesses * (args.elem_width * args.num_elem_word))
     MEMORY_SIZE = args.mem_size  # Set global memory size
-    BANDWIDTH_ELEMS = args.bandwidth_bits // args.elem_width
+    BANDWIDTH_ELEMS = BANDWIDTH_ALIGNED // args.elem_width
     BANDWIDTH_WORDS = BANDWIDTH_ELEMS // args.num_elem_word
     WORD_SIZE_BITS = args.num_elem_word * args.elem_width  # Set global word size in bits
 
@@ -151,11 +166,11 @@ def main():
     if args.num_elem_word & (args.num_elem_word - 1) != 0 or args.num_elem_word <= 0:
         raise ValueError("[GM] num_elem_word must be a power of two and greater than zero.")
     # bandwidth width must be a multiple of word size
-    if args.bandwidth_bits % WORD_SIZE_BITS != 0:
-        raise ValueError("[GM] bandwidth_bits must be a multiple of the word size (num_elem_word * elem_width).")
+    if BANDWIDTH_ALIGNED % WORD_SIZE_BITS != 0:
+        raise ValueError("[GM] BANDWIDTH_ALIGNED must be a multiple of the word size (num_elem_word * elem_width).")
     # # bandwidth width must be a multiple of word size
-    # if ((MATRIX_SIZE_N * ELEM_WIDTH) < args.bandwidth_bits):
-    #     raise ValueError("[GM] Matrix width (N) in bits must be at least as large as bandwidth_bits.")
+    # if ((MATRIX_SIZE_N * ELEM_WIDTH) < BANDWIDTH_ALIGNED):
+    #     raise ValueError("[GM] Matrix width (N) in bits must be at least as large as BANDWIDTH_ALIGNED.")
     # read_tot_length must not exceed 12-bit register capacity (4096)
     if ((args.read_tot_length >= 4096) & (args.datamover_mode != 0)):
         raise ValueError("[GM] read_tot_length (MxN / BW_ELEM) must be less than 4096 in transpose and CIM modes (12-bit register limit).")
@@ -180,7 +195,6 @@ def main():
 
     # Convert memory to flat vector
     memory_flat = convert_memory_to_vector(memory, ELEM_WIDTH, WORD_WIDTH)
-    print(memory_flat)
 
     # Extract matrix (read dimensions) from memory
     input_matrix = [[0 for _ in range(MATRIX_SIZE_N)] for _ in range(MATRIX_SIZE_M)]
@@ -213,7 +227,11 @@ def main():
     print("\n")
 
     # # Convert output matrix back to words
-    output_hex_words = matrix_to_hex_words(output_matrix, ELEM_WIDTH, WORD_WIDTH)
+    if (WORD_ALIGNED):
+        output_hex_words = matrix_to_hex_words_word_aligned(output_matrix, ELEM_WIDTH, WORD_WIDTH)
+    else:
+        output_hex_words = matrix_to_hex_words(output_matrix, ELEM_WIDTH, WORD_WIDTH)
+
     print(f"\nOutput Matrix as Hex Words:")
     for i, word in enumerate(output_hex_words):
         print(f"Word {i}: {word}")
