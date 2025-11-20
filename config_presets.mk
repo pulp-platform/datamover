@@ -22,7 +22,7 @@
 # - copy-medium     : Medium 64x64 matrix for copy mode testing
 # - cim-small       : CIM 32x128 matrix, CIM_INNER_DIM=32, 128-bit bandwidth
 # - cim-medium      : CIM 64x256 matrix, CIM_INNER_DIM=64, 256-bit bandwidth
-# - cim-large       : CIM 128x512 matrix, CIM_INNER_DIM=64, 512-bit bandwidth
+# - cim-large       : CIM 128x256 matrix, CIM_INNER_DIM=64, 512-bit bandwidth
 # - custom          : User-defined configuration (default)
 
 # Select configuration preset (can be overridden via command line)
@@ -234,7 +234,7 @@ ifeq ($(CONFIG_PRESET),cim-large)
     CIM_OUTER_DIM = 64
     MATRIX_SIZE_M = 128
     MATRIX_SIZE_N = 256
-    CONFIG_DESC = "CIM 128x512 matrix, CIM_INNER_DIM=64, 512-bit bandwidth"
+    CONFIG_DESC = "CIM 128x256 matrix, CIM_INNER_DIM=64, 512-bit bandwidth"
 endif
 
 ifeq ($(CONFIG_PRESET),custom)

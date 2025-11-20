@@ -30,30 +30,30 @@ def validate_config(bandwidth, word_width, elem_width, memory_size,
                       f"({matrix_size_m}x{matrix_size_n}) and element width ({elem_width})")
 
     # Mode validation (based on config.mk)
-    if datamover_mode not in [0, 1, 2]:
-        errors.append(f"DATAMOVER_MODE ({datamover_mode}) must be 0 (copy), 1 (transpose), or 2 (CIM data layout conversion)")
+    if datamover_mode not in [0, 1, 2, 3]:
+        errors.append(f"DATAMOVER_MODE ({datamover_mode}) must be 0 (copy), 1 (transpose), 2 (CIM data layout conversion) or 3 (CIM layout transpose)")
 
-    if transp_mode not in [0, 1, 2, 4]:
-        errors.append(f"TRANSP_MODE ({transp_mode}) must be 0, 1, 2, or 4")
+    # if transp_mode not in [0, 1, 2, 4]:
+    #     errors.append(f"TRANSP_MODE ({transp_mode}) must be 0, 1, 2, or 4")
 
-    # Mode consistency validation
-    if datamover_mode == 0 and transp_mode != 0:
-        warnings.append(f"Copy mode (DATAMOVER_MODE=0) typically uses TRANSP_MODE=0, but got {transp_mode}")
+    # # Mode consistency validation
+    # if datamover_mode == 0 and transp_mode != 0:
+    #     warnings.append(f"Copy mode (DATAMOVER_MODE=0) typically uses TRANSP_MODE=0, but got {transp_mode}")
 
-    if datamover_mode == 1 and transp_mode == 0:
-        warnings.append(f"Transpose mode (DATAMOVER_MODE=1) typically uses TRANSP_MODE > 0, but got {transp_mode}")
+    if datamover_mode == 1 and transp_mode not in [1, 2, 4]:
+        errors.append(f"Transpose mode (DATAMOVER_MODE=1) requires TRANSP_MODE = [1,2,4] but got {transp_mode}")
 
     # CIM-specific validation
-    if datamover_mode == 2:
+    if datamover_mode in [2, 3]:
         if cim_mode not in [0, 1]:
             errors.append(f"CIM_MODE ({cim_mode}) must be 0 (row-major -> A-Layout) or 1 (row-major -> B-Layout)")
-        if cim_inner_dim < bandwidth_elems:
-            errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) must be greater than elements per bandwidth ({bandwidth_elems})")
-        if cim_outer_dim < bandwidth_elems:
-            errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) must be greater than elements per bandwidth ({bandwidth_elems})")
-        if cim_inner_dim > matrix_size_n:
+        if (cim_inner_dim % bandwidth_elems != 0) and (cim_mode == 0):
+            errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) must be a multiple of bandwidth ({bandwidth_elems})")
+        if (cim_outer_dim % bandwidth_elems != 0) and (cim_mode == 1):
+            errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) must be a multiple of bandwidth ({bandwidth_elems})")
+        if (cim_inner_dim > matrix_size_n) and (cim_mode == 0):
             errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) cannot be greater than matrix width ({matrix_size_n})")
-        if cim_outer_dim > matrix_size_m:
+        if (cim_outer_dim > matrix_size_m) and (cim_mode == 1):
             errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) cannot be greater than matrix height ({matrix_size_m})")
 
     # Memory requirements
@@ -65,10 +65,10 @@ def validate_config(bandwidth, word_width, elem_width, memory_size,
         errors.append(f"Memory size ({memory_size} words) insufficient for matrices "
                      f"({total_memory_needed} words needed for {matrix_size_m}x{matrix_size_n} input+output)")
 
-    # # Matrix dimension alignment errors
-    # if matrix_size_n % bandwidth_elems != 0:
-    #     errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
-    #                    f"({bandwidth_elems} elements)")
+    # Matrix dimension alignment errors
+    if matrix_size_n % bandwidth_elems != 0:
+        errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
+                       f"({bandwidth_elems} elements)")
 
     # if matrix_size_m % bandwidth_elems != 0:
     #     errors.append(f"Matrix height ({matrix_size_m}) not aligned to bandwidth "
@@ -138,13 +138,13 @@ def main():
         # Print computed values
         bandwidth_elems = args.bandwidth // args.elem_width
         num_elem_word = args.word_width // args.elem_width
-        matrix_words = (args.matrix_size_m * args.matrix_size_n * args.elem_width + args.word_width - 1) // args.word_width
+        matrix_words = (args.matrix_size_m * args.matrix_size_n) // num_elem_word
 
         print(f"\nComputed values:")
         print(f"  Elements per bandwidth: {bandwidth_elems}")
         print(f"  Elements per word: {num_elem_word}")
         print(f"  Matrix memory usage: {matrix_words} words ({matrix_words * 2} total)")
-        print(f"  Memory utilization: {(matrix_words * 2 * 100) // args.memory_size}%")
+        print(f"  Memory utilization: {(matrix_words * 2 * 100) // args.memory_size}% ({matrix_words*2} / {args.memory_size})")
 
         return 0
 

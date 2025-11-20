@@ -13,17 +13,17 @@
 #######################
 
 # Hardware configuration (can be overridden by presets or command line)
-BANDWIDTH ?= 64   		# in bits, multiple of WORD_WIDTH
-WORD_WIDTH ?= 32  		# in bits, multiple of ELEM_WIDTH
-ELEM_WIDTH ?= 8   		# in bits
-MEMORY_SIZE ?= 512  	# in words
-MISALIGNED_ACCESSES ?= 1
+BANDWIDTH ?= 64   		# in bits, multiple of WORD_WIDTH (512)
+WORD_WIDTH ?= 32  		# in bits, multiple of ELEM_WIDTH (64)
+ELEM_WIDTH ?= 8   		# in bits (8)
+MEMORY_SIZE ?= 65536  	# in words
+MISALIGNED_ACCESSES ?= 0
 
-DATAMOVER_MODE ?= 0     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion
+DATAMOVER_MODE ?= 0     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion, 3 = CIM data layout transpose
 TRANSP_MODE ?= 1		    # 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
 CIM_MODE ?= 0        	  # Data layout conversion mode: 0: row-major -> A-Layout, 1: row-major -> B-Layout
-CIM_INNER_DIM ?= 32    	# Inner dimension of the CIM accelerator (in elements): 64 for 64x8 CIM macro
-CIM_OUTER_DIM ?= 32    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
+CIM_INNER_DIM ?= 64    	# Inner dimension of the CIM accelerator (in elements): 64 for 64x8 CIM macro
+CIM_OUTER_DIM ?= 64    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
 
 # Input matrix dimensions (in elements)
 MATRIX_SIZE_M ?= 8   	# Matrix height in elements
@@ -46,11 +46,11 @@ $(info Copy mode enabled)
 STIM_READ_BASE_ADDR ?= 0																# Element-addressed
 STIM_READ_D0_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS)))) # [Nof accesses with bandwidth BW per D0-transfer ("row")] ToDo(cdurrer): not working for misaligned matrices
 STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 							# [Elements]
-STIM_READ_D1_LENGTH ?= 0 		                            # [Number of full D0-transfers ("rows")]
-STIM_READ_D1_STRIDE ?= 0											          # [Elements] -> manually compute "next row" stride
-STIM_READ_D2_LENGTH ?= 0																# Not used for copy mode
-STIM_READ_D2_STRIDE ?= 0																# Not used for copy mode
-STIM_READ_TOT_LENGTH ?= $(MATRIX_SIZE_TOT)              # [Total memory accesses]
+STIM_READ_D1_LENGTH ?= 0 		                            # Not used in copy mode
+STIM_READ_D1_STRIDE ?= 0											          # Not used in copy mode
+STIM_READ_D2_LENGTH ?= 0																# Not used in copy mode
+STIM_READ_D2_STRIDE ?= 0																# Not used in copy mode
+STIM_READ_TOT_LENGTH ?= $(STIM_READ_D0_LENGTH)          # [Total memory accesses]
 
 STIM_MEM_SIZE ?= $(MEMORY_SIZE)  												# [Words]
 STIM_TRANSP_MODE ?= 0
@@ -75,8 +75,8 @@ STIM_READ_D0_LENGTH ?= $(MATRIX_SIZE_M) 												# [Nof accesses with bandwid
 STIM_READ_D0_STRIDE ?= $(MATRIX_SIZE_N) 												# [Elements]
 STIM_READ_D1_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS)))) 		# [Number of full D0-transfers ("rows")]
 STIM_READ_D1_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements] -> manually compute "next row" stride
-STIM_READ_D2_LENGTH ?= 0																# Not used for read
-STIM_READ_D2_STRIDE ?= 0																# Not used for read
+STIM_READ_D2_LENGTH ?= 0																# Not used in transpose mode
+STIM_READ_D2_STRIDE ?= 0																# Not used in transpose mode
 STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))  # [Total memory accesses]
 
 STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
@@ -93,7 +93,7 @@ STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)										# Same total length as
 
 else ifeq "$(strip $(DATAMOVER_MODE))" "2"	# CIM data layout conversion mode
 $(info CIM data layout conversion mode $(CIM_MODE) enabled)
-ifneq ($(filter 0 1,$(strip $(CIM_MODE))), $(strip $(CIM_MODE)))
+ifneq ($(filter 0 1, $(strip $(CIM_MODE))), $(strip $(CIM_MODE)))
   $(error "Invalid CIM_MODE $(CIM_MODE): must be 0 or 1")
 endif
 STIM_READ_BASE_ADDR ?= 0																# Element-addressed
@@ -101,7 +101,7 @@ STIM_READ_D0_LENGTH ?= $(shell echo $$(($(CIM_INNER_DIM) / $(BANDWIDTH_ELEMS))))
 STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements]
 STIM_READ_D1_LENGTH ?= $(MATRIX_SIZE_M)
 STIM_READ_D1_STRIDE ?= $(MATRIX_SIZE_N)
-STIM_READ_D2_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(CIM_INNER_DIM))))
+STIM_READ_D2_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(CIM_INNER_DIM))))      # Redundant (handled by TOT_LEN)
 STIM_READ_D2_STRIDE ?= $(CIM_INNER_DIM)
 PARTIAL_MULT = $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))
 STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(PARTIAL_MULT) * $(STIM_READ_D2_LENGTH))))  	# [Total memory accesses]
@@ -118,8 +118,39 @@ STIM_WRITE_D1_STRIDE ?= $(shell echo $$(($(STIM_WRITE_D0_LENGTH) * $(BANDWIDTH_E
 STIM_WRITE_D2_STRIDE ?= 0
 STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)										# Same total length as read
 
+else ifeq "$(strip $(DATAMOVER_MODE))" "3"	# CIM data layout transpose mode
+$(info CIM data layout transpose mode $(CIM_MODE) enabled)
+ifneq ($(filter 0 1, $(strip $(CIM_MODE))), $(strip $(CIM_MODE)))
+  $(error "Invalid CIM_MODE $(CIM_MODE): must be 0 or 1")
+endif
+ifneq ($(filter 1 2 4,$(strip $(TRANSP_MODE))), $(strip $(TRANSP_MODE)))
+  $(error Invalid TRANSP_MODE $(TRANSP_MODE): must be 1, 2, or 4)
+endif
+
+STIM_READ_BASE_ADDR ?= 0																# Element-addressed
+STIM_READ_D0_LENGTH ?= $(MATRIX_SIZE_M)
+STIM_READ_D0_STRIDE ?= $(CIM_INNER_DIM)
+STIM_READ_D1_LENGTH ?= $(shell echo $$(($(CIM_INNER_DIM) / $(BANDWIDTH_ELEMS))))
+STIM_READ_D1_STRIDE ?= $(BANDWIDTH_ELEMS)
+STIM_READ_D2_LENGTH ?= 0																# Not used (controlled by TOT_LEN)
+STIM_READ_D2_STRIDE ?= $(shell echo $$(($(MATRIX_SIZE_M) * $(CIM_INNER_DIM))))
+STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS))))
+
+STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
+STIM_TRANSP_MODE ?= $(TRANSP_MODE)														# transp_mode
+STIM_TRANSP_LEN  ?= 0
+
+STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)												# Element-addressed
+STIM_WRITE_D0_LENGTH ?= $(BANDWIDTH_ELEMS)
+STIM_WRITE_D0_STRIDE ?= $(CIM_INNER_DIM)
+STIM_WRITE_D1_LENGTH ?= $(shell echo $$(($(CIM_INNER_DIM) / $(BANDWIDTH_ELEMS))))
+STIM_WRITE_D1_STRIDE ?= $(BANDWIDTH_ELEMS)
+STIM_WRITE_D2_STRIDE ?= $(shell echo $$(($(BANDWIDTH_ELEMS) * $(CIM_INNER_DIM))))
+STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)										# Same total length as read
+
+
 else
-$(error "Invalid DATAMOVER_MODE $(DATAMOVER_MODE): must be 0 (copy), 1 (transpose), or 2 (CIM data layout conversion)")
+$(error "Invalid DATAMOVER_MODE $(DATAMOVER_MODE): must be 0 (copy), 1 (transpose), 2 (CIM data layout conversion), or 3 (CIM data layout transpose)")
 endif
 
 # Debug: Print computed values (uncomment to see values during make)

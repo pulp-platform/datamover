@@ -14,6 +14,7 @@
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
+ *           Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 `include "hci_helpers.svh"
@@ -49,6 +50,7 @@ module datamover_streamer
 );
 
   localparam int unsigned BW = `HCI_SIZE_GET_BW(tcdm);
+  localparam int unsigned AW = `HCI_SIZE_GET_AW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
@@ -61,6 +63,7 @@ module datamover_streamer
   hci_core_intf #(
     .DW  ( BANDWIDTH ),
     .BW  ( BW ),
+    .AW  ( AW ),
     .UW  ( UW ),
     .IW  ( IW ),
     .EW  ( EW ),
@@ -74,6 +77,7 @@ module datamover_streamer
   hci_core_intf #(
     .DW ( BANDWIDTH ),
     .BW ( BW ),
+    .AW ( AW ),
     .UW ( UW ),
     .IW ( IW ),
     .EW ( EW ),
@@ -81,7 +85,7 @@ module datamover_streamer
   ) tcdm_prefifo (
     .clk ( clk_i )
   );
-  
+
   // "Virtual" TCDM interface, used to embody data after the TCDM FIFO
   // (if present) but before the load filter. Notice this is technically
   // an array of interfaces, with one single instance inside. This is
@@ -89,10 +93,11 @@ module datamover_streamer
   hci_core_intf #(
     .DW  ( BANDWIDTH ),
     .BW  ( BW ),
-    .UW  ( UW                        ),
-    .IW  ( IW                        ),
-    .EW  ( EW                        ),
-    .EHW ( EHW                       )
+    .AW  ( AW ),
+    .UW  ( UW ),
+    .IW  ( IW ),
+    .EW  ( EW ),
+    .EHW ( EHW)
   ) tcdm_prefilter [0:0] (
     .clk ( clk_i )
   );
@@ -149,6 +154,7 @@ module datamover_streamer
       hci_core_load_store_mixer #(
         .DW ( BANDWIDTH ),
         .BW ( BW ),
+        .AW ( AW ),
         .UW ( UW ),
         .EW ( EW )
       ) i_ld_st_mux_static (
@@ -194,7 +200,7 @@ module datamover_streamer
   endgenerate
 
   // The HCI core filter is meant to filter out r_valid strobes that the
-  // cluster may generate even when the TCDM access is a write. These 
+  // cluster may generate even when the TCDM access is a write. These
   // pollute HCI TCDM FIFOs and mixers, and it is better to remove them
   // altogether.
   hci_core_r_valid_filter #(

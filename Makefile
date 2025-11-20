@@ -82,7 +82,7 @@ help:
 	@echo "  copy-medium     : 64x64 matrix (copy mode)"
 	@echo "  cim-small       : 32x128 matrix (CIM mode)"
 	@echo "  cim-medium      : 64x256 matrix (CIM mode)"
-	@echo "  cim-large       : 128x512 matrix (CIM mode)"
+	@echo "  cim-large       : 128x256 matrix (CIM mode)"
 	@echo "  custom          : User-defined (config.mk default)"
 	@echo ""
 	@echo "Usage examples:"
@@ -318,29 +318,17 @@ sim: stimuli sim-script validate-config
 clean-stimuli:
 	rm -rf $(STIMULI_DIR)
 
-stimuli: clean-stimuli
-	python -m verif.python.generate_stimuli_test \
+stimuli: clean-stimuli validate-config
+	python -m verif.python.generate_stimuli \
 	--mem_size $(STIM_MEM_SIZE) \
 	--read_base_addr $(STIM_READ_BASE_ADDR) \
-	--read_d0_stride $(STIM_READ_D0_STRIDE) \
-	--read_d0_length $(STIM_READ_D0_LENGTH) \
-	--read_d1_stride $(STIM_READ_D1_STRIDE) \
-	--read_d1_length $(STIM_READ_D1_LENGTH) \
-	--read_d2_stride $(STIM_READ_D2_STRIDE) \
-	--read_tot_length $(STIM_READ_TOT_LENGTH) \
 	--write_base_addr $(STIM_WRITE_BASE_ADDR) \
-	--write_d0_stride $(STIM_WRITE_D0_STRIDE) \
-	--write_d0_length $(STIM_WRITE_D0_LENGTH) \
-	--write_d1_stride $(STIM_WRITE_D1_STRIDE) \
-	--write_d1_length $(STIM_WRITE_D1_LENGTH) \
-	--write_d2_stride $(STIM_WRITE_D2_STRIDE) \
 	--bandwidth_bits $(BANDWIDTH) \
 	--num_elem_word $(NUM_ELEM_WORD) \
 	--elem_width $(ELEM_WIDTH) \
 	--misaligned_accesses $(MISALIGNED_ACCESSES) \
 	--datamover_mode $(DATAMOVER_MODE) \
 	--transp_mode $(STIM_TRANSP_MODE) \
-	--transp_len $(STIM_TRANSP_LEN) \
 	--cim_mode $(CIM_MODE) \
 	--cim_inner_dim $(CIM_INNER_DIM) \
 	--cim_outer_dim $(CIM_OUTER_DIM) \

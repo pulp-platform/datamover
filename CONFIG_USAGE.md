@@ -114,7 +114,7 @@ Parameters are resolved in this order (highest priority first):
 | `copy-medium` | Copy mode testing | 64x64 | 16KB | Copy |
 | `cim-small` | CIM mode testing | 32x128 | 32KB | CIM |
 | `cim-medium` | CIM mode testing | 64x256 | 64KB | CIM |
-| `cim-large` | CIM mode testing | 128x512 | 256KB | CIM |
+| `cim-large` | CIM mode testing | 128x256 | 256KB | CIM |
 | `custom` | User-defined | Variable | Variable | Variable |
 
 ## � Datamover Modes

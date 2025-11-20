@@ -96,7 +96,8 @@ The system includes predefined test configurations:
 - `copy-medium`: 64×64 matrix (copy mode testing)
 - `cim-small`: 32×128 matrix (CIM mode, 32 inner_dim, 128-bit bandwidth)
 - `cim-medium`: 64×256 matrix (CIM mode, 64 inner_dim, 256-bit bandwidth)
-- `cim-large`: 128×512 matrix (CIM mode, 64 inner_dim, 512-bit bandwidth)
+- `cim-large`: 128×256 matrix (CIM mode, 64 inner_dim, 512-bit bandwidth)
+- `custom`: User-defined (config.mk default)
 
 For detailed configuration documentation, see `CONFIG_USAGE.md`.
 

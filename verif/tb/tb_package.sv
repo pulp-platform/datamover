@@ -190,7 +190,7 @@ package tb_package;
               status = 1;
               $display("MISMATCH at address %0d: Expected %h, Actual %h", start_addr + i, golden_data, read_data);
           end else begin
-              $display("MATCH at address %0d: %h", start_addr + i, read_data);
+            //   $display("MATCH at address %0d: %h", start_addr + i, read_data);
           end
       end
 
