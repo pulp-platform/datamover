@@ -16,6 +16,11 @@
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
 
+// ToDo(cdurrer): TEMP
+parameter int unsigned MATRIX_SIZE_TOT = 25;
+parameter int unsigned REMAINING_ELEMS = 1;
+
+
 module datamover_engine
   import hwpe_stream_package::*;
   import hci_package::*;
@@ -37,6 +42,8 @@ module datamover_engine
   input  logic                   clear_i,
   // FIXME make it ctrl
   input  ctrl_engine_t           ctrl_i,
+  // input  logic [31:0]            matrix_size_m_i,
+  // input  logic [31:0]            matrix_size_n_i,
   // input data stream + handshake
   hwpe_stream_intf_stream.sink   data_in,
   // output data stream + handshake
@@ -51,6 +58,7 @@ module datamover_engine
   datamover_engine_fsm_t fsm_d, fsm_q;
   logic clear_elem_matrix;
   logic [$clog2(NB_ELEMENTS):0] cnt_q, cnt_d;
+  logic [11:0] tot_cnt_q, tot_cnt_d;            // ToDo(cdurrer): bitwidth?
   logic cnt_en;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_unrolled;
   logic                     data_in_valid;
@@ -136,7 +144,9 @@ module datamover_engine
     .push_i  ( data_out_prefifo ),
     .pop_o   ( data_out         )
   );
-  assign data_out_prefifo.strb = '1; // FIXME for leftovers
+  // assign data_out_prefifo.strb = '1; // FIXME for leftovers     ToDo(cdurrer): use for partial tiles
+  assign data_out_prefifo.strb = (tot_cnt_q >= 7-1) ? (1 << REMAINING_ELEMS) - 1 : '1;
+
   assign data_out_prefifo.data = data_out_unrolled;
   assign data_out_prefifo.valid = data_out_valid;
   assign data_out_ready = data_out_prefifo.ready;
@@ -146,16 +156,21 @@ module datamover_engine
   begin
     if (~rst_ni) begin
       cnt_q <= '0;
+      tot_cnt_q <= '0;
     end
     else if(clear_i) begin
       cnt_q <= '0;
+      tot_cnt_q <= '0;
     end
     else if(cnt_en) begin
       cnt_q <= cnt_d;
+      tot_cnt_q <= tot_cnt_d;
     end
   end
   assign cnt_d = cnt_q < ctrl_i.transp_len-ctrl_i.transp_stride ? cnt_q+ctrl_i.transp_stride : '0;
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
+
+  assign tot_cnt_d = (tot_cnt_q < MATRIX_SIZE_TOT) && (data_out_prefifo.valid) ? tot_cnt_q + 1 : tot_cnt_q;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration.

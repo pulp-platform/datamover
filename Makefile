@@ -153,12 +153,61 @@ test-transpose-grid:
 			for word_width in 16 32 64; do \
 				total_tests=$$((total_tests + 1)); \
 				echo "=== Testing BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
-				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
-					echo "✓ BANDWIDTH=$$bandwidth DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
+				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
+					echo "✓ BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
 					passed_tests=$$((passed_tests + 1)); \
 				else \
 					echo "✗ BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: FAILED"; \
 					failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/TRANSP_MODE=$$transp_mode/WORD_WIDTH=$$word_width"; \
+				fi; \
+			done; \
+		done; \
+	done; \
+	echo ""; \
+	echo "====== TEST SUMMARY ======"; \
+	echo "Total tests: $$total_tests"; \
+	echo "Passed: $$passed_tests"; \
+	echo "Failed: $$((total_tests - passed_tests))"; \
+	if [ -n "$$failed_tests" ]; then \
+		echo ""; \
+		echo "FAILED combinations:$$failed_tests"; \
+		exit 1; \
+	else \
+		echo ""; \
+		echo "====== SUMMARY: All bandwidth/transpose/word width combinations PASSED! ======"; \
+	fi
+
+test-transpose-grid-misaligned:
+	@echo "Testing configuration parameter combinations (grid)..."
+	@failed_tests=""; \
+	total_tests=0; \
+	passed_tests=0; \
+	for bandwidth in 160 288; do \
+		for transp_mode in 1 2 4; do \
+			for word_width in 32; do \
+				total_tests=$$((total_tests + 1)); \
+				echo "=== Testing BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
+				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
+					echo "✓ BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
+					passed_tests=$$((passed_tests + 1)); \
+				else \
+					echo "✗ BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: FAILED"; \
+					failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/MISALIGNED_ACCESSES=1/TRANSP_MODE=$$transp_mode/WORD_WIDTH=$$word_width"; \
+				fi; \
+			done; \
+		done; \
+	done; \
+	for bandwidth in 320 576; do \
+		for transp_mode in 1 2 4; do \
+			for word_width in 64; do \
+				total_tests=$$((total_tests + 1)); \
+				echo "=== Testing BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
+				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
+					echo "✓ BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
+					passed_tests=$$((passed_tests + 1)); \
+				else \
+					echo "✗ BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: FAILED"; \
+					failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/MISALIGNED_ACCESSES=1/TRANSP_MODE=$$transp_mode/WORD_WIDTH=$$word_width"; \
 				fi; \
 			done; \
 		done; \

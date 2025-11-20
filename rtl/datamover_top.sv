@@ -120,7 +120,7 @@ module datamover_top
   );
 
   // The "engine", i.e., the datapath of the HWPE, is as simple as it gets:
-  // a FIFO copying the data in stream into the data out one!
+  // a FIFO copying the data in stream into the data out one!             ToDo(cdurrer): update comment
   datamover_engine #(
     .FIFO_DEPTH ( 4          ),
     .BANDWIDTH_ALIGNED ( BANDWIDTH_ALIGNED ),

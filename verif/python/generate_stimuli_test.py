@@ -172,8 +172,13 @@ def main():
     # if ((MATRIX_SIZE_N * ELEM_WIDTH) < BANDWIDTH_ALIGNED):
     #     raise ValueError("[GM] Matrix width (N) in bits must be at least as large as BANDWIDTH_ALIGNED.")
     # read_tot_length must not exceed 12-bit register capacity (4096)
+    # BANDWIDTH_ALIGNED must be a power of 2
+    if ((BANDWIDTH_ALIGNED & (BANDWIDTH_ALIGNED - 1)) != 0) or (BANDWIDTH_ALIGNED < WORD_SIZE_BITS):
+        raise ValueError(f"[GM] BANDWIDTH_ALIGNED ({BANDWIDTH_ALIGNED}) must be a power of 2 and greater than the WORD_SIZE ({WORD_SIZE_BITS}).")
+
     if ((args.read_tot_length >= 4096) & (args.datamover_mode != 0)):
         raise ValueError("[GM] read_tot_length (MxN / BW_ELEM) must be less than 4096 in transpose and CIM modes (12-bit register limit).")
+
 
     if(args.datamover_mode == 1): # transpose mode
         # transp_mode must be valid (1=1elem, 2=2elem, 4=4elem) ToDo(cdurrer): update with datamover_mode etc

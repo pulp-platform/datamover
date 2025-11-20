@@ -20,8 +20,8 @@ MEMORY_SIZE ?= 512  	# in words
 MISALIGNED_ACCESSES ?= 1
 
 DATAMOVER_MODE ?= 0     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion
-TRANSP_MODE ?= 4		# 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
-CIM_MODE ?= 0        	# Data layout conversion mode: 0: row-major -> A-Layout, 1: row-major -> B-Layout
+TRANSP_MODE ?= 1		    # 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
+CIM_MODE ?= 0        	  # Data layout conversion mode: 0: row-major -> A-Layout, 1: row-major -> B-Layout
 CIM_INNER_DIM ?= 32    	# Inner dimension of the CIM accelerator (in elements): 64 for 64x8 CIM macro
 CIM_OUTER_DIM ?= 32    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
 
@@ -36,6 +36,7 @@ BANDWIDTH_REDUCTION := $(shell echo $$(($(MISALIGNED_ACCESSES) * $(WORD_WIDTH)))
 BANDWIDTH_ALIGNED := $(shell echo $$(($(BANDWIDTH) - $(BANDWIDTH_REDUCTION))))  	# in bytes
 BANDWIDTH_ELEMS := $(shell echo $$(($(BANDWIDTH_ALIGNED) / $(ELEM_WIDTH))))  	# Number of elements per bandwidth
 NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  	# Number of elements per word
+MATRIX_SIZE_TOT := $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N)))) # Total number of elements in the matrix
 
 # ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (4*32b)
 # N (bandwidth) consecutive words are read/written in one transaction
@@ -43,17 +44,17 @@ NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  	# Number of
 ifeq "$(strip $(DATAMOVER_MODE))" "0"	# Copy mode
 $(info Copy mode enabled)
 STIM_READ_BASE_ADDR ?= 0																# Element-addressed
-STIM_READ_D0_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_N) / $(BANDWIDTH_ELEMS)))) 												# [Nof accesses with bandwidth BW per D0-transfer ("row")]
-STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 												# [Elements]
-STIM_READ_D1_LENGTH ?= $(MATRIX_SIZE_M) 		            # [Number of full D0-transfers ("rows")]
-STIM_READ_D1_STRIDE ?= $(MATRIX_SIZE_N) 												# [Elements] -> manually compute "next row" stride
+STIM_READ_D0_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS)))) # [Nof accesses with bandwidth BW per D0-transfer ("row")] ToDo(cdurrer): not working for misaligned matrices
+STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 							# [Elements]
+STIM_READ_D1_LENGTH ?= 0 		                            # [Number of full D0-transfers ("rows")]
+STIM_READ_D1_STRIDE ?= 0											          # [Elements] -> manually compute "next row" stride
 STIM_READ_D2_LENGTH ?= 0																# Not used for copy mode
 STIM_READ_D2_STRIDE ?= 0																# Not used for copy mode
-STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1_LENGTH))))  # [Total memory accesses]
+STIM_READ_TOT_LENGTH ?= $(MATRIX_SIZE_TOT)              # [Total memory accesses]
 
-STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
+STIM_MEM_SIZE ?= $(MEMORY_SIZE)  												# [Words]
 STIM_TRANSP_MODE ?= 0
-STIM_TRANSP_LEN  ?= 0		# ToDo(cdurrer): obsolete?
+STIM_TRANSP_LEN  ?= 0
 
 STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)
 STIM_WRITE_D0_LENGTH ?= $(STIM_READ_D0_LENGTH)
