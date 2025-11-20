@@ -145,7 +145,7 @@ module datamover_engine
     .pop_o   ( data_out         )
   );
   // assign data_out_prefifo.strb = '1; // FIXME for leftovers     ToDo(cdurrer): use for partial tiles
-  assign data_out_prefifo.strb = (tot_cnt_q >= 7-1) ? (1 << REMAINING_ELEMS) - 1 : '1;
+  assign data_out_prefifo.strb = '1; //(tot_cnt_q >= 7-1) ? (1 << REMAINING_ELEMS) - 1 : '1;
 
   assign data_out_prefifo.data = data_out_unrolled;
   assign data_out_prefifo.valid = data_out_valid;
