@@ -63,6 +63,8 @@ import tb_package::*;
 
   logic [2:0]           transp_mode;
   logic [15:0]          transp_len;
+  logic [11:0]          matrix_size_m;
+  logic [11:0]          matrix_size_n;
 
   // Performs one entire clock cycle.
   task cycle;
@@ -120,6 +122,8 @@ import tb_package::*;
 
   assign transp_mode = `STIM_TRANSP_MODE;
   assign transp_len  = `STIM_TRANSP_LEN;
+  assign matrix_size_m = `STIM_MATRIX_SIZE_M;
+  assign matrix_size_n = `STIM_MATRIX_SIZE_N;
 
 
   datamover_top_wrap #(
@@ -226,6 +230,7 @@ import tb_package::*;
     logic [31:0] len0_reg;
     logic [31:0] len1_reg;
     logic [31:0] transp_mode_reg;
+    logic [31:0] matrix_size_reg;
 
     $info("Start execution...\n");
 
@@ -258,6 +263,8 @@ import tb_package::*;
     len0_reg = {read_addr.d1_length[7:0], read_addr.d0_length[11:0], read_addr.tot_length[11:0]};
     len1_reg = {4'b0, read_addr.d1_length[11:8], write_addr.d1_length[11:0], write_addr.d0_length[11:0]};
     transp_mode_reg = {transp_len, 13'b0, transp_mode}; // ToDo(cdurrer): Leftover = transp_len???
+    matrix_size_reg = {8'b0, matrix_size_n[11:0], matrix_size_m[11:0]};
+
     // Make sure tot_length is the same for read and write
     assert (read_addr.tot_length == write_addr.tot_length) else $fatal("Read and write total lengths do not match!");
 
@@ -274,6 +281,8 @@ import tb_package::*;
 
     // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
     periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, transp_mode_reg, clk_i, periph_bus);
+
+    periph_write(datamover_package::DATAMOVER_REG_MATRIX_SIZE, datamover_package::DATAMOVER_REGISTER_OFFS, matrix_size_reg, clk_i, periph_bus);
 
     periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
 

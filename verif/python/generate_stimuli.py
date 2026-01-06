@@ -3,10 +3,7 @@ import argparse
 import os
 import math
 
-RANDOM_STIMULI = False  # If False, counting stimuli are generated in a counting fashion
-WORD_ALIGNED = False     # If True, matrices are aligned to word boundaries by zero-padding
-
-# ToDo(cdurrer): small matrices (N < BW) not working
+RANDOM_STIMULI = True  # If False, stimuli are generated in a counting fashion
 
 def extract_elements_from_word(word, word_width, elem_width):
     """Extract elements from a word based on the specified widths."""
@@ -78,6 +75,30 @@ def matrix_to_hex_words(matrix, elem_width, word_width):
         hex_words.append(hex_word)
     return hex_words
 
+def write_element_to_memory(element, memory, elem_width, word_width, address):
+    """Write a single element back to memory at specified address."""
+    elems_per_word = word_width // elem_width
+    word_index = address // elems_per_word
+    elem_index = address % elems_per_word
+    existing_word = memory[word_index]
+    existing_elements = extract_elements_from_word(existing_word, word_width, elem_width)
+    existing_elements[elem_index] = element
+    hex_word = pack_elements_to_word(existing_elements, elem_width, word_width)
+    memory[word_index] = hex_word
+    return memory
+
+def write_matrix_to_memory(matrix, memory, elem_width, word_width, write_base_addr):
+    """Write output matrix back to memory at specified base address."""
+    elems_per_word = word_width // elem_width
+    matrix_flat = sum(matrix, [])
+    matrix_elems = len(matrix_flat)
+    for i in range(matrix_elems):
+        address = write_base_addr + i
+        element = matrix_flat[i]
+        memory = write_element_to_memory(element, memory, elem_width, word_width, address)
+    return memory
+
+# ToDo(cdurrer): obsolete, delete?
 def matrix_to_hex_words_word_aligned(matrix, elem_width, word_width):
     """Convert a matrix of elements to a list of hex words - aligned to word boundaries by zero-padding."""
     elems_per_word = word_width // elem_width
@@ -342,23 +363,13 @@ def main():
 
     # Compare input and output matrix: equality check
     if (output_matrix == input_matrix):
-        print("Output matrix matches input matrix.")
+        print("Output matrix equals input matrix.")
 
-    # # Convert output matrix back to words
-    if (WORD_ALIGNED):
-        output_hex_words = matrix_to_hex_words_word_aligned(output_matrix, ELEM_WIDTH, WORD_WIDTH)
-    else:
-        output_hex_words = matrix_to_hex_words(output_matrix, ELEM_WIDTH, WORD_WIDTH)
+    memory = write_matrix_to_memory(output_matrix, memory, ELEM_WIDTH, WORD_WIDTH, WRITE_BASE_ADDR)
 
-    # print(f"\nOutput Matrix as Hex Words:")
-    # for i, word in enumerate(output_hex_words):
-    #     print(f"Word {i}: {word}")
-
-    # Write back output matrix to memory at WRITE_BASE_ADDR
-    for i, word in enumerate(output_hex_words):
-        memory[(WRITE_BASE_ADDR // (WORD_WIDTH // 8) + i)] = word
-        # print(f"Writing word {word} to memory address [Byte-address] {WRITE_BASE_ADDR + i * (WORD_WIDTH // 8)}")
-        # print(f"Writing word {word} to memory address [Word-address] {WRITE_BASE_ADDR + i}")
+    # print("\nFinal Memory Content:")
+    # for i, word in enumerate(memory):
+    #     print(f"Memory[{i}]: {word}")
 
     write_file(OUTPUT_DIR, "updated_memory.txt", memory)
 

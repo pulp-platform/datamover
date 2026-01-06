@@ -13,11 +13,11 @@
 #######################
 
 # Hardware configuration (can be overridden by presets or command line)
-BANDWIDTH ?= 64   		# in bits, multiple of WORD_WIDTH (512)
-WORD_WIDTH ?= 32  		# in bits, multiple of ELEM_WIDTH (64)
+BANDWIDTH ?= 576   		# in bits, multiple of WORD_WIDTH (512)
+WORD_WIDTH ?= 64  		# in bits, multiple of ELEM_WIDTH (64)
 ELEM_WIDTH ?= 8   		# in bits (8)
 MEMORY_SIZE ?= 65536  	# in words
-MISALIGNED_ACCESSES ?= 0
+MISALIGNED_ACCESSES ?= 1
 
 DATAMOVER_MODE ?= 0     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion, 3 = CIM data layout transpose
 TRANSP_MODE ?= 1		    # 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
@@ -26,8 +26,8 @@ CIM_INNER_DIM ?= 64    	# Inner dimension of the CIM accelerator (in elements): 
 CIM_OUTER_DIM ?= 64    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
 
 # Input matrix dimensions (in elements)
-MATRIX_SIZE_M ?= 8   	# Matrix height in elements
-MATRIX_SIZE_N ?= 8 		# Matrix width in elements
+MATRIX_SIZE_M ?= 511   	# Matrix height in elements
+MATRIX_SIZE_N ?= 511 		# Matrix width in elements
 
 WRITE_BASE_ADDR = $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N))))			# Element-addressed
 
@@ -37,14 +37,19 @@ BANDWIDTH_ALIGNED := $(shell echo $$(($(BANDWIDTH) - $(BANDWIDTH_REDUCTION))))  
 BANDWIDTH_ELEMS := $(shell echo $$(($(BANDWIDTH_ALIGNED) / $(ELEM_WIDTH))))  	# Number of elements per bandwidth
 NUM_ELEM_WORD := $(shell echo $$(($(WORD_WIDTH) / $(ELEM_WIDTH))))  	# Number of elements per word
 MATRIX_SIZE_TOT := $(shell echo $$(($(MATRIX_SIZE_M) * $(MATRIX_SIZE_N)))) # Total number of elements in the matrix
+MATRIX_MISALIGNED := $(shell echo $$(($(MATRIX_SIZE_TOT) % $(BANDWIDTH_ELEMS)))) # 1 if matrix size is not multiple of bandwidth elements
+ifeq "$(strip $(MATRIX_MISALIGNED))" "0"	# Matrix size aligned
+  TOTAL_ACCESSES := $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS)))) # Total number of memory accesses (words) for the matrix (floor division)
+else                    # Matrix size misaligned
+  TOTAL_ACCESSES := $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS) + 1))) # Total number of memory accesses (words) for the matrix (+1 for misaligned access)
+endif
 
-# ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (4*32b)
-# N (bandwidth) consecutive words are read/written in one transaction
+# ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (bandwidth)
 
 ifeq "$(strip $(DATAMOVER_MODE))" "0"	# Copy mode
 $(info Copy mode enabled)
 STIM_READ_BASE_ADDR ?= 0																# Element-addressed
-STIM_READ_D0_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS)))) # [Nof accesses with bandwidth BW per D0-transfer ("row")] ToDo(cdurrer): not working for misaligned matrices
+STIM_READ_D0_LENGTH ?= $(TOTAL_ACCESSES) # [Nof accesses with bandwidth BW per D0-transfer ("row")] ToDo(cdurrer): not working for misaligned matrices
 STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 							# [Elements]
 STIM_READ_D1_LENGTH ?= 0 		                            # Not used in copy mode
 STIM_READ_D1_STRIDE ?= 0											          # Not used in copy mode
@@ -55,6 +60,8 @@ STIM_READ_TOT_LENGTH ?= $(STIM_READ_D0_LENGTH)          # [Total memory accesses
 STIM_MEM_SIZE ?= $(MEMORY_SIZE)  												# [Words]
 STIM_TRANSP_MODE ?= 0
 STIM_TRANSP_LEN  ?= 0
+STIM_MATRIX_SIZE_M ?= $(MATRIX_SIZE_M)
+STIM_MATRIX_SIZE_N ?= $(MATRIX_SIZE_N)
 
 STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)
 STIM_WRITE_D0_LENGTH ?= $(STIM_READ_D0_LENGTH)
@@ -82,6 +89,8 @@ STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(STIM_READ_D1
 STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
 STIM_TRANSP_MODE ?= $(TRANSP_MODE)       												# 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
 STIM_TRANSP_LEN  ?= 0  																	# If 0: BANDWIDTH_ALIGNED / ELEM_WIDTH
+STIM_MATRIX_SIZE_M ?= $(MATRIX_SIZE_M)
+STIM_MATRIX_SIZE_N ?= $(MATRIX_SIZE_N)
 
 STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)												# Element-addressed
 STIM_WRITE_D0_LENGTH ?= $(shell echo $$(($(BANDWIDTH_ELEMS) / $(TRANSP_MODE))))			# Transpose tile width corresponds to bandwidth
@@ -109,6 +118,8 @@ STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(PARTIAL_MULT) * $(STIM_READ_D2_LENGTH
 STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
 STIM_TRANSP_MODE ?= 0
 STIM_TRANSP_LEN  ?= 0
+STIM_MATRIX_SIZE_M ?= $(MATRIX_SIZE_M)
+STIM_MATRIX_SIZE_N ?= $(MATRIX_SIZE_N)
 
 STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)												# Element-addressed
 STIM_WRITE_D0_LENGTH ?= $(shell echo $$(($(STIM_READ_D0_LENGTH) * $(MATRIX_SIZE_M))))
@@ -139,6 +150,8 @@ STIM_READ_TOT_LENGTH ?= $(shell echo $$(($(MATRIX_SIZE_TOT) / $(BANDWIDTH_ELEMS)
 STIM_MEM_SIZE ?= $(MEMORY_SIZE)  														# [Words]
 STIM_TRANSP_MODE ?= $(TRANSP_MODE)														# transp_mode
 STIM_TRANSP_LEN  ?= 0
+STIM_MATRIX_SIZE_M ?= $(MATRIX_SIZE_M)
+STIM_MATRIX_SIZE_N ?= $(MATRIX_SIZE_N)
 
 STIM_WRITE_BASE_ADDR ?= $(WRITE_BASE_ADDR)												# Element-addressed
 STIM_WRITE_D0_LENGTH ?= $(BANDWIDTH_ELEMS)

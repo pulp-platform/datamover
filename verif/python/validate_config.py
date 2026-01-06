@@ -7,20 +7,22 @@ Validates that configuration parameters are compatible and reasonable
 import sys
 import argparse
 
-def validate_config(bandwidth, word_width, elem_width, memory_size,
+def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_accesses,
                     datamover_mode, transp_mode, cim_mode, cim_inner_dim, cim_outer_dim,
                     matrix_size_m, matrix_size_n):
     """Validate configuration parameters"""
     errors = []
     warnings = []
 
+    bandwidth_aligned = bandwidth - (word_width if misaligned_accesses else 0)
+
     # Computed values
-    bandwidth_elems = bandwidth // elem_width
+    bandwidth_elems = bandwidth_aligned // elem_width
     num_elem_word = word_width // elem_width
 
     # Basic parameter validation
-    if bandwidth % word_width != 0:
-        errors.append(f"BANDWIDTH ({bandwidth}) must be divisible by WORD_WIDTH ({word_width})")
+    if bandwidth_aligned % word_width != 0:
+        errors.append(f"BANDWIDTH_ALIGNED ({bandwidth_aligned}) must be divisible by WORD_WIDTH ({word_width})")
 
     if word_width % elem_width != 0:
         errors.append(f"WORD_WIDTH ({word_width}) must be divisible by ELEM_WIDTH ({elem_width})")
@@ -66,9 +68,9 @@ def validate_config(bandwidth, word_width, elem_width, memory_size,
                      f"({total_memory_needed} words needed for {matrix_size_m}x{matrix_size_n} input+output)")
 
     # Matrix dimension alignment errors
-    if matrix_size_n % bandwidth_elems != 0:
-        errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
-                       f"({bandwidth_elems} elements)")
+    # if matrix_size_n % bandwidth_elems != 0:
+    #     errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
+    #                    f"({bandwidth_elems} elements)")
 
     # if matrix_size_m % bandwidth_elems != 0:
     #     errors.append(f"Matrix height ({matrix_size_m}) not aligned to bandwidth "
@@ -101,7 +103,7 @@ def main():
 
     errors, warnings = validate_config(
         args.bandwidth, args.word_width, args.elem_width, args.memory_size,
-        args.datamover_mode, args.transp_mode, args.cim_mode,
+        args.misaligned_accesses, args.datamover_mode, args.transp_mode, args.cim_mode,
         args.cim_inner_dim, args.cim_outer_dim,
         args.matrix_size_m, args.matrix_size_n
     )
@@ -136,7 +138,8 @@ def main():
             print(f"  CIM_OUTER_DIM: {args.cim_outer_dim}")
 
         # Print computed values
-        bandwidth_elems = args.bandwidth // args.elem_width
+        bandwidth_aligned = args.bandwidth - (args.word_width if args.misaligned_accesses else 0)
+        bandwidth_elems = bandwidth_aligned // args.elem_width
         num_elem_word = args.word_width // args.elem_width
         matrix_words = (args.matrix_size_m * args.matrix_size_n) // num_elem_word
 

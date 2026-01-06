@@ -16,11 +16,6 @@
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
  */
 
-// ToDo(cdurrer): TEMP
-parameter int unsigned MATRIX_SIZE_TOT = 25;
-parameter int unsigned REMAINING_ELEMS = 1;
-
-
 module datamover_engine
   import hwpe_stream_package::*;
   import hci_package::*;
@@ -52,6 +47,12 @@ module datamover_engine
 
   // number of elements (in the full bandwidth, not a single bank word)
   localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
+  logic [23:0] matrix_tot_size;
+  assign matrix_tot_size = ctrl_i.matrix_size_m * ctrl_i.matrix_size_n;   // ToDo(cdurrer): additional MUL, problem?
+  logic [$clog2(NB_ELEMENTS)-1:0] remaining_elems;
+  assign remaining_elems = matrix_tot_size % NB_ELEMENTS;
+  logic [11:0] nof_accesses;
+  assign nof_accesses = (matrix_tot_size / NB_ELEMENTS) + ((remaining_elems != 0) ? 1 : 0);
 
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
@@ -144,8 +145,9 @@ module datamover_engine
     .push_i  ( data_out_prefifo ),
     .pop_o   ( data_out         )
   );
-  // assign data_out_prefifo.strb = '1; // FIXME for leftovers     ToDo(cdurrer): use for partial tiles
-  assign data_out_prefifo.strb = '1; //(tot_cnt_q >= 7-1) ? (1 << REMAINING_ELEMS) - 1 : '1;
+
+  // handle last transfer with partial strobe if misaligned
+  assign data_out_prefifo.strb = ((tot_cnt_q >= nof_accesses-1) && (remaining_elems != 0)) ? (1 << remaining_elems) - 1 : '1;
 
   assign data_out_prefifo.data = data_out_unrolled;
   assign data_out_prefifo.valid = data_out_valid;
@@ -170,7 +172,8 @@ module datamover_engine
   assign cnt_d = cnt_q < ctrl_i.transp_len-ctrl_i.transp_stride ? cnt_q+ctrl_i.transp_stride : '0;
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
 
-  assign tot_cnt_d = (tot_cnt_q < MATRIX_SIZE_TOT) && (data_out_prefifo.valid) ? tot_cnt_q + 1 : tot_cnt_q;
+  // count total number of write accesses
+  assign tot_cnt_d = (tot_cnt_q < matrix_tot_size) && (data_out_prefifo.valid) ? tot_cnt_q + 1 : tot_cnt_q;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration.

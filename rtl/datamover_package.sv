@@ -36,6 +36,8 @@ package datamover_package;
     transp_mode_e                     transp_mode;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
     logic [2:0]                       transp_stride; // 1, 2, or 4
+    logic [11:0]                      matrix_size_m;
+    logic [11:0]                      matrix_size_n;
   } ctrl_engine_t;
 
   parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset
@@ -67,5 +69,9 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REG_OUT_D2_STRIDE   = 32'h24;  // Output dimension 2 stride
   parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h28;  // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
                                                                   // Leftover: [31:16], if 0 then no leftover
+  parameter int unsigned DATAMOVER_REG_MATRIX_SIZE     = 32'h2C;  // [31:24] unused; [23:12] matrix_size_n; [11:0] matrix_size_m
+
+  // Note: increase N_IO_REGS in datamover_top.sv when adding new registers here!
+
 
 endpackage

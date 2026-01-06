@@ -148,7 +148,7 @@ module datamover_top
     .REGFILE_SCM    ( 0  ),
     .N_CORES        ( N_CORES   ),
     .N_CONTEXT      ( N_CONTEXT ),
-    .N_IO_REGS      ( 11 ),
+    .N_IO_REGS      ( 12 ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
   ) i_slave (
@@ -241,6 +241,8 @@ module datamover_top
     engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
+    engine_ctrl.matrix_size_m = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_SIZE >> 2][11:0];
+    engine_ctrl.matrix_size_n = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_SIZE >> 2][23:12];
     if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
       engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): why?
     end
