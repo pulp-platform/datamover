@@ -148,7 +148,7 @@ module datamover_top
     .REGFILE_SCM    ( 0  ),
     .N_CORES        ( N_CORES   ),
     .N_CONTEXT      ( N_CONTEXT ),
-    .N_IO_REGS      ( 12 ),
+    .N_IO_REGS      ( 14 ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
   ) i_slave (
@@ -213,42 +213,51 @@ module datamover_top
   always_comb
   begin
     streamer_ctrl_cfg = '0;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = 4'b0011; // Reading operation needs 3 dimensions (activating d0 and d1, d2 is controlled by tot_len)
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = 4'b0011; // Writing operation needs 3 dimensions (activating d0 and d1, d2 is controlled by tot_len)
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = reg_file.hwpe_params[DATAMOVER_REG_DIM_ENABLE >> 2][3:0]; // Enabled dimensions (d0 is always enabled)
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = reg_file.hwpe_params[DATAMOVER_REG_DIM_ENABLE >> 2][7:4]; // Enabled dimensions (d0 is always enabled)
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][11:0];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][23:12];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D0_STRIDE >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = { reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][27:24], reg_file.hwpe_params[DATAMOVER_REG_LEN0 >> 2][31:24] };
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D1_STRIDE >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D2_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][11:0];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[DATAMOVER_REG_LEN1 >> 2][23:12];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1_STRIDE >> 2];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D2_STRIDE >> 2];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2][11:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2][11:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D0 >> 2][15:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D0 >> 2][31:16];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D1 >> 2][15:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D1 >> 2][31:16];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D2 >> 2][15:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D2 >> 2][31:16];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d3_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D3 >> 2][15:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d3_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D3 >> 2][31:16];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d4_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_OUT_D4_STRIDE >> 2][15:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0 >> 2][15:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D0 >> 2][31:16];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1 >> 2][15:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D1 >> 2][31:16];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D2 >> 2][15:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D2 >> 2][31:16];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d3_len     = reg_file.hwpe_params[DATAMOVER_REG_OUT_D3 >> 2][15:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d3_stride  = reg_file.hwpe_params[DATAMOVER_REG_OUT_D3 >> 2][31:16];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = reg_file.hwpe_params[DATAMOVER_REG_IN_OUT_D4_STRIDE >> 2][31:16];
   end
 
   // Binding of engine configuration
   always_comb
   begin
     engine_ctrl = '0;
-    engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? TRANSP_NONE :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? TRANSP_1ELEM :
-                              reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
-    engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b000 ? 1 :
-                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b001 ? 1 :
-                                reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][2:0] == 3'b010 ? 2 : 4;
-    engine_ctrl.matrix_size_m = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_SIZE >> 2][11:0];
-    engine_ctrl.matrix_size_n = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_SIZE >> 2][23:12];
-    if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
-      engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): why?
-    end
-    else begin // in case of leftover, use the reg content as length
-      engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];   // ToDo(cdurrer): mention this option in config/pkg/TB
-    end
+    engine_ctrl.transp_mode = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b000 ? TRANSP_NONE :
+                              reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b001 ? TRANSP_1ELEM :
+                              reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
+    engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b000 ? 1 :
+                                reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b001 ? 1 :
+                                reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b010 ? 2 : 4;
+    engine_ctrl.matrix_dim_m = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][14:3];
+    engine_ctrl.matrix_dim_n = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][26:15];
+    engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): What exactly did transp_len do? Use it to handle leftovers?
+    // if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
+    //   engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): why?
+    // end
+    // else begin // in case of leftover, use the reg content as length
+    //   engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];   // ToDo(cdurrer): mention this option in config/pkg/TB
+    // end
   end
 
   // Bind the output event, which is propagated to the event unit and used

@@ -62,9 +62,11 @@ import tb_package::*;
   logic [PERIPH_ID-1:0] periph_r_id;
 
   logic [2:0]           transp_mode;
-  logic [15:0]          transp_len;
-  logic [11:0]          matrix_size_m;
-  logic [11:0]          matrix_size_n;
+  // logic [15:0]          transp_len;
+  logic [11:0]          matrix_dim_m;
+  logic [11:0]          matrix_dim_n;
+  logic [3:0]           read_dim_enable;
+  logic [3:0]           write_dim_enable;
 
   // Performs one entire clock cycle.
   task cycle;
@@ -105,25 +107,29 @@ import tb_package::*;
 
   typedef struct {
     logic [31:0] base_addr;
-    logic [31:0] d0_stride;
-    logic [31:0] d1_stride;
-    logic [31:0] d2_stride;
-    logic [11:0] d0_length;
-    logic [11:0] d1_length;
-    logic [11:0] tot_length;
+    logic [15:0] d0_stride;
+    logic [15:0] d1_stride;
+    logic [15:0] d2_stride;
+    logic [15:0] d3_stride;
+    logic [15:0] d4_stride;
+    logic [15:0] d0_length;
+    logic [15:0] d1_length;
+    logic [15:0] d2_length;
+    logic [15:0] d3_length;
+    logic [31:0] tot_length;
   } addressgen_t;
 
   addressgen_t read_addr, write_addr;
 
-  assign read_addr = '{`STIM_READ_BASE_ADDR, `STIM_READ_D0_STRIDE, `STIM_READ_D1_STRIDE, `STIM_READ_D2_STRIDE, `STIM_READ_D0_LENGTH, `STIM_READ_D1_LENGTH, `STIM_READ_TOT_LENGTH};
-  assign write_addr = '{`STIM_WRITE_BASE_ADDR, `STIM_WRITE_D0_STRIDE, `STIM_WRITE_D1_STRIDE, `STIM_WRITE_D2_STRIDE, `STIM_WRITE_D0_LENGTH, `STIM_WRITE_D1_LENGTH, `STIM_WRITE_TOT_LENGTH};
-  // assign read_addr = '{`STIM_READ_BASE_ADDR, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
-  // assign write_addr = '{32'h40, 32'h4, 32'h10, 32'h4, 32'h4, 32'h10};
+  assign read_addr = '{`STIM_READ_BASE_ADDR, `STIM_READ_D0_STRIDE, `STIM_READ_D1_STRIDE, `STIM_READ_D2_STRIDE, `STIM_READ_D3_STRIDE, `STIM_READ_D4_STRIDE, `STIM_READ_D0_LENGTH, `STIM_READ_D1_LENGTH, `STIM_READ_D2_LENGTH, `STIM_READ_D3_LENGTH, `STIM_READ_TOT_LENGTH};
+  assign write_addr = '{`STIM_WRITE_BASE_ADDR, `STIM_WRITE_D0_STRIDE, `STIM_WRITE_D1_STRIDE, `STIM_WRITE_D2_STRIDE, `STIM_WRITE_D3_STRIDE, `STIM_WRITE_D4_STRIDE, `STIM_WRITE_D0_LENGTH, `STIM_WRITE_D1_LENGTH, `STIM_WRITE_D2_LENGTH, `STIM_WRITE_D3_LENGTH, `STIM_WRITE_TOT_LENGTH};
 
   assign transp_mode = `STIM_TRANSP_MODE;
-  assign transp_len  = `STIM_TRANSP_LEN;
-  assign matrix_size_m = `STIM_MATRIX_SIZE_M;
-  assign matrix_size_n = `STIM_MATRIX_SIZE_N;
+  // assign transp_len  = `STIM_TRANSP_LEN;
+  assign matrix_dim_m = `STIM_MATRIX_DIM_M;
+  assign matrix_dim_n = `STIM_MATRIX_DIM_N;
+  assign read_dim_enable  = `STIM_READ_DIM_ENABLE;
+  assign write_dim_enable = `STIM_WRITE_DIM_ENABLE;
 
 
   datamover_top_wrap #(
@@ -227,10 +233,8 @@ import tb_package::*;
   int error_status;
 
   initial begin : main_execution
-    logic [31:0] len0_reg;
-    logic [31:0] len1_reg;
-    logic [31:0] transp_mode_reg;
-    logic [31:0] matrix_size_reg;
+    logic [31:0] ctrl_engine_reg;
+    logic [31:0] dim_enable_reg;
 
     $info("Start execution...\n");
 
@@ -260,34 +264,29 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_REG_OUT_PTR, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr, clk_i, periph_bus);
 
     // Configure packed length registers (see datamover_package.sv)
-    len0_reg = {read_addr.d1_length[7:0], read_addr.d0_length[11:0], read_addr.tot_length[11:0]};
-    len1_reg = {4'b0, read_addr.d1_length[11:8], write_addr.d1_length[11:0], write_addr.d0_length[11:0]};
-    transp_mode_reg = {transp_len, 13'b0, transp_mode}; // ToDo(cdurrer): Leftover = transp_len???
-    matrix_size_reg = {8'b0, matrix_size_n[11:0], matrix_size_m[11:0]};
+    ctrl_engine_reg = {5'b0, matrix_dim_n[11:0], matrix_dim_m[11:0], transp_mode[2:0]};
+    dim_enable_reg = {24'b0, write_dim_enable[3:0], read_dim_enable[3:0]};
 
     // Make sure tot_length is the same for read and write
     assert (read_addr.tot_length == write_addr.tot_length) else $fatal("Read and write total lengths do not match!");
 
-    periph_write(datamover_package::DATAMOVER_REG_LEN0, datamover_package::DATAMOVER_REGISTER_OFFS, len0_reg, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_LEN1, datamover_package::DATAMOVER_REGISTER_OFFS, len1_reg, clk_i, periph_bus);
-
-    periph_write(datamover_package::DATAMOVER_REG_IN_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d0_stride, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_IN_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d1_stride, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_IN_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.d2_stride, clk_i, periph_bus);
-
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D0_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d0_stride, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D1_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d1_stride, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_OUT_D2_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.d2_stride, clk_i, periph_bus);
-
-    // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
-    periph_write(datamover_package::DATAMOVER_REG_TRANSP_MODE, datamover_package::DATAMOVER_REGISTER_OFFS, transp_mode_reg, clk_i, periph_bus);
-
-    periph_write(datamover_package::DATAMOVER_REG_MATRIX_SIZE, datamover_package::DATAMOVER_REGISTER_OFFS, matrix_size_reg, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_TOT_LEN, datamover_package::DATAMOVER_REGISTER_OFFS, read_addr.tot_length, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D0, datamover_package::DATAMOVER_REGISTER_OFFS, {read_addr.d0_stride, read_addr.d0_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D1, datamover_package::DATAMOVER_REGISTER_OFFS, {read_addr.d1_stride, read_addr.d1_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D2, datamover_package::DATAMOVER_REGISTER_OFFS, {read_addr.d2_stride, read_addr.d2_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_D3, datamover_package::DATAMOVER_REGISTER_OFFS, {read_addr.d3_stride, read_addr.d3_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D0, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d0_stride, write_addr.d0_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D1, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d1_stride, write_addr.d1_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D2, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d2_stride, write_addr.d2_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_OUT_D3, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d3_stride, write_addr.d3_length}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_IN_OUT_D4_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d4_stride, read_addr.d4_stride}, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_DIM_ENABLE, datamover_package::DATAMOVER_REGISTER_OFFS, dim_enable_reg, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_CTRL_ENGINE, datamover_package::DATAMOVER_REGISTER_OFFS, ctrl_engine_reg, clk_i, periph_bus);
 
     periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0, clk_i, periph_bus);
 
     while(status == 32'h00)
-      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status, clk_i, periph_bus);
+      periph_read(datamover_package::DATAMOVER_STATUS, datamover_package::HWPE_REGISTER_OFFS, status, clk_i, periph_bus);   // ToDo(cdurrer): Why STATUS and not FINISHED register?
 
      $info("Datamover working...\n");
 
@@ -298,7 +297,7 @@ import tb_package::*;
 
     check_output(
       GOLDEN_PATH,  // File containing golden reference data
-      32'h0,  // Start address in memory
+      32'h0,        // Start address in memory
       MEMORY_SIZE,  // Number of entries to check
       tb_datamover_top_wrap.i_testbench_memory.memory,  // Reference to memory array
       error_status

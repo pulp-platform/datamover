@@ -41,7 +41,7 @@
 #define DATAMOVER_SWSYNC             0x18
 #define DATAMOVER_URISCY_IMEM        0x1c
 
-// job configuration    ToDo(cdurrer): DIFFERENT TO datamover_package.sv! Why?
+// job configuration    ToDo(cdurrer): OUTDATED! Use HAL from Konark-cluster repo!
 #define DATAMOVER_REGISTER_OFFS       0x40
 #define DATAMOVER_REGISTER_CXT0_OFFS  0x80
 #define DATAMOVER_REGISTER_CXT1_OFFS  0x120

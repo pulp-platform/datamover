@@ -35,10 +35,8 @@ module datamover_engine
   // local enable & clear
   input  logic                   enable_i,
   input  logic                   clear_i,
-  // FIXME make it ctrl
+  // control registers
   input  ctrl_engine_t           ctrl_i,
-  // input  logic [31:0]            matrix_size_m_i,
-  // input  logic [31:0]            matrix_size_n_i,
   // input data stream + handshake
   hwpe_stream_intf_stream.sink   data_in,
   // output data stream + handshake
@@ -48,7 +46,7 @@ module datamover_engine
   // number of elements (in the full bandwidth, not a single bank word)
   localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
   logic [23:0] matrix_tot_size;
-  assign matrix_tot_size = ctrl_i.matrix_size_m * ctrl_i.matrix_size_n;   // ToDo(cdurrer): additional MUL, problem?
+  assign matrix_tot_size = ctrl_i.matrix_dim_m * ctrl_i.matrix_dim_n;   // ToDo(cdurrer): additional MUL, problem?
   logic [$clog2(NB_ELEMENTS)-1:0] remaining_elems;
   assign remaining_elems = matrix_tot_size % NB_ELEMENTS;
   logic [11:0] nof_accesses;

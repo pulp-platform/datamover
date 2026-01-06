@@ -140,6 +140,8 @@ def write_data_header_file(output_dir, input_matrix, output_matrix, config_param
         "#include <stdint.h>",
         "",
         "// Configuration Parameters",
+        # f"#define READ_BASE_ADDR {config_params['read_base_addr']}",
+        # f"#define WRITE_BASE_ADDR {config_params['write_base_addr']}",
         f"#define BANDWIDTH {config_params['bandwidth']}",
         f"#define WORD_WIDTH {config_params['word_width']}",
         f"#define ELEM_WIDTH {config_params['elem_width']}",
@@ -150,8 +152,8 @@ def write_data_header_file(output_dir, input_matrix, output_matrix, config_param
         f"#define CIM_MODE {config_params['cim_mode']}",
         f"#define CIM_INNER_DIM {config_params['cim_inner_dim']}",
         f"#define CIM_OUTER_DIM {config_params['cim_outer_dim']}",
-        f"#define SIZE_M {config_params['matrix_size_m']}",
-        f"#define SIZE_N {config_params['matrix_size_n']}",
+        f"#define SIZE_M {config_params['matrix_dim_m']}",
+        f"#define SIZE_N {config_params['matrix_dim_n']}",
         "",
         "uint8_t golden_in [SIZE_M*SIZE_N] = {",
     ]
@@ -170,7 +172,7 @@ def write_data_header_file(output_dir, input_matrix, output_matrix, config_param
         file.write("\n".join(data_h_string))
     return
 
-def transpose(matrix, size_n, size_m, transp_mode):
+def transpose(matrix, size_m, size_n, transp_mode):
     transposed = [[0 for _ in range(size_m * transp_mode)] for _ in range(size_n // transp_mode)]
     for d1 in range(size_m):
         for d0 in range(size_n // transp_mode):
@@ -179,7 +181,7 @@ def transpose(matrix, size_n, size_m, transp_mode):
                 transposed[d0][(d1*transp_mode)+i] = matrix[d1][(d0*transp_mode)+i]
     return transposed
 
-def cim_layout(matrix, size_n, size_m, cim_mode, cim_inner_dim, cim_outer_dim):
+def cim_layout(matrix, size_m, size_n, cim_mode, cim_inner_dim, cim_outer_dim):
     if cim_mode == 0:   # row-major -> A-Layout
         row_tile_size = cim_inner_dim
         initial_size_m = size_m
@@ -206,10 +208,26 @@ def cim_layout(matrix, size_n, size_m, cim_mode, cim_inner_dim, cim_outer_dim):
             cim_matrix[d2][(d1*row_tile_size):(d1*row_tile_size+row_tile_size)] = matrix[d1][d2*(row_tile_size):(d2*row_tile_size+row_tile_size)]
 
     # Reshape back to original dimensions for output
-
     print(f"CIM Matrix Size: {len(cim_matrix)} x {len(cim_matrix[0])}")
-
     return cim_matrix
+
+def unfold(tensor, patch_size):
+    # input tensor must be of shape CHW (channels, height (M), width (N))
+    # output tensor produced in shape PNC (patch_size, num_patches, channels)
+    # patch_size: MobileViT: 2x2 = 4 (must be square)
+    channels = len(tensor)
+    height = len(tensor[0])
+    width = len(tensor[0][0])
+    patch_sidelength = int(math.sqrt(patch_size))
+    if (height % patch_sidelength) != 0 or (width % patch_sidelength) != 0:
+        raise ValueError("[GM] Tensor height and width must be multiples of the patch sidelength.")
+    num_patches = (height * width) // patch_size  # number of patches
+    tensor_unfolded = [[[0 for _ in range(channels)] for _ in range(num_patches)] for _ in range(patch_size)]
+    for p in range(patch_size):
+        for n in range(num_patches):
+
+            tensor_unfolded[p][n] = [ tensor[c][h][w] for c in range(channels)]
+
 
 def main():
         # Parse command-line arguments
@@ -226,8 +244,8 @@ def main():
     parser.add_argument("--cim_mode", type=int, default=0, help="CIM mode (0=normal, 1=CIM)")
     parser.add_argument("--cim_inner_dim", type=int, default=4, help="CIM inner dimension")
     parser.add_argument("--cim_outer_dim", type=int, default=4, help="CIM outer dimension")
-    parser.add_argument("--matrix_size_m", type=int, default=64, help="Matrix height in elements")
-    parser.add_argument("--matrix_size_n", type=int, default=64, help="Matrix width in elements")
+    parser.add_argument("--matrix_dim_m", type=int, default=64, help="Matrix height in elements")
+    parser.add_argument("--matrix_dim_n", type=int, default=64, help="Matrix width in elements")
     parser.add_argument("--output_dir", type=str, default="output", help="Directory for storing output files")
 
     args = parser.parse_args()
@@ -242,15 +260,15 @@ def main():
     READ_BASE_ADDR = args.read_base_addr
     WRITE_BASE_ADDR = args.write_base_addr
     TRANSP_MODE = args.transp_mode
-    MATRIX_SIZE_N = args.matrix_size_n
-    MATRIX_SIZE_M = args.matrix_size_m
-    TOT_LENGTH = (args.matrix_size_m * args.matrix_size_n) // BANDWIDTH_ELEMS
+    MATRIX_DIM_N = args.matrix_dim_n
+    MATRIX_DIM_M = args.matrix_dim_m
+    TOT_LENGTH = (args.matrix_dim_m * args.matrix_dim_n) // BANDWIDTH_ELEMS
 
     OUTPUT_DIR = args.output_dir
 
-    if MEMORY_SIZE < ((MATRIX_SIZE_N * MATRIX_SIZE_M * ELEM_WIDTH // WORD_WIDTH) * 2):
+    if MEMORY_SIZE < ((MATRIX_DIM_N * MATRIX_DIM_M * ELEM_WIDTH // WORD_WIDTH) * 2):
         raise ValueError(f"MEMORY_SIZE ({MEMORY_SIZE}) is too small for the given matrix size "
-                    f"({MATRIX_SIZE_M}x{MATRIX_SIZE_N}) and element width ({ELEM_WIDTH})")
+                    f"({MATRIX_DIM_M}x{MATRIX_DIM_N}) and element width ({ELEM_WIDTH})")
     # num_elem_word must be power of two and greater than zero
     if args.num_elem_word & (args.num_elem_word - 1) != 0 or args.num_elem_word <= 0:
         raise ValueError("[GM] num_elem_word must be a power of two and greater than zero.")
@@ -258,7 +276,7 @@ def main():
     if BANDWIDTH_ALIGNED % WORD_SIZE_BITS != 0:
         raise ValueError("[GM] BANDWIDTH_ALIGNED must be a multiple of the word size (num_elem_word * elem_width).")
     # # bandwidth width must be a multiple of word size
-    # if ((MATRIX_SIZE_N * ELEM_WIDTH) < BANDWIDTH_ALIGNED):
+    # if ((MATRIX_DIM_N * ELEM_WIDTH) < BANDWIDTH_ALIGNED):
     #     raise ValueError("[GM] Matrix width (N) in bits must be at least as large as BANDWIDTH_ALIGNED.")
     # read_tot_length must not exceed 12-bit register capacity (4096)
 
@@ -266,16 +284,16 @@ def main():
     # if ((BANDWIDTH_ALIGNED & (BANDWIDTH_ALIGNED - 1)) != 0) or (BANDWIDTH_ALIGNED < WORD_SIZE_BITS):
     #     raise ValueError(f"[GM] BANDWIDTH_ALIGNED ({BANDWIDTH_ALIGNED}) must be a power of 2 and greater than the WORD_SIZE ({WORD_SIZE_BITS}).")
 
-    if ((TOT_LENGTH >= 4096) & (args.datamover_mode != 0)):
-        raise ValueError("[GM] TOT_LENGTH (MxN / BW_ELEM) must be less than 4096 in transpose and CIM modes (12-bit register limit).")
+    # if ((TOT_LENGTH >= 4096) & (args.datamover_mode != 0)):
+    #     raise ValueError("[GM] TOT_LENGTH (MxN / BW_ELEM) must be less than 4096 in transpose and CIM modes (12-bit register limit).")
 
 
     if(args.datamover_mode == 1): # transpose mode
         # transp_mode must be valid (1=1elem, 2=2elem, 4=4elem)
         if args.transp_mode not in [1, 2, 4]:
             raise ValueError("[GM] transp_mode must be 1 (1 elem), 2 (2 elem), or 4 (4 elem).")
-        if (MATRIX_SIZE_N % args.transp_mode) != 0:
-            raise ValueError(f"[GM] Matrix width N ({MATRIX_SIZE_N}) must be a multiple of transp_mode ({args.transp_mode}).")
+        if (MATRIX_DIM_N % args.transp_mode) != 0:
+            raise ValueError(f"[GM] Matrix width N ({MATRIX_DIM_N}) must be a multiple of transp_mode ({args.transp_mode}).")
 
     print(f"Memory Size: {MEMORY_SIZE} entries")
     print(f"Word Size: {WORD_SIZE_BITS} bits")
@@ -292,11 +310,11 @@ def main():
     memory_flat = convert_memory_to_vector(memory, ELEM_WIDTH, WORD_WIDTH)
 
     # Extract matrix (read dimensions) from memory
-    input_matrix = [[0 for _ in range(MATRIX_SIZE_N)] for _ in range(MATRIX_SIZE_M)]
-    for d1 in range(MATRIX_SIZE_M):
+    input_matrix = [[0 for _ in range(MATRIX_DIM_N)] for _ in range(MATRIX_DIM_M)]
+    for d1 in range(MATRIX_DIM_M):
         row = []
-        for d0 in range(MATRIX_SIZE_N):
-            input_matrix[d1][d0] = memory_flat[(READ_BASE_ADDR + d1 * MATRIX_SIZE_N + d0)]
+        for d0 in range(MATRIX_DIM_N):
+            input_matrix[d1][d0] = memory_flat[(READ_BASE_ADDR + d1 * MATRIX_DIM_N + d0)]
 
     # Print input matrix
     print("Input Matrix:")
@@ -309,11 +327,11 @@ def main():
     if args.datamover_mode == 0: # Copy mode
         output_matrix = input_matrix
     elif args.datamover_mode == 1: # Transpose mode
-        output_matrix = transpose(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, TRANSP_MODE)
+        output_matrix = transpose(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, TRANSP_MODE)
     elif args.datamover_mode == 2: # CIM mode
-        output_matrix = cim_layout(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
+        output_matrix = cim_layout(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
     # elif args.datamover_mode == 2: # TEST CIM mode (TWICE: should be identical to input)
-        # intermediate_matrix = cim_layout(input_matrix, MATRIX_SIZE_N, MATRIX_SIZE_M, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
+        # intermediate_matrix = cim_layout(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
         # intermediate_size_m = len(intermediate_matrix)
         # intermediate_size_n = len(intermediate_matrix[0])
         # # Print intermediate matrix
@@ -321,11 +339,11 @@ def main():
         # for i, row in enumerate(intermediate_matrix):
         #     print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
         # print("\n")
-        # output_matrix = cim_layout(intermediate_matrix, intermediate_size_n, intermediate_size_m, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
+        # output_matrix = cim_layout(intermediate_matrix, intermediate_size_m, intermediate_size_n, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
     elif args.datamover_mode == 3: # CIM layout transpose mode (INPUT SIZES EXPECTED IN ORIGINAL (ROW-MAJOR) LAYOUT FORM!)
         print("TRANSP_MODE = ", TRANSP_MODE)
-        converted_size_m = MATRIX_SIZE_N // args.cim_inner_dim
-        converted_size_n = MATRIX_SIZE_M * args.cim_inner_dim
+        converted_size_m = MATRIX_DIM_N // args.cim_inner_dim
+        converted_size_n = MATRIX_DIM_M * args.cim_inner_dim
         # Reshape input_matrix to converted_size_m x converted_size_n
         input_flat = [elem for row in input_matrix for elem in row]
         reshaped_matrix = [
@@ -336,7 +354,7 @@ def main():
             print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
         print("\n")
 
-        intermediate1_matrix = cim_layout(reshaped_matrix, converted_size_n, converted_size_m, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
+        intermediate1_matrix = cim_layout(reshaped_matrix, converted_size_m, converted_size_n, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
         intermediate1_size_m = len(intermediate1_matrix)
         intermediate1_size_n = len(intermediate1_matrix[0])
 
@@ -344,14 +362,14 @@ def main():
         for i, row in enumerate(intermediate1_matrix):
             print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
         print("\n")
-        intermediate2_matrix = transpose(intermediate1_matrix, intermediate1_size_n, intermediate1_size_m, TRANSP_MODE)
+        intermediate2_matrix = transpose(intermediate1_matrix, intermediate1_size_m, intermediate1_size_n, TRANSP_MODE)
         intermediate2_size_m = len(intermediate2_matrix)
         intermediate2_size_n = len(intermediate2_matrix[0])
         print("\nIntermediate2 Matrix (row major transpose):")
         for i, row in enumerate(intermediate2_matrix):
             print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
         print("\n")
-        output_matrix = cim_layout(intermediate2_matrix, intermediate2_size_n, intermediate2_size_m, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
+        output_matrix = cim_layout(intermediate2_matrix, intermediate2_size_m, intermediate2_size_n, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim)
     else:
         raise ValueError("[GM] datamover_mode must be 0 (copy), 1 (transpose), or 2 (CIM).")
 
@@ -375,6 +393,8 @@ def main():
 
     # Write data header file for C testing
     config_params = {
+        # 'read_base_addr': args.read_base_addr,
+        # 'write_base_addr': args.write_base_addr,
         'bandwidth': args.bandwidth_bits,
         'word_width': WORD_WIDTH,
         'elem_width': args.elem_width,
@@ -385,8 +405,8 @@ def main():
         'cim_mode': args.cim_mode,
         'cim_inner_dim': args.cim_inner_dim,
         'cim_outer_dim': args.cim_outer_dim,
-        'matrix_size_m': args.matrix_size_m,
-        'matrix_size_n': args.matrix_size_n
+        'matrix_dim_m': args.matrix_dim_m,
+        'matrix_dim_n': args.matrix_dim_n
     }
     write_data_header_file(OUTPUT_DIR, input_matrix, output_matrix, config_params)
 

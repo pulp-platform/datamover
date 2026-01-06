@@ -9,7 +9,7 @@ import argparse
 
 def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_accesses,
                     datamover_mode, transp_mode, cim_mode, cim_inner_dim, cim_outer_dim,
-                    matrix_size_m, matrix_size_n):
+                    matrix_dim_m, matrix_dim_n):
     """Validate configuration parameters"""
     errors = []
     warnings = []
@@ -27,9 +27,9 @@ def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_a
     if word_width % elem_width != 0:
         errors.append(f"WORD_WIDTH ({word_width}) must be divisible by ELEM_WIDTH ({elem_width})")
 
-    if memory_size < (matrix_size_n * matrix_size_m * elem_width // word_width) * 2:
+    if memory_size < (matrix_dim_n * matrix_dim_m * elem_width // word_width) * 2:
         errors.append(f"MEMORY_SIZE ({memory_size}) is too small for the given matrix size "
-                      f"({matrix_size_m}x{matrix_size_n}) and element width ({elem_width})")
+                      f"({matrix_dim_m}x{matrix_dim_n}) and element width ({elem_width})")
 
     # Mode validation (based on config.mk)
     if datamover_mode not in [0, 1, 2, 3]:
@@ -53,27 +53,27 @@ def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_a
             errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) must be a multiple of bandwidth ({bandwidth_elems})")
         if (cim_outer_dim % bandwidth_elems != 0) and (cim_mode == 1):
             errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) must be a multiple of bandwidth ({bandwidth_elems})")
-        if (cim_inner_dim > matrix_size_n) and (cim_mode == 0):
-            errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) cannot be greater than matrix width ({matrix_size_n})")
-        if (cim_outer_dim > matrix_size_m) and (cim_mode == 1):
-            errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) cannot be greater than matrix height ({matrix_size_m})")
+        if (cim_inner_dim > matrix_dim_n) and (cim_mode == 0):
+            errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) cannot be greater than matrix width ({matrix_dim_n})")
+        if (cim_outer_dim > matrix_dim_m) and (cim_mode == 1):
+            errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) cannot be greater than matrix height ({matrix_dim_m})")
 
     # Memory requirements
-    matrix_elements = matrix_size_m * matrix_size_n
+    matrix_elements = matrix_dim_m * matrix_dim_n
     matrix_words = (matrix_elements * elem_width + word_width - 1) // word_width
     total_memory_needed = matrix_words * 2  # Input + output matrices
 
     if total_memory_needed > memory_size:
         errors.append(f"Memory size ({memory_size} words) insufficient for matrices "
-                     f"({total_memory_needed} words needed for {matrix_size_m}x{matrix_size_n} input+output)")
+                     f"({total_memory_needed} words needed for {matrix_dim_m}x{matrix_dim_n} input+output)")
 
     # Matrix dimension alignment errors
-    # if matrix_size_n % bandwidth_elems != 0:
-    #     errors.append(f"Matrix width ({matrix_size_n}) not aligned to bandwidth "
+    # if matrix_dim_n % bandwidth_elems != 0:
+    #     errors.append(f"Matrix width ({matrix_dim_n}) not aligned to bandwidth "
     #                    f"({bandwidth_elems} elements)")
 
-    # if matrix_size_m % bandwidth_elems != 0:
-    #     errors.append(f"Matrix height ({matrix_size_m}) not aligned to bandwidth "
+    # if matrix_dim_m % bandwidth_elems != 0:
+    #     errors.append(f"Matrix height ({matrix_dim_m}) not aligned to bandwidth "
     #                    f"({bandwidth_elems} elements)")
 
     # Transpose-specific validation
@@ -96,8 +96,8 @@ def main():
     parser.add_argument("--cim_mode", type=int, required=True)
     parser.add_argument("--cim_inner_dim", type=int, required=True)
     parser.add_argument("--cim_outer_dim", type=int, required=True)
-    parser.add_argument("--matrix_size_m", type=int, required=True)
-    parser.add_argument("--matrix_size_n", type=int, required=True)
+    parser.add_argument("--matrix_dim_m", type=int, required=True)
+    parser.add_argument("--matrix_dim_n", type=int, required=True)
 
     args = parser.parse_args()
 
@@ -105,7 +105,7 @@ def main():
         args.bandwidth, args.word_width, args.elem_width, args.memory_size,
         args.misaligned_accesses, args.datamover_mode, args.transp_mode, args.cim_mode,
         args.cim_inner_dim, args.cim_outer_dim,
-        args.matrix_size_m, args.matrix_size_n
+        args.matrix_dim_m, args.matrix_dim_n
     )
 
     # Print results
@@ -141,7 +141,7 @@ def main():
         bandwidth_aligned = args.bandwidth - (args.word_width if args.misaligned_accesses else 0)
         bandwidth_elems = bandwidth_aligned // args.elem_width
         num_elem_word = args.word_width // args.elem_width
-        matrix_words = (args.matrix_size_m * args.matrix_size_n) // num_elem_word
+        matrix_words = (args.matrix_dim_m * args.matrix_dim_n) // num_elem_word
 
         print(f"\nComputed values:")
         print(f"  Elements per bandwidth: {bandwidth_elems}")

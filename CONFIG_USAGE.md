@@ -75,7 +75,7 @@ make sim CONFIG_PRESET=small-matrix TRANSP_MODE=2
 make sim CONFIG_PRESET=medium-matrix ELEM_WIDTH=16
 
 # Override matrix dimensions
-make sim CONFIG_PRESET=transpose-test MATRIX_SIZE_M=64 MATRIX_SIZE_N=64
+make sim CONFIG_PRESET=transpose-test MATRIX_DIM_M=64 MATRIX_DIM_N=64
 ```
 
 ### Custom Configuration
@@ -84,7 +84,7 @@ Use completely custom parameters:
 
 ```bash
 # Custom configuration via command line
-make sim CONFIG_PRESET=custom BANDWIDTH=512 ELEM_WIDTH=16 MATRIX_SIZE_M=128 MATRIX_SIZE_N=128
+make sim CONFIG_PRESET=custom BANDWIDTH=512 ELEM_WIDTH=16 MATRIX_DIM_M=128 MATRIX_DIM_N=128
 
 # Or edit config.mk for persistent custom settings
 make sim CONFIG_PRESET=custom
@@ -153,10 +153,25 @@ The datamover supports three main operation modes:
 | `CIM_OUTER_DIM` | 16,32,64,... | CIM outer dimension in elements |
 | `ELEM_WIDTH` | 8 | Element width in bits |
 | `BANDWIDTH` | 64,128,256,512,1024 | Memory bandwidth in bits |
-| `MATRIX_SIZE_M` | Any | Matrix height in elements |
-| `MATRIX_SIZE_N` | Any | Matrix width in elements |
+| `MATRIX_DIM_M` | Any | Matrix height in elements |
+| `MATRIX_DIM_N` | Any | Matrix width in elements |
 | `MEMORY_SIZE` | Any | Available memory in words |
 | `WORD_WIDTH` | 16,32,64 | Word width in bits (typically 32) |
+
+### Testbench Stimulus Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `STIM_READ_BASE_ADDR` / `STIM_WRITE_BASE_ADDR` | Start address for read/write bursts (element-addressed) |
+| `STIM_*_D0_LENGTH` / `STIM_*_D0_STRIDE` | Inner dimension length and stride (elements) |
+| `STIM_*_D1_LENGTH` / `STIM_*_D1_STRIDE` | Second dimension length and stride |
+| `STIM_*_D2_LENGTH` / `STIM_*_D2_STRIDE` | Optional third dimension length/stride (0 when unused) |
+| `STIM_*_D3_LENGTH` / `STIM_*_D3_STRIDE` | Optional fourth dimension length/stride (0 when unused) |
+| `STIM_*_D4_STRIDE` | Optional stride for a fifth dimension (0 when unused) |
+| `STIM_*_TOT_LENGTH` | Total number of accesses for the transfer |
+| `STIM_*_DIM_ENABLE` | 4-bit mask enabling address-generation dimensions (d1..d4) -> d0 always active |
+| `STIM_MEM_SIZE` | Number of words in the testbench memory |
+| `STIM_TRANSP_MODE` | Transpose mode encoded for the datamover: 1,2 or 4 elements |
 
 ## Built-in Test Targets
 
@@ -190,8 +205,8 @@ ifeq ($(CONFIG_PRESET),my-test)
     ELEM_WIDTH = 16
     MEMORY_SIZE = 32768
     TRANSP_MODE = 4
-    MATRIX_SIZE_M = 64
-    MATRIX_SIZE_N = 32
+    MATRIX_DIM_M = 64
+    MATRIX_DIM_N = 32
     CONFIG_DESC = "Custom test for specific use case"
 endif
 ```
@@ -251,7 +266,7 @@ test-custom-suite:
 	@echo "Testing custom configuration suite..."
 	$(MAKE) sim CONFIG_PRESET=small-matrix TRANSP_MODE=2
 	$(MAKE) sim CONFIG_PRESET=medium-matrix ELEM_WIDTH=16
-	$(MAKE) sim CONFIG_PRESET=custom BANDWIDTH=1024 MATRIX_SIZE_M=64 MATRIX_SIZE_N=64
+	$(MAKE) sim CONFIG_PRESET=custom BANDWIDTH=1024 MATRIX_DIM_M=64 MATRIX_DIM_N=64
 ```
 
 ### Configuration Validation
@@ -336,8 +351,8 @@ make test-cim-grid
 make sim CONFIG_PRESET=custom \
     BANDWIDTH=1024 \
     ELEM_WIDTH=32 \
-    MATRIX_SIZE_M=256 \
-    MATRIX_SIZE_N=128 \
+    MATRIX_DIM_M=256 \
+    MATRIX_DIM_N=128 \
     TRANSP_MODE=4
 ```
 
@@ -369,7 +384,7 @@ The configuration system consists of these key files:
 3. **Bandwidth alignment warnings**: Matrix dimensions not aligned to bandwidth
    ```bash
    # Adjust matrix dimensions to be multiples of BANDWIDTH/ELEM_WIDTH
-   make sim MATRIX_SIZE_M=32 MATRIX_SIZE_N=32  # Use aligned dimensions
+   make sim MATRIX_DIM_M=32 MATRIX_DIM_N=32  # Use aligned dimensions
    ```
 
 4. **Configuration not taking effect**: Check parameter precedence

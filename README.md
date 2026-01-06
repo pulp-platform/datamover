@@ -22,7 +22,11 @@ The following parameters are used to generate the testbench stimuli and to confi
 `STIM_*_BASE_ADDR` = start address of the read/write access bursts (element-addressed)
 `STIM_*_LENGTH` = number of read/write accesses for the d0/d1 dimensions and in total (it is not an address offset!)
 `STIM_*_STRIDE` = stride between element across dimensions d0/d1 (element-addressed, e.g., stride d1 would be the distance in an element-addressed offset between A[row=0][col=0] and A[row=1][col=0])
+`STIM_*_D2/D3_LENGTH` = optional higher-dimension lengths when using multi-dimensional tiling (0 means unused)
+`STIM_*_D2/D3_STRIDE` = stride for the higher dimensions (element-addressed)
+`STIM_*_D4_STRIDE` = optional fourth-dimension stride (element-addressed)
 `STIM_MEM_SIZE` = number of words of the testbench memory
+`STIM_*_DIM_ENABLE` = 4-bit mask enabling address generation dimensions (d0..d3)
 `STIM_TRANSP_MODE` = transposition mode to configure for the datamover (`3'b000` = none, `3'b001` = 1 elem, `3'b010` = 2 elem, `3'b100` = 4 elem)
 `STIM_TRANSP_LEN` = transposition length (if set to 0: transp_len = BANDWIDTH_ALIGNED / ELEM_WIDTH)
 

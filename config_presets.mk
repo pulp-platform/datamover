@@ -40,8 +40,8 @@ ifeq ($(CONFIG_PRESET),small-matrix)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 4
-    MATRIX_SIZE_N = 4
+    MATRIX_DIM_M = 4
+    MATRIX_DIM_N = 4
     CONFIG_DESC = "Small 4x4 matrix, 1-element transpose"
 endif
 
@@ -56,8 +56,8 @@ ifeq ($(CONFIG_PRESET),medium-matrix)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 64
-    MATRIX_SIZE_N = 64
+    MATRIX_DIM_M = 64
+    MATRIX_DIM_N = 64
     CONFIG_DESC = "Medium 64x64 matrix, 1-element transpose"
 endif
 
@@ -72,8 +72,8 @@ ifeq ($(CONFIG_PRESET),large-matrix)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 448
-    MATRIX_SIZE_N = 448
+    MATRIX_DIM_M = 448
+    MATRIX_DIM_N = 448
     CONFIG_DESC = "Large 448x448 matrix, 1-element transpose"
 endif
 
@@ -88,8 +88,8 @@ ifeq ($(CONFIG_PRESET),transpose-test)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 32
-    MATRIX_SIZE_N = 32
+    MATRIX_DIM_M = 32
+    MATRIX_DIM_N = 32
     CONFIG_DESC = "32x32 matrix, 2-element transpose"
 endif
 
@@ -104,8 +104,8 @@ ifeq ($(CONFIG_PRESET),rect-wide)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 64
-    MATRIX_SIZE_N = 256
+    MATRIX_DIM_M = 64
+    MATRIX_DIM_N = 256
     CONFIG_DESC = "Wide rectangular matrix 64x256, 4-element transpose"
 endif
 
@@ -120,8 +120,8 @@ ifeq ($(CONFIG_PRESET),rect-tall)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 256
-    MATRIX_SIZE_N = 64
+    MATRIX_DIM_M = 256
+    MATRIX_DIM_N = 64
     CONFIG_DESC = "Tall rectangular matrix 256x64, 2-element transpose"
 endif
 
@@ -136,8 +136,8 @@ ifeq ($(CONFIG_PRESET),rect-narrow)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 16
-    MATRIX_SIZE_N = 128
+    MATRIX_DIM_M = 16
+    MATRIX_DIM_N = 128
     CONFIG_DESC = "Narrow rectangular matrix 16x128, 1-element transpose"
 endif
 
@@ -152,8 +152,8 @@ ifeq ($(CONFIG_PRESET),rect-elongated)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 128
-    MATRIX_SIZE_N = 32
+    MATRIX_DIM_M = 128
+    MATRIX_DIM_N = 32
     CONFIG_DESC = "Elongated rectangular matrix 128x32, 2-element transpose"
 endif
 
@@ -168,8 +168,8 @@ ifeq ($(CONFIG_PRESET),copy-small)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 4
-    MATRIX_SIZE_N = 4
+    MATRIX_DIM_M = 4
+    MATRIX_DIM_N = 4
     CONFIG_DESC = "Small 4x4 matrix, copy mode"
 endif
 
@@ -184,8 +184,8 @@ ifeq ($(CONFIG_PRESET),copy-medium)
     CIM_MODE = 0
     CIM_INNER_DIM = 0
     CIM_OUTER_DIM = 0
-    MATRIX_SIZE_M = 64
-    MATRIX_SIZE_N = 64
+    MATRIX_DIM_M = 64
+    MATRIX_DIM_N = 64
     CONFIG_DESC = "Medium 64x64 matrix, copy mode"
 endif
 
@@ -200,8 +200,8 @@ ifeq ($(CONFIG_PRESET),cim-small)
     CIM_MODE = 0
     CIM_INNER_DIM = 32
     CIM_OUTER_DIM = 16
-    MATRIX_SIZE_M = 32
-    MATRIX_SIZE_N = 128
+    MATRIX_DIM_M = 32
+    MATRIX_DIM_N = 128
     CONFIG_DESC = "CIM 32x128 matrix, CIM_INNER_DIM=32, 128-bit bandwidth"
 endif
 
@@ -216,8 +216,8 @@ ifeq ($(CONFIG_PRESET),cim-medium)
     CIM_MODE = 0
     CIM_INNER_DIM = 64
     CIM_OUTER_DIM = 32
-    MATRIX_SIZE_M = 64
-    MATRIX_SIZE_N = 256
+    MATRIX_DIM_M = 64
+    MATRIX_DIM_N = 256
     CONFIG_DESC = "CIM 64x256 matrix, CIM_INNER_DIM=64, 256-bit bandwidth"
 endif
 
@@ -232,8 +232,8 @@ ifeq ($(CONFIG_PRESET),cim-large)
     CIM_MODE = 0
     CIM_INNER_DIM = 64
     CIM_OUTER_DIM = 64
-    MATRIX_SIZE_M = 128
-    MATRIX_SIZE_N = 256
+    MATRIX_DIM_M = 128
+    MATRIX_DIM_N = 256
     CONFIG_DESC = "CIM 128x256 matrix, CIM_INNER_DIM=64, 512-bit bandwidth"
 endif
 
