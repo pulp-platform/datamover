@@ -36,6 +36,7 @@ package datamover_package;
     transp_mode_e                     transp_mode;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
     logic [2:0]                       transp_stride; // 1, 2, or 4
+    logic [4:0]                       datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
     logic [11:0]                      matrix_dim_m;
     logic [11:0]                      matrix_dim_n;
   } ctrl_engine_t;
@@ -70,7 +71,7 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REG_OUT_D3           = 32'h28;  // [31:16] out_d3_stride; [15:0] out_d3_len
   parameter int unsigned DATAMOVER_REG_IN_OUT_D4_STRIDE = 32'h2C;  // [31:16] out_d4_stride; [15:0] in_d4_stride (d4_len unnecessary due to tot_len)
   parameter int unsigned DATAMOVER_REG_DIM_ENABLE       = 32'h30;  // [31:8] unused;[7:4] write_dim_en; [3:0] read_dim_en -> one-hot encoding (LSB->d1), d0 is always enabled
-  parameter int unsigned DATAMOVER_REG_CTRL_ENGINE      = 32'h34;  // [31:27] unused; [26:15] matrix_dim_n; [14:3] matrix_dim_m [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
+  parameter int unsigned DATAMOVER_REG_CTRL_ENGINE      = 32'h34;  // [31:27] datamover_mode (0: copy, 1: transpose, 2: CIM layout conversion); [26:15] matrix_dim_n; [14:3] matrix_dim_m [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
 
   // Note: increase N_IO_REGS in datamover_top.sv when adding new registers here!
 

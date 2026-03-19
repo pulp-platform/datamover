@@ -14,6 +14,7 @@
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
+ *           Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 module datamover_engine
@@ -22,7 +23,7 @@ module datamover_engine
   import datamover_package::*;
 #(
   parameter int unsigned FIFO_DEPTH = 2,
-  parameter int unsigned BANDWIDTH_ALIGNED = 32,
+  parameter int unsigned BANDWIDTH_ALIGNED = 512,
   parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
   parameter int unsigned ELEM_WIDTH = 8,     // element width (in bits)
   // Dependent parameters: do not modify!
@@ -46,7 +47,7 @@ module datamover_engine
   // number of elements (in the full bandwidth, not a single bank word)
   localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
   logic [23:0] matrix_tot_size;
-  assign matrix_tot_size = ctrl_i.matrix_dim_m * ctrl_i.matrix_dim_n;   // ToDo(cdurrer): additional MUL, problem?
+  assign matrix_tot_size = ctrl_i.matrix_dim_m * ctrl_i.matrix_dim_n;   // ToDo(cdurrer): additional MUL, problem? (Could also be configured in control register by the HAL)
   logic [$clog2(NB_ELEMENTS)-1:0] remaining_elems;
   assign remaining_elems = matrix_tot_size % NB_ELEMENTS;
   logic [11:0] nof_accesses;
@@ -54,17 +55,20 @@ module datamover_engine
 
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
-  datamover_engine_fsm_t fsm_d, fsm_q;
-  logic clear_elem_matrix;
-  logic [$clog2(NB_ELEMENTS):0] cnt_q, cnt_d;
-  logic [11:0] tot_cnt_q, tot_cnt_d;            // ToDo(cdurrer): bitwidth?
-  logic cnt_en;
+  datamover_engine_fsm_t                  fsm_d, fsm_q;
+  logic                                   clear_elem_matrix;
+  logic [$clog2(NB_ELEMENTS):0]           cnt_q, cnt_d;
+  logic [11:0]                            tot_cnt_q, tot_cnt_d;            // ToDo(cdurrer): bitwidth?
+  logic                                   cnt_en;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_unrolled;
-  logic                     data_in_valid;
-  logic                     data_in_ready;
+  logic                                   data_in_valid;
+  logic                                   data_in_ready;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_out_unrolled;
-  logic                     data_out_valid;
-  logic                     data_out_ready;
+  logic                                   data_out_valid;
+  logic                                   data_out_ready;
+  logic [11:0]                            m_tiles, n_tiles, m_elem_cnt, n_tile_cnt; // ToDo(cdurrer): review bitwidths
+  logic [$clog2(NB_ELEMENTS):0]           leftover_rows, leftover_cols;
+  logic                                   last_m_tile, last_n_tile;
 
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
@@ -144,8 +148,41 @@ module datamover_engine
     .pop_o   ( data_out         )
   );
 
-  // handle last transfer with partial strobe if misaligned
-  assign data_out_prefifo.strb = ((tot_cnt_q >= nof_accesses-1) && (remaining_elems != 0)) ? (1 << remaining_elems) - 1 : '1;
+
+  // Partial tile / leftover elements handling
+  // Due to the streamer address generation, matrices need to be word-aligned in n-dimension for transposition
+  assign m_tiles = (ctrl_i.matrix_dim_m + NB_ELEMENTS - 1) / NB_ELEMENTS;
+  assign n_tiles = (ctrl_i.matrix_dim_n + NB_ELEMENTS - 1) / NB_ELEMENTS;
+  assign leftover_rows = ctrl_i.matrix_dim_m % NB_ELEMENTS;
+  assign leftover_cols = ctrl_i.matrix_dim_n % NB_ELEMENTS;
+  assign m_elem_cnt = tot_cnt_q % ((m_tiles) * NB_ELEMENTS);
+  assign n_tile_cnt = tot_cnt_q / ((m_tiles) * NB_ELEMENTS);
+  assign last_m_tile = (m_elem_cnt / NB_ELEMENTS >= ctrl_i.matrix_dim_m / NB_ELEMENTS);
+  assign last_n_tile = (n_tile_cnt >= (ctrl_i.matrix_dim_n / NB_ELEMENTS));
+
+  always_comb begin
+    if(ctrl_i.datamover_mode == 0) begin  // copy mode
+      data_out_prefifo.strb = ((tot_cnt_q >= nof_accesses-1) && (remaining_elems != 0)) ? (1 << remaining_elems) - 1 : '1;
+    end else if(ctrl_i.datamover_mode == 1) begin  // transpose mode
+      if((last_m_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
+        if(m_elem_cnt % NB_ELEMENTS < leftover_cols) begin
+          data_out_prefifo.strb = (1 << leftover_rows) - 1;
+        end else begin
+          data_out_prefifo.strb = '0;
+        end
+      end else if(last_m_tile && leftover_rows != 0) begin
+        data_out_prefifo.strb = (1 << leftover_rows) - 1;
+      end else if(last_n_tile && leftover_cols != 0) begin
+        if(m_elem_cnt % NB_ELEMENTS < leftover_cols) begin
+          data_out_prefifo.strb = '1;
+        end else begin
+          data_out_prefifo.strb = '0;
+        end
+      end else begin
+        data_out_prefifo.strb = '1;
+      end
+    end
+  end
 
   assign data_out_prefifo.data = data_out_unrolled;
   assign data_out_prefifo.valid = data_out_valid;

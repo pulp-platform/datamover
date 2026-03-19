@@ -249,6 +249,7 @@ module datamover_top
     engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b000 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b010 ? 2 : 4;
+    engine_ctrl.datamover_mode = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][31:27];
     engine_ctrl.matrix_dim_m = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][14:3];
     engine_ctrl.matrix_dim_n = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][26:15];
     engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): What exactly did transp_len do? Use it to handle leftovers?
