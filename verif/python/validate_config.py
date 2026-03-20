@@ -48,15 +48,15 @@ def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_a
     # CIM-specific validation
     if datamover_mode in [2, 3]:
         if cim_mode not in [0, 1]:
-            errors.append(f"CIM_MODE ({cim_mode}) must be 0 (row-major -> A-Layout) or 1 (row-major -> B-Layout)")
+            errors.append(f"CIM_MODE ({cim_mode}) must be 0 (row-major -> A-Layout) or 1 (A-Layout -> row-major) for CIM modes")
         if (cim_inner_dim % bandwidth_elems != 0) and (cim_mode == 0):
             errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) must be a multiple of bandwidth ({bandwidth_elems})")
         if (cim_outer_dim % bandwidth_elems != 0) and (cim_mode == 1):
             errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) must be a multiple of bandwidth ({bandwidth_elems})")
-        if (cim_inner_dim > matrix_dim_n) and (cim_mode == 0):
-            errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) cannot be greater than matrix width ({matrix_dim_n})")
-        if (cim_outer_dim > matrix_dim_m) and (cim_mode == 1):
-            errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) cannot be greater than matrix height ({matrix_dim_m})")
+        # if (cim_inner_dim > matrix_dim_n) and (cim_mode == 0):
+        #     errors.append(f"CIM_INNER_DIM ({cim_inner_dim}) cannot be greater than matrix width ({matrix_dim_n})")
+        # if (cim_outer_dim > matrix_dim_m) and (cim_mode == 1):
+        #     errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) cannot be greater than matrix height ({matrix_dim_m})")
 
     # Memory requirements
     matrix_elements = matrix_dim_m * matrix_dim_n

@@ -16,17 +16,17 @@
 BANDWIDTH ?= 512   		# in bits, multiple of WORD_WIDTH (512)
 WORD_WIDTH ?= 64  		# in bits, multiple of ELEM_WIDTH (64)
 ELEM_WIDTH ?= 8   		# in bits (8)
-MEMORY_SIZE ?= 65536  	# in words
+MEMORY_SIZE ?= 131072	# in words
 MISALIGNED_ACCESSES ?= 0
 
 DATAMOVER_MODE ?= 1     # 0 = copy, 1 = transpose, 2 = CIM data layout conversion, 3 = CIM data layout transpose
 TRANSP_MODE ?= 1		    # 1 = 1 elem, 2 = 2 elem, 4 = 4 elem, other values: not accepted
-CIM_MODE ?= 0        	  # Data layout conversion mode: 0: row-major -> A-Layout, 1: row-major -> B-Layout
+CIM_MODE ?= 0        	  # Data layout conversion mode: 0: row-major -> A-Layout, 1: reverse (A-Layout -> row-major), ToDo (unnecessary for 64x64 CIM): 2: row-major -> B-Layout, 3: reverse (B-Layout -> row-major)
 CIM_INNER_DIM ?= 64    	# Inner dimension of the CIM accelerator (in elements): 64 for 64x8 CIM macro
 CIM_OUTER_DIM ?= 64    	# Outer dimension of the CIM accelerator (in elements): 8x #CIM macros
 
 # Input matrix dimensions (in elements)
-MATRIX_DIM_M ?= 64   	# Matrix height in elements
+MATRIX_DIM_M ?= 64  	# Matrix height in elements
 MATRIX_DIM_N ?= 64		# Matrix width in elements
 
 READ_BASE_ADDR = 0

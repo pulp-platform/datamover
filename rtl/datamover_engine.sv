@@ -32,9 +32,9 @@ module datamover_engine
   // global signals
   input  logic                   clk_i,
   input  logic                   rst_ni,
-  input  logic                   test_mode_i,
+  input  logic                   test_mode_i,   // ToDo: unused
   // local enable & clear
-  input  logic                   enable_i,
+  input  logic                   enable_i,      // ToDo: unused
   input  logic                   clear_i,
   // control registers
   input  ctrl_engine_t           ctrl_i,
@@ -46,19 +46,21 @@ module datamover_engine
 
   // number of elements (in the full bandwidth, not a single bank word)
   localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
+  localparam int unsigned NB_ELEM_LOG2 = $clog2(NB_ELEMENTS);
+
   logic [23:0] matrix_tot_size;
   assign matrix_tot_size = ctrl_i.matrix_dim_m * ctrl_i.matrix_dim_n;   // ToDo(cdurrer): additional MUL, problem? (Could also be configured in control register by the HAL)
-  logic [$clog2(NB_ELEMENTS)-1:0] remaining_elems;
-  assign remaining_elems = matrix_tot_size % NB_ELEMENTS;
+  logic [NB_ELEM_LOG2-1:0] remaining_elems;
+  assign remaining_elems = matrix_tot_size & (NB_ELEMENTS - 1);         // modulo (NB_ELEMENTS: power of two)
   logic [11:0] nof_accesses;
-  assign nof_accesses = (matrix_tot_size / NB_ELEMENTS) + ((remaining_elems != 0) ? 1 : 0);
+  assign nof_accesses = (matrix_tot_size >> NB_ELEM_LOG2) + ((remaining_elems != 0) ? 1 : 0);
 
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
   datamover_engine_fsm_t                  fsm_d, fsm_q;
   logic                                   clear_elem_matrix;
-  logic [$clog2(NB_ELEMENTS):0]           cnt_q, cnt_d;
-  logic [11:0]                            tot_cnt_q, tot_cnt_d;            // ToDo(cdurrer): bitwidth?
+  logic [NB_ELEM_LOG2:0]                  cnt_q, cnt_d;
+  logic [15:0]                            tot_cnt_q, tot_cnt_d;            // ToDo(cdurrer): bitwidth?
   logic                                   cnt_en;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_unrolled;
   logic                                   data_in_valid;
@@ -66,8 +68,8 @@ module datamover_engine
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_out_unrolled;
   logic                                   data_out_valid;
   logic                                   data_out_ready;
-  logic [11:0]                            m_tiles, n_tiles, m_elem_cnt, n_tile_cnt; // ToDo(cdurrer): review bitwidths
-  logic [$clog2(NB_ELEMENTS):0]           leftover_rows, leftover_cols;
+  logic [11:0]                            m_tiles, n_tile_cnt, m_elem_cnt,expanded_m_elems; // ToDo(cdurrer): review bitwidths
+  logic [NB_ELEM_LOG2:0]                  leftover_rows, leftover_cols;
   logic                                   last_m_tile, last_n_tile;
 
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
@@ -151,29 +153,31 @@ module datamover_engine
 
   // Partial tile / leftover elements handling
   // Due to the streamer address generation, matrices need to be word-aligned in n-dimension for transposition
-  assign m_tiles = (ctrl_i.matrix_dim_m + NB_ELEMENTS - 1) / NB_ELEMENTS;
-  assign n_tiles = (ctrl_i.matrix_dim_n + NB_ELEMENTS - 1) / NB_ELEMENTS;
-  assign leftover_rows = ctrl_i.matrix_dim_m % NB_ELEMENTS;
-  assign leftover_cols = ctrl_i.matrix_dim_n % NB_ELEMENTS;
-  assign m_elem_cnt = tot_cnt_q % ((m_tiles) * NB_ELEMENTS);
-  assign n_tile_cnt = tot_cnt_q / ((m_tiles) * NB_ELEMENTS);
-  assign last_m_tile = (m_elem_cnt / NB_ELEMENTS >= ctrl_i.matrix_dim_m / NB_ELEMENTS);
-  assign last_n_tile = (n_tile_cnt >= (ctrl_i.matrix_dim_n / NB_ELEMENTS));
+  localparam logic [NB_ELEMENTS-1:0] STRB_ONE = {{(NB_ELEMENTS-1){1'b0}}, 1'b1};    // Necessary to force the shifting operation to the correct bitwidth (default would be only 32b)
+  assign m_tiles = (ctrl_i.matrix_dim_m + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;   // ceil division
+  // assign n_tiles = (ctrl_i.matrix_dim_n + NB_ELEMENTS - 1) / NB_ELEMENTS;
+  assign leftover_rows = ctrl_i.matrix_dim_m & (NB_ELEMENTS - 1);
+  assign leftover_cols = ctrl_i.matrix_dim_n & (NB_ELEMENTS - 1);
+  assign expanded_m_elems = m_tiles * NB_ELEMENTS;
+  assign m_elem_cnt = (expanded_m_elems == 0) ? '0 : (tot_cnt_q % expanded_m_elems);
+  assign n_tile_cnt = (expanded_m_elems == 0) ? '0 : (tot_cnt_q / expanded_m_elems);
+  assign last_m_tile = ((m_elem_cnt >> NB_ELEM_LOG2) >= (ctrl_i.matrix_dim_m >> NB_ELEM_LOG2));
+  assign last_n_tile = (n_tile_cnt >= (ctrl_i.matrix_dim_n >> NB_ELEM_LOG2));
 
   always_comb begin
-    if(ctrl_i.datamover_mode == 0) begin  // copy mode
-      data_out_prefifo.strb = ((tot_cnt_q >= nof_accesses-1) && (remaining_elems != 0)) ? (1 << remaining_elems) - 1 : '1;
-    end else if(ctrl_i.datamover_mode == 1) begin  // transpose mode
+    if(ctrl_i.datamover_mode == 0) begin            // Copy mode
+      data_out_prefifo.strb = ((tot_cnt_q >= nof_accesses-1) && (remaining_elems != 0)) ? ((STRB_ONE << remaining_elems) - 1) : '1;
+    end else if(ctrl_i.datamover_mode == 1) begin   // Transpose mode
       if((last_m_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
-        if(m_elem_cnt % NB_ELEMENTS < leftover_cols) begin
-          data_out_prefifo.strb = (1 << leftover_rows) - 1;
+        if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
+          data_out_prefifo.strb = ((STRB_ONE << leftover_rows) - 1);
         end else begin
           data_out_prefifo.strb = '0;
         end
       end else if(last_m_tile && leftover_rows != 0) begin
-        data_out_prefifo.strb = (1 << leftover_rows) - 1;
+        data_out_prefifo.strb = ((STRB_ONE << leftover_rows) - 1);
       end else if(last_n_tile && leftover_cols != 0) begin
-        if(m_elem_cnt % NB_ELEMENTS < leftover_cols) begin
+        if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
           data_out_prefifo.strb = '1;
         end else begin
           data_out_prefifo.strb = '0;
@@ -181,6 +185,26 @@ module datamover_engine
       end else begin
         data_out_prefifo.strb = '1;
       end
+    end else if(ctrl_i.datamover_mode == 2) begin   // CIM layout conversion mode
+      if((last_m_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
+        if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
+          data_out_prefifo.strb = ((STRB_ONE << leftover_cols) - 1);
+        end else begin
+          data_out_prefifo.strb = '0;
+        end
+      end else if(last_m_tile && leftover_rows != 0) begin
+        if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
+          data_out_prefifo.strb = '1;
+        end else begin
+          data_out_prefifo.strb = '0;
+        end
+      end else if(last_n_tile && leftover_cols != 0) begin
+        data_out_prefifo.strb = ((STRB_ONE << leftover_cols) - 1);
+      end else begin
+        data_out_prefifo.strb = '1;
+      end
+    end else begin
+      data_out_prefifo.strb = '1;   // ToDo: Could be set to 0 if all cases are handled properly
     end
   end
 
@@ -208,7 +232,7 @@ module datamover_engine
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
 
   // count total number of write accesses
-  assign tot_cnt_d = (tot_cnt_q < matrix_tot_size) && (data_out_prefifo.valid) ? tot_cnt_q + 1 : tot_cnt_q;
+  assign tot_cnt_d = (tot_cnt_q < matrix_tot_size) && (data_out_prefifo.valid & data_out_prefifo.ready) ? tot_cnt_q + 1 : tot_cnt_q;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration.
@@ -292,6 +316,8 @@ module datamover_engine
       else $fatal("BANDWIDTH_ALIGNED (%0d) must not be greater than MAX_BANDWIDTH (%0d)", BANDWIDTH_ALIGNED, MAX_BANDWIDTH);
     assert ((BANDWIDTH_ALIGNED % WORD_WIDTH) == 0)
       else $fatal("BANDWIDTH_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH_ALIGNED, WORD_WIDTH);
+    assert ((NB_ELEMENTS != 0) && ((NB_ELEMENTS & (NB_ELEMENTS - 1)) == 0))
+      else $fatal("NB_ELEMENTS (%0d) = BANDWIDTH_ALIGNED (%0d) / ELEM_WIDTH (%0d) must be a power of two", NB_ELEMENTS, BANDWIDTH_ALIGNED, ELEM_WIDTH);
     assert (NUM_ELEM_WORD <= MAX_SHIFTING)    // ToDo(cdurrer): obsolete?
       else $fatal("NUM_ELEM_WORD (%0d) must not be greater than MAX_SHIFTING (%0d)", NUM_ELEM_WORD, MAX_SHIFTING);
   end
