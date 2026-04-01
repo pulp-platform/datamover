@@ -143,22 +143,23 @@ def write_data_header_file(output_dir, input_matrix, output_matrix, config_param
         f"#define WORD_WIDTH {config_params['word_width']}",
         f"#define ELEM_WIDTH {config_params['elem_width']}",
         f"#define MEMORY_SIZE {config_params['memory_size']}",
-        f"#define MISALIGNED_ACCESSES {config_params['misaligned_accesses']}",
+        # f"#define MISALIGNED_ACCESSES {config_params['misaligned_accesses']}",
         f"#define DATAMOVER_MODE {config_params['datamover_mode']}",
         f"#define TRANSP_MODE {config_params['transp_mode']}",
         f"#define CIM_MODE {config_params['cim_mode']}",
         f"#define CIM_INNER_DIM {config_params['cim_inner_dim']}",
         f"#define CIM_OUTER_DIM {config_params['cim_outer_dim']}",
+        f"#define SIZE_C {config_params['num_channels']}",
         f"#define SIZE_M {config_params['matrix_dim_m']}",
         f"#define SIZE_N {config_params['matrix_dim_n']}",
         "",
-        "uint8_t golden_in [SIZE_M*SIZE_N] = {",
+        "uint8_t golden_in [SIZE_C*SIZE_M*SIZE_N] = {",
     ]
     data_h_string.extend(data_header_format(input_flat))
     data_h_string.extend([
         "};",
         "",
-        "uint8_t golden_out [SIZE_M*SIZE_N] = {",
+        "uint8_t golden_out [SIZE_C*SIZE_M*SIZE_N] = {",
     ])
     data_h_string.extend(data_header_format(output_flat))
     data_h_string.extend([
@@ -273,19 +274,20 @@ def main():
     parser.add_argument("--bandwidth_bits", type=int, default=4, help="Number of bits per transaction")
     parser.add_argument("--num_elem_word", type=int, default=4, help="Number of elements in a memory bank word")
     parser.add_argument("--elem_width", type=int, default=8, help="Width of each element (in bits)")
-    parser.add_argument("--misaligned_accesses", type=int, default=0, help="Enable misaligned accesses (0=disabled, 1=enabled)")
+    # parser.add_argument("--misaligned_accesses", type=int, default=0, help="Enable misaligned accesses (0=disabled, 1=enabled)")
     parser.add_argument("--datamover_mode", type=int, default=0, help="Datamover mode (0=normal, 1=CIM)")
     parser.add_argument("--transp_mode", type=int, default=0, help="Transposition mode (3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem)")
     parser.add_argument("--cim_mode", type=int, default=0, help="CIM mode (0=normal, 1=CIM)")
     parser.add_argument("--cim_inner_dim", type=int, default=4, help="CIM inner dimension")
     parser.add_argument("--cim_outer_dim", type=int, default=4, help="CIM outer dimension")
+    parser.add_argument("--num_channels", type=int, default=1, help="Number of channels")
     parser.add_argument("--matrix_dim_m", type=int, default=64, help="Matrix height in elements")
     parser.add_argument("--matrix_dim_n", type=int, default=64, help="Matrix width in elements")
     parser.add_argument("--output_dir", type=str, default="output", help="Directory for storing output files")
 
     args = parser.parse_args()
 
-    BANDWIDTH_ALIGNED = args.bandwidth_bits - (args.misaligned_accesses * (args.elem_width * args.num_elem_word))
+    BANDWIDTH_ALIGNED = args.bandwidth_bits #- (args.misaligned_accesses * (args.elem_width * args.num_elem_word))
     MEMORY_SIZE = args.mem_size  # Set global memory size
     BANDWIDTH_ELEMS = BANDWIDTH_ALIGNED // args.elem_width
 
@@ -294,15 +296,16 @@ def main():
     READ_BASE_ADDR = args.read_base_addr
     WRITE_BASE_ADDR = args.write_base_addr
     TRANSP_MODE = args.transp_mode
+    MATRIX_DIM_C = args.num_channels
     MATRIX_DIM_N = args.matrix_dim_n
     MATRIX_DIM_M = args.matrix_dim_m
     TOT_LENGTH = (args.matrix_dim_m * args.matrix_dim_n) // BANDWIDTH_ELEMS
 
     OUTPUT_DIR = args.output_dir
 
-    if MEMORY_SIZE < ((MATRIX_DIM_N * MATRIX_DIM_M * ELEM_WIDTH // WORD_WIDTH) * 2):
+    if MEMORY_SIZE < ((MATRIX_DIM_C * MATRIX_DIM_N * MATRIX_DIM_M * ELEM_WIDTH // WORD_WIDTH) * 2):
         raise ValueError(f"MEMORY_SIZE ({MEMORY_SIZE}) is too small for the given matrix size "
-                    f"({MATRIX_DIM_M}x{MATRIX_DIM_N}) and element width ({ELEM_WIDTH})")
+                    f"({MATRIX_DIM_C}x{MATRIX_DIM_M}x{MATRIX_DIM_N}) and element width ({ELEM_WIDTH})")
     # num_elem_word must be power of two and greater than zero
     if args.num_elem_word & (args.num_elem_word - 1) != 0 or args.num_elem_word <= 0:
         raise ValueError("[GM] num_elem_word must be a power of two and greater than zero.")
@@ -402,13 +405,14 @@ def main():
         'word_width': WORD_WIDTH,
         'elem_width': args.elem_width,
         'memory_size': args.mem_size,
-        'misaligned_accesses': args.misaligned_accesses,
+        # 'misaligned_accesses': args.misaligned_accesses,
         'datamover_mode': args.datamover_mode,
         'transp_mode': args.transp_mode,
         'cim_mode': args.cim_mode,
         'cim_inner_dim': args.cim_inner_dim,
         'cim_outer_dim': args.cim_outer_dim,
         'matrix_dim_m': args.matrix_dim_m,
+        'num_channels': args.num_channels,
         'matrix_dim_n': args.matrix_dim_n
     }
     write_data_header_file(OUTPUT_DIR, input_matrix, output_matrix, config_params)

@@ -109,6 +109,7 @@ module datamover_streamer
     .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .DIM_ENABLE_1H         ( 4'b1111               ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_source (
     .clk_i       ( clk_i                         ),
@@ -129,6 +130,7 @@ module datamover_streamer
     .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .DIM_ENABLE_1H         ( 4'b1111               ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_sink (
     .clk_i       ( clk_i                       ),

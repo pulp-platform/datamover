@@ -189,8 +189,8 @@ package tb_package;
           if (read_data !== golden_data) begin
               status = 1;
               $display("MISMATCH at address %0d: Expected %h, Actual %h", start_addr + i, golden_data, read_data);
-          end else begin
-            //   $display("MATCH at address %0d: %h", start_addr + i, read_data);
+          end else if (i<100) begin//else begin
+              $display("MATCH at address %0d: %h", start_addr + i, read_data);
           end
       end
 

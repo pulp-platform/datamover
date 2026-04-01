@@ -23,7 +23,7 @@ module datamover_top
   import hci_package::*;
   import datamover_package::*;
 #(
-  parameter int unsigned ID = 10,                 // control slave peripheral ID width
+  parameter int unsigned ID = 4,                 // control slave peripheral ID width - ToDo(cdurrer): necessary?
   parameter int unsigned BANDWIDTH = 288,         // total bandwidth of HWPE to TCDM (in bits)
   parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a memory bank word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
@@ -33,7 +33,8 @@ module datamover_top
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
-  localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH // TCDM interface width in number of words
+  localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH, // TCDM interface width in number of words
+  localparam int unsigned N_IO_REGS = 15          // number of configuration registers exposed by the control slave, adapt here if number of configuration registers changes
 ) (
   // global signals
   input  logic                    clk_i,
@@ -148,7 +149,7 @@ module datamover_top
     .REGFILE_SCM    ( 0  ),
     .N_CORES        ( N_CORES   ),
     .N_CONTEXT      ( N_CONTEXT ),
-    .N_IO_REGS      ( 14 ),
+    .N_IO_REGS      ( N_IO_REGS ),
     .N_GENERIC_REGS ( 8  ),
     .ID_WIDTH       ( ID )
   ) i_slave (
@@ -213,12 +214,12 @@ module datamover_top
   always_comb
   begin
     streamer_ctrl_cfg = '0;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = reg_file.hwpe_params[DATAMOVER_REG_DIM_ENABLE >> 2][3:0]; // Enabled dimensions (d0 is always enabled)
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = reg_file.hwpe_params[DATAMOVER_REG_DIM_ENABLE >> 2][7:4]; // Enabled dimensions (d0 is always enabled)
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][11:8]; // Enabled dimensions (d0 is always enabled)
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][15:12]; // Enabled dimensions (d0 is always enabled)
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = reg_file.hwpe_params[DATAMOVER_REG_IN_PTR >> 2];
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = reg_file.hwpe_params[DATAMOVER_REG_OUT_PTR >> 2];
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2][11:0];
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2][11:0];
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2][31:0];
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = reg_file.hwpe_params[DATAMOVER_REG_TOT_LEN >> 2][31:0];
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D0 >> 2][15:0];
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = reg_file.hwpe_params[DATAMOVER_REG_IN_D0 >> 2][31:16];
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = reg_file.hwpe_params[DATAMOVER_REG_IN_D1 >> 2][15:0];
@@ -249,9 +250,11 @@ module datamover_top
     engine_ctrl.transp_stride = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b000 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b010 ? 2 : 4;
-    engine_ctrl.datamover_mode = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][31:27];
-    engine_ctrl.matrix_dim_m = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][14:3];
-    engine_ctrl.matrix_dim_n = reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][26:15];
+    engine_ctrl.datamover_mode = datamover_mode_e'(reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][7:3]);
+    engine_ctrl.matrix_dim_m = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_DIM >> 2][15:0];
+    engine_ctrl.matrix_dim_n = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_DIM >> 2][31:16];
+    engine_ctrl.num_channels   = reg_file.hwpe_params[DATAMOVER_REG_CHANNELS >> 2][10:0];
+    engine_ctrl.total_elements = reg_file.hwpe_params[DATAMOVER_REG_CHANNELS >> 2][31:11];
     engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): What exactly did transp_len do? Use it to handle leftovers?
     // if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
     //   engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): why?

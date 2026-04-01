@@ -7,14 +7,14 @@ Validates that configuration parameters are compatible and reasonable
 import sys
 import argparse
 
-def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_accesses,
+def validate_config(bandwidth, word_width, elem_width, memory_size, num_channels,
                     datamover_mode, transp_mode, cim_mode, cim_inner_dim, cim_outer_dim,
                     matrix_dim_m, matrix_dim_n):
     """Validate configuration parameters"""
     errors = []
     warnings = []
 
-    bandwidth_aligned = bandwidth - (word_width if misaligned_accesses else 0)
+    bandwidth_aligned = bandwidth
 
     # Computed values
     bandwidth_elems = bandwidth_aligned // elem_width
@@ -27,9 +27,9 @@ def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_a
     if word_width % elem_width != 0:
         errors.append(f"WORD_WIDTH ({word_width}) must be divisible by ELEM_WIDTH ({elem_width})")
 
-    if memory_size < (matrix_dim_n * matrix_dim_m * elem_width // word_width) * 2:
+    if memory_size < (num_channels * matrix_dim_n * matrix_dim_m * elem_width // word_width) * 2:
         errors.append(f"MEMORY_SIZE ({memory_size}) is too small for the given matrix size "
-                      f"({matrix_dim_m}x{matrix_dim_n}) and element width ({elem_width})")
+                      f"({num_channels}x{matrix_dim_m}x{matrix_dim_n}) and element width ({elem_width})")
 
     # Mode validation (based on config.mk)
     if datamover_mode not in [0, 1, 2, 3]:
@@ -59,13 +59,13 @@ def validate_config(bandwidth, word_width, elem_width, memory_size, misaligned_a
         #     errors.append(f"CIM_OUTER_DIM ({cim_outer_dim}) cannot be greater than matrix height ({matrix_dim_m})")
 
     # Memory requirements
-    matrix_elements = matrix_dim_m * matrix_dim_n
+    matrix_elements = num_channels * matrix_dim_m * matrix_dim_n
     matrix_words = (matrix_elements * elem_width + word_width - 1) // word_width
     total_memory_needed = matrix_words * 2  # Input + output matrices
 
     if total_memory_needed > memory_size:
         errors.append(f"Memory size ({memory_size} words) insufficient for matrices "
-                     f"({total_memory_needed} words needed for {matrix_dim_m}x{matrix_dim_n} input+output)")
+                     f"({total_memory_needed} words needed for {num_channels}x{matrix_dim_m}x{matrix_dim_n} input+output)")
 
     # Matrix dimension alignment errors
     # if matrix_dim_n % bandwidth_elems != 0:
@@ -90,7 +90,7 @@ def main():
     parser.add_argument("--word_width", type=int, required=True)
     parser.add_argument("--elem_width", type=int, required=True)
     parser.add_argument("--memory_size", type=int, required=True)
-    parser.add_argument("--misaligned_accesses", type=int, required=True)
+    parser.add_argument("--num_channels", type=int, required=True)
     parser.add_argument("--datamover_mode", type=int, required=True)
     parser.add_argument("--transp_mode", type=int, required=True)
     parser.add_argument("--cim_mode", type=int, required=True)
@@ -103,7 +103,7 @@ def main():
 
     errors, warnings = validate_config(
         args.bandwidth, args.word_width, args.elem_width, args.memory_size,
-        args.misaligned_accesses, args.datamover_mode, args.transp_mode, args.cim_mode,
+        args.num_channels, args.datamover_mode, args.transp_mode, args.cim_mode,
         args.cim_inner_dim, args.cim_outer_dim,
         args.matrix_dim_m, args.matrix_dim_n
     )
@@ -138,12 +138,12 @@ def main():
             print(f"  CIM_OUTER_DIM: {args.cim_outer_dim}")
 
         # Print computed values
-        bandwidth_aligned = args.bandwidth - (args.word_width if args.misaligned_accesses else 0)
-        bandwidth_elems = bandwidth_aligned // args.elem_width
+        bandwidth_elems = args.bandwidth // args.elem_width
         num_elem_word = args.word_width // args.elem_width
-        matrix_words = (args.matrix_dim_m * args.matrix_dim_n) // num_elem_word
+        matrix_words = (args.num_channels * args.matrix_dim_m * args.matrix_dim_n) // num_elem_word
 
         print(f"\nComputed values:")
+        print(f"  Channels: {args.num_channels}")
         print(f"  Elements per bandwidth: {bandwidth_elems}")
         print(f"  Elements per word: {num_elem_word}")
         print(f"  Matrix memory usage: {matrix_words} words ({matrix_words * 2} total)")

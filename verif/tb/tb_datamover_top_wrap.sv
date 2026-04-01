@@ -30,6 +30,7 @@ import tb_package::*;
   logic clear_i  = 1'b0;
 
   logic randomize_mem = 1'b0;
+  logic enable_mem = 1'b1;
   logic stallable_mem = 1'b1;
 
   hwpe_stream_intf_tcdm #(
@@ -67,6 +68,8 @@ import tb_package::*;
   logic [11:0]          matrix_dim_n;
   logic [3:0]           read_dim_enable;
   logic [3:0]           write_dim_enable;
+  logic [10:0]          num_channels;
+  logic [20:0]          total_elements;
 
   // Performs one entire clock cycle.
   task cycle;
@@ -130,6 +133,8 @@ import tb_package::*;
   assign matrix_dim_n = `STIM_MATRIX_DIM_N;
   assign read_dim_enable  = `STIM_READ_DIM_ENABLE;
   assign write_dim_enable = `STIM_WRITE_DIM_ENABLE;
+  assign num_channels   = `STIM_NUM_CHANNELS;
+  assign total_elements = `STIM_TOTAL_ELEMENTS;
 
 
   datamover_top_wrap #(
@@ -234,7 +239,8 @@ import tb_package::*;
 
   initial begin : main_execution
     logic [31:0] ctrl_engine_reg;
-    logic [31:0] dim_enable_reg;
+    logic [31:0] matrix_dim_reg;
+    logic [31:0] channels_reg;
 
     $info("Start execution...\n");
 
@@ -264,8 +270,9 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_REG_OUT_PTR, datamover_package::DATAMOVER_REGISTER_OFFS, write_addr.base_addr, clk_i, periph_bus);
 
     // Configure packed length registers (see datamover_package.sv)
-    ctrl_engine_reg = {5'b0, matrix_dim_n[11:0], matrix_dim_m[11:0], transp_mode[2:0]};
-    dim_enable_reg = {24'b0, write_dim_enable[3:0], read_dim_enable[3:0]};
+    ctrl_engine_reg = {16'b0, write_dim_enable[3:0], read_dim_enable[3:0], 5'b0, transp_mode[2:0]};
+    matrix_dim_reg  = {matrix_dim_n[15:0], matrix_dim_m[15:0]};
+    channels_reg    = {total_elements[20:0], num_channels[10:0]};
 
     // Make sure tot_length is the same for read and write
     assert (read_addr.tot_length == write_addr.tot_length) else $fatal("Read and write total lengths do not match!");
@@ -280,7 +287,8 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_REG_OUT_D2, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d2_stride, write_addr.d2_length}, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_OUT_D3, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d3_stride, write_addr.d3_length}, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_IN_OUT_D4_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d4_stride, read_addr.d4_stride}, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_DIM_ENABLE, datamover_package::DATAMOVER_REGISTER_OFFS, dim_enable_reg, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_MATRIX_DIM, datamover_package::DATAMOVER_REGISTER_OFFS, matrix_dim_reg, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_CHANNELS,    datamover_package::DATAMOVER_REGISTER_OFFS, channels_reg,    clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_CTRL_ENGINE, datamover_package::DATAMOVER_REGISTER_OFFS, ctrl_engine_reg, clk_i, periph_bus);
 
     periph_write(datamover_package::DATAMOVER_COMMIT_AND_TRIGGER, datamover_package::HWPE_REGISTER_OFFS, 32'h0, clk_i, periph_bus);

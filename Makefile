@@ -67,6 +67,9 @@ TESTBENCH_DEFINES += -DSTIM_TRANSP_MODE=${STIM_TRANSP_MODE}
 TESTBENCH_DEFINES += -DSTIM_MATRIX_DIM_M=${STIM_MATRIX_DIM_M}
 TESTBENCH_DEFINES += -DSTIM_MATRIX_DIM_N=${STIM_MATRIX_DIM_N}
 
+TESTBENCH_DEFINES += -DSTIM_NUM_CHANNELS=${STIM_NUM_CHANNELS}
+TESTBENCH_DEFINES += -DSTIM_TOTAL_ELEMENTS=${STIM_TOTAL_ELEMENTS}
+
 TESTBENCH_DEFINES += -DBANDWIDTH=${BANDWIDTH}
 TESTBENCH_DEFINES += -DNUM_ELEM_WORD=${NUM_ELEM_WORD}
 TESTBENCH_DEFINES += -DELEM_WIDTH=${ELEM_WIDTH}
@@ -303,7 +306,7 @@ validate-config:
 		--word_width $(WORD_WIDTH) \
 		--elem_width $(ELEM_WIDTH) \
 		--memory_size $(MEMORY_SIZE) \
-		--misaligned_accesses $(MISALIGNED_ACCESSES) \
+		--num_channels $(MATRIX_DIM_C) \
 		--datamover_mode $(DATAMOVER_MODE) \
 		--transp_mode $(TRANSP_MODE) \
 		--cim_mode $(CIM_MODE) \
@@ -347,6 +350,7 @@ stimuli: clean-stimuli validate-config
 	--cim_outer_dim $(CIM_OUTER_DIM) \
 	--matrix_dim_m $(MATRIX_DIM_M) \
 	--matrix_dim_n $(MATRIX_DIM_N) \
+	--num_channels $(MATRIX_DIM_C) \
 	--output_dir "verif/python/generated"
 
 # Bender

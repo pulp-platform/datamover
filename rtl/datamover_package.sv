@@ -32,13 +32,16 @@ package datamover_package;
   parameter int unsigned MAX_BANDWIDTH = 512; // support maximum 512bits of bandwidth
 
   typedef enum logic[1:0] { TRANSP_NONE, TRANSP_1ELEM, TRANSP_2ELEM, TRANSP_4ELEM } transp_mode_e;
+  typedef enum logic[4:0] { DATAMOVER_COPY, DATAMOVER_TRANSPOSE, DATAMOVER_CIM_CONVERSION, DATAMOVER_CIM_TRANSPOSE, DATAMOVER_UNFOLD, DATAMOVER_FOLD } datamover_mode_e;
   typedef struct packed {
     transp_mode_e                     transp_mode;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
-    logic [2:0]                       transp_stride; // 1, 2, or 4
-    logic [4:0]                       datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
+    logic [2:0]                       transp_stride; // 1, 2, or 4 elements
+    datamover_mode_e                  datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
     logic [11:0]                      matrix_dim_m;
     logic [11:0]                      matrix_dim_n;
+    logic [20:0]                      total_elements; // num_channels * dim_m * dim_n (pre-computed by HAL)
+    logic [10:0]                      num_channels;   // number of channels (for unfolding/folding)
   } ctrl_engine_t;
 
   parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset
@@ -70,8 +73,9 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REG_OUT_D2           = 32'h24;  // [31:16] out_d2_stride; [15:0] out_d2_len
   parameter int unsigned DATAMOVER_REG_OUT_D3           = 32'h28;  // [31:16] out_d3_stride; [15:0] out_d3_len
   parameter int unsigned DATAMOVER_REG_IN_OUT_D4_STRIDE = 32'h2C;  // [31:16] out_d4_stride; [15:0] in_d4_stride (d4_len unnecessary due to tot_len)
-  parameter int unsigned DATAMOVER_REG_DIM_ENABLE       = 32'h30;  // [31:8] unused;[7:4] write_dim_en; [3:0] read_dim_en -> one-hot encoding (LSB->d1), d0 is always enabled
-  parameter int unsigned DATAMOVER_REG_CTRL_ENGINE      = 32'h34;  // [31:27] datamover_mode (0: copy, 1: transpose, 2: CIM layout conversion); [26:15] matrix_dim_n; [14:3] matrix_dim_m [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
+  parameter int unsigned DATAMOVER_REG_MATRIX_DIM        = 32'h30;  // [31:16] matrix_dim_n; [15:0] matrix_dim_m
+  parameter int unsigned DATAMOVER_REG_CHANNELS          = 32'h34;  // [31:11] total_elements = num_channels * dim_m * dim_n (pre-compute to save HW resources); [10:0] num_channels (for unfolding/folding)
+  parameter int unsigned DATAMOVER_REG_CTRL_ENGINE       = 32'h38;  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
 
   // Note: increase N_IO_REGS in datamover_top.sv when adding new registers here!
 
