@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 ETH Zurich and University of Bologna
+ * Copyright (C) 2020-2026 ETH Zurich and University of Bologna
  *
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
@@ -68,6 +68,10 @@ module datamover_streamer
     .IW  ( IW ),
     .EW  ( EW ),
     .EHW ( EHW)
+    // `ifndef SYNTHESIS
+    // ,.WAIVE_RQ4_ASSERT ( 1'b1 )    // ToDo: make sure that these waives are not hiding real issues in the design
+    // ,.WAIVE_RQ3_ASSERT ( 1'b1 )
+    // `endif
   ) virt_tcdm [1:0] (
     .clk ( clk_i )
   );
@@ -168,7 +172,7 @@ module datamover_streamer
         .out      ( tcdm_prefifo )
       );
 
-      // The HCI core FIFO the request path from the response path, easing
+      // The HCI core FIFO decouples the request path from the response path, easing
       // timing closure when integrating the accelerator in a cluster.
       hci_core_fifo #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )

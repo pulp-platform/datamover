@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ETH Zurich and University of Bologna
+ * Copyright (C) 2025-2026 ETH Zurich and University of Bologna
  *
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
@@ -17,6 +17,8 @@
  *          Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
+// OUTDATED!
+// ToDo: Implement SW-based testing with a CPU core
 
 module tb_datamover_top_wrap;
 import datamover_package::*;
@@ -64,8 +66,8 @@ import tb_package::*;
 
   logic [2:0]           transp_mode;
   // logic [15:0]          transp_len;
-  logic [11:0]          matrix_dim_m;
-  logic [11:0]          matrix_dim_n;
+  logic [11:0]          tensor_size_m;
+  logic [11:0]          tensor_size_n;
   logic [3:0]           read_dim_enable;
   logic [3:0]           write_dim_enable;
   logic [10:0]          num_channels;
@@ -129,8 +131,8 @@ import tb_package::*;
 
   assign transp_mode = `STIM_TRANSP_MODE;
   // assign transp_len  = `STIM_TRANSP_LEN;
-  assign matrix_dim_m = `STIM_MATRIX_DIM_M;
-  assign matrix_dim_n = `STIM_MATRIX_DIM_N;
+  assign tensor_size_m = `STIM_TENSOR_SIZE_M;
+  assign tensor_size_n = `STIM_TENSOR_SIZE_N;
   assign read_dim_enable  = `STIM_READ_DIM_ENABLE;
   assign write_dim_enable = `STIM_WRITE_DIM_ENABLE;
   assign num_channels   = `STIM_NUM_CHANNELS;
@@ -153,7 +155,7 @@ import tb_package::*;
     .ELEM_WIDTH          ( ELEM_WIDTH ),
     .N_CORES             ( N_CORES ),
     .N_CONTEXT           ( 2 ),
-    .MISALIGNED_ACCESSES ( MISALIGNED_ACCESSES )
+    .MISALIGNED_ACCESSES ( 0 )
   ) i_hwpe_top_wrap (
     .clk_i          ( clk_i          ),
     .rst_ni         ( rst_ni         ),
@@ -239,7 +241,7 @@ import tb_package::*;
 
   initial begin : main_execution
     logic [31:0] ctrl_engine_reg;
-    logic [31:0] matrix_dim_reg;
+    logic [31:0] tensor_dim_reg;
     logic [31:0] channels_reg;
 
     $info("Start execution...\n");
@@ -271,7 +273,7 @@ import tb_package::*;
 
     // Configure packed length registers (see datamover_package.sv)
     ctrl_engine_reg = {16'b0, write_dim_enable[3:0], read_dim_enable[3:0], 5'b0, transp_mode[2:0]};
-    matrix_dim_reg  = {matrix_dim_n[15:0], matrix_dim_m[15:0]};
+    tensor_dim_reg  = {tensor_size_n[15:0], tensor_size_m[15:0]};
     channels_reg    = {total_elements[20:0], num_channels[10:0]};
 
     // Make sure tot_length is the same for read and write
@@ -287,7 +289,7 @@ import tb_package::*;
     periph_write(datamover_package::DATAMOVER_REG_OUT_D2, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d2_stride, write_addr.d2_length}, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_OUT_D3, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d3_stride, write_addr.d3_length}, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_IN_OUT_D4_STRIDE, datamover_package::DATAMOVER_REGISTER_OFFS, {write_addr.d4_stride, read_addr.d4_stride}, clk_i, periph_bus);
-    periph_write(datamover_package::DATAMOVER_REG_MATRIX_DIM, datamover_package::DATAMOVER_REGISTER_OFFS, matrix_dim_reg, clk_i, periph_bus);
+    periph_write(datamover_package::DATAMOVER_REG_MATRIX_DIM, datamover_package::DATAMOVER_REGISTER_OFFS, tensor_dim_reg, clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_CHANNELS,    datamover_package::DATAMOVER_REGISTER_OFFS, channels_reg,    clk_i, periph_bus);
     periph_write(datamover_package::DATAMOVER_REG_CTRL_ENGINE, datamover_package::DATAMOVER_REGISTER_OFFS, ctrl_engine_reg, clk_i, periph_bus);
 

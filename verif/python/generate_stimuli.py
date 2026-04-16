@@ -3,7 +3,9 @@ import argparse
 import os
 import math
 
-RANDOM_STIMULI = True  # If False, stimuli are generated in a counting fashion
+# OUTDATED
+
+RANDOM_STIMULI = False  # If False, stimuli are generated in a counting fashion
 
 def extract_elements_from_word(word, word_width, elem_width):
     """Extract elements from a word based on the specified widths."""
@@ -147,11 +149,10 @@ def write_data_header_file(output_dir, input_matrix, output_matrix, config_param
         f"#define DATAMOVER_MODE {config_params['datamover_mode']}",
         f"#define TRANSP_MODE {config_params['transp_mode']}",
         f"#define CIM_MODE {config_params['cim_mode']}",
-        f"#define CIM_INNER_DIM {config_params['cim_inner_dim']}",
-        f"#define CIM_OUTER_DIM {config_params['cim_outer_dim']}",
+        f"#define ROW_TILE_SIZE {config_params['row_tile_size']}",
         f"#define SIZE_C {config_params['num_channels']}",
-        f"#define SIZE_M {config_params['matrix_dim_m']}",
-        f"#define SIZE_N {config_params['matrix_dim_n']}",
+        f"#define SIZE_M {config_params['size_m']}",
+        f"#define SIZE_N {config_params['size_n']}",
         "",
         "uint8_t golden_in [SIZE_C*SIZE_M*SIZE_N] = {",
     ]
@@ -180,18 +181,7 @@ def transpose(matrix, size_m, size_n, transp_mode):
     return transposed
 
 
-def cim_layout(matrix, size_m, size_n, cim_mode, cim_inner_dim, cim_outer_dim, word_width_elems):
-    if cim_mode == 0:   # row-major -> A-Layout
-        row_tile_size = cim_inner_dim
-    elif cim_mode == 1:               # row-major -> B-Layout
-        row_tile_size = cim_outer_dim
-    elif cim_mode == 2:    # A-Layout -> row-major
-        row_tile_size = cim_inner_dim
-    elif cim_mode == 3:    # B-Layout -> row-major
-        row_tile_size = cim_outer_dim
-    else:
-        raise ValueError("[GM] cim_mode must be 0 (A-Layout), 1 (B-Layout), 2 (A-Layout -> row-major), or 3 (B-Layout -> row-major).")
-
+def cim_layout(matrix, size_m, size_n, row_tile_size, word_width_elems):
     complete_n_tiles = size_n // row_tile_size
     leftover_columns = size_n % row_tile_size
     leftover_words = math.ceil(leftover_columns / word_width_elems)
@@ -216,18 +206,7 @@ def cim_layout(matrix, size_m, size_n, cim_mode, cim_inner_dim, cim_outer_dim, w
                 cim_matrix[0][index : index + leftover_columns] = chunk[i*leftover_columns:(i*leftover_columns)+leftover_columns]
     return cim_matrix
 
-def cim_layout_reverse(matrix, size_m, size_n, cim_mode, cim_inner_dim, cim_outer_dim, word_width_elems):   # dimensions of original row-major layout are used
-    if cim_mode == 0:   # row-major -> A-Layout
-        row_tile_size = cim_inner_dim
-    elif cim_mode == 1: # A-Layout -> row-major
-        row_tile_size = cim_inner_dim
-    elif cim_mode == 2:    # row-major -> B-Layout
-        row_tile_size = cim_outer_dim
-    elif cim_mode == 3:    # B-Layout -> row-major
-        row_tile_size = cim_outer_dim
-    else:
-        raise ValueError("[GM] cim_mode must be 0 (row-major -> A-Layout), 1 (A-Layout -> row-major), 2 (row-major -> B-Layout), or 3 (B-Layout -> row-major).")
-
+def cim_layout_reverse(matrix, size_m, size_n, row_tile_size, word_width_elems):   # dimensions of original row-major layout are used
     complete_n_tiles = size_n // row_tile_size
     leftover_columns = size_n % row_tile_size
     cim_matrix = [[0] * (size_m * size_n)]
@@ -247,24 +226,6 @@ def cim_layout_reverse(matrix, size_m, size_n, cim_mode, cim_inner_dim, cim_oute
             print(f"Processing leftover columns for row {d0}: input index {input_index} to output index {output_index}")
     return cim_matrix
 
-def unfold(tensor, patch_size):
-    # input tensor must be of shape CHW (channels, height (M), width (N))
-    # output tensor produced in shape PNC (patch_size, num_patches, channels)
-    # patch_size: MobileViT: 2x2 = 4 (must be square)
-    channels = len(tensor)
-    height = len(tensor[0])
-    width = len(tensor[0][0])
-    patch_sidelength = int(math.sqrt(patch_size))
-    if (height % patch_sidelength) != 0 or (width % patch_sidelength) != 0:
-        raise ValueError("[GM] Tensor height and width must be multiples of the patch sidelength.")
-    num_patches = (height * width) // patch_size  # number of patches
-    tensor_unfolded = [[[0 for _ in range(channels)] for _ in range(num_patches)] for _ in range(patch_size)]
-    for p in range(patch_size):
-        for n in range(num_patches):
-
-            tensor_unfolded[p][n] = [ tensor[c][h][w] for c in range(channels)]
-
-
 def main():
         # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Memory Read/Write Simulation with Word-Aligned Strides")
@@ -278,11 +239,10 @@ def main():
     parser.add_argument("--datamover_mode", type=int, default=0, help="Datamover mode (0=normal, 1=CIM)")
     parser.add_argument("--transp_mode", type=int, default=0, help="Transposition mode (3'b000 = none, 3'b001 = 1 elem, 3'b010 = 2 elem, 3'b100 = 4 elem)")
     parser.add_argument("--cim_mode", type=int, default=0, help="CIM mode (0=normal, 1=CIM)")
-    parser.add_argument("--cim_inner_dim", type=int, default=4, help="CIM inner dimension")
-    parser.add_argument("--cim_outer_dim", type=int, default=4, help="CIM outer dimension")
+    parser.add_argument("--row_tile_size", type=int, default=4, help="Row tile size")
     parser.add_argument("--num_channels", type=int, default=1, help="Number of channels")
-    parser.add_argument("--matrix_dim_m", type=int, default=64, help="Matrix height in elements")
-    parser.add_argument("--matrix_dim_n", type=int, default=64, help="Matrix width in elements")
+    parser.add_argument("--size_m", type=int, default=64, help="Matrix height in elements")
+    parser.add_argument("--size_n", type=int, default=64, help="Matrix width in elements")
     parser.add_argument("--output_dir", type=str, default="output", help="Directory for storing output files")
 
     args = parser.parse_args()
@@ -296,16 +256,16 @@ def main():
     READ_BASE_ADDR = args.read_base_addr
     WRITE_BASE_ADDR = args.write_base_addr
     TRANSP_MODE = args.transp_mode
-    MATRIX_DIM_C = args.num_channels
-    MATRIX_DIM_N = args.matrix_dim_n
-    MATRIX_DIM_M = args.matrix_dim_m
-    TOT_LENGTH = (args.matrix_dim_m * args.matrix_dim_n) // BANDWIDTH_ELEMS
+    TENSOR_SIZE_C = args.num_channels
+    TENSOR_SIZE_N = args.size_n
+    TENSOR_SIZE_M = args.size_m
+    TOT_LENGTH = (args.size_m * args.size_n) // BANDWIDTH_ELEMS
 
     OUTPUT_DIR = args.output_dir
 
-    if MEMORY_SIZE < ((MATRIX_DIM_C * MATRIX_DIM_N * MATRIX_DIM_M * ELEM_WIDTH // WORD_WIDTH) * 2):
+    if MEMORY_SIZE < ((TENSOR_SIZE_C * TENSOR_SIZE_N * TENSOR_SIZE_M * ELEM_WIDTH // WORD_WIDTH) * 2):
         raise ValueError(f"MEMORY_SIZE ({MEMORY_SIZE}) is too small for the given matrix size "
-                    f"({MATRIX_DIM_C}x{MATRIX_DIM_M}x{MATRIX_DIM_N}) and element width ({ELEM_WIDTH})")
+                    f"({TENSOR_SIZE_C}x{TENSOR_SIZE_M}x{TENSOR_SIZE_N}) and element width ({ELEM_WIDTH})")
     # num_elem_word must be power of two and greater than zero
     if args.num_elem_word & (args.num_elem_word - 1) != 0 or args.num_elem_word <= 0:
         raise ValueError("[GM] num_elem_word must be a power of two and greater than zero.")
@@ -313,7 +273,7 @@ def main():
     if BANDWIDTH_ALIGNED % WORD_WIDTH != 0:
         raise ValueError("[GM] BANDWIDTH_ALIGNED must be a multiple of the word size (num_elem_word * elem_width).")
     # # bandwidth width must be a multiple of word size
-    # if ((MATRIX_DIM_N * ELEM_WIDTH) < BANDWIDTH_ALIGNED):
+    # if ((TENSOR_SIZE_N * ELEM_WIDTH) < BANDWIDTH_ALIGNED):
     #     raise ValueError("[GM] Matrix width (N) in bits must be at least as large as BANDWIDTH_ALIGNED.")
     # read_tot_length must not exceed 12-bit register capacity (4096)
 
@@ -329,8 +289,8 @@ def main():
         # transp_mode must be valid (1=1elem, 2=2elem, 4=4elem)
         if args.transp_mode not in [1, 2, 4]:
             raise ValueError("[GM] transp_mode must be 1 (1 elem), 2 (2 elem), or 4 (4 elem).")
-        if (MATRIX_DIM_N % args.transp_mode) != 0:
-            raise ValueError(f"[GM] Matrix width N ({MATRIX_DIM_N}) must be a multiple of transp_mode ({args.transp_mode}).")
+        if (TENSOR_SIZE_N % args.transp_mode) != 0:
+            raise ValueError(f"[GM] Matrix width N ({TENSOR_SIZE_N}) must be a multiple of transp_mode ({args.transp_mode}).")
 
     print(f"Memory Size: {MEMORY_SIZE} entries")
     print(f"Word Size: {WORD_WIDTH} bits")
@@ -347,11 +307,11 @@ def main():
     memory_flat = convert_memory_to_vector(memory, ELEM_WIDTH, WORD_WIDTH)
 
     # Extract matrix (read dimensions) from memory
-    input_matrix = [[0 for _ in range(MATRIX_DIM_N)] for _ in range(MATRIX_DIM_M)]
-    for d1 in range(MATRIX_DIM_M):
+    input_matrix = [[0 for _ in range(TENSOR_SIZE_N)] for _ in range(TENSOR_SIZE_M)]
+    for d1 in range(TENSOR_SIZE_M):
         row = []
-        for d0 in range(MATRIX_DIM_N):
-            input_matrix[d1][d0] = memory_flat[(READ_BASE_ADDR + d1 * MATRIX_DIM_N + d0)]
+        for d0 in range(TENSOR_SIZE_N):
+            input_matrix[d1][d0] = memory_flat[(READ_BASE_ADDR + d1 * TENSOR_SIZE_N + d0)]
 
     # Print input matrix
     print("Input Matrix:")
@@ -361,21 +321,23 @@ def main():
     if args.datamover_mode == 0: # Copy mode
         output_matrix = input_matrix
     elif args.datamover_mode == 1: # Transpose mode
-        output_matrix = transpose(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, TRANSP_MODE)
+        output_matrix = transpose(input_matrix, TENSOR_SIZE_M, TENSOR_SIZE_N, TRANSP_MODE)
     elif args.datamover_mode == 2: # CIM mode
-        if args.cim_mode == 0:   # row-major -> A-Layout
-            output_matrix = cim_layout(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim, args.num_elem_word)
-        elif args.cim_mode == 1:               # A-Layout -> row-major (use matrix dimenstions of original row-major layout)
-            output_matrix = cim_layout_reverse(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim, args.num_elem_word)
-    elif args.datamover_mode == 3: # CIM layout transpose mode (INPUT SIZES EXPECTED IN ORIGINAL (ROW-MAJOR) LAYOUT FORM!)
-        input_matrix_chw = cim_layout_reverse(input_matrix, MATRIX_DIM_M, MATRIX_DIM_N, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim, args.num_elem_word)
-        # Reshape input_matrix_chw to MATRIX_DIM_M x MATRIX_DIM_N
+        if args.cim_mode == 0:   # row-major -> CIM-layout
+            output_matrix = cim_layout(input_matrix, TENSOR_SIZE_M, TENSOR_SIZE_N, args.row_tile_size, args.num_elem_word)
+        elif args.cim_mode == 1:               # CIM-layout -> row-major (use matrix dimenstions of original row-major layout)
+            output_matrix = cim_layout_reverse(input_matrix, TENSOR_SIZE_M, TENSOR_SIZE_N, args.row_tile_size, args.num_elem_word)
+    elif args.datamover_mode == 3: # CIM-layout transpose mode (INPUT SIZES EXPECTED IN ORIGINAL (ROW-MAJOR) LAYOUT FORM!)
+        input_matrix_chw = cim_layout_reverse(input_matrix, TENSOR_SIZE_M, TENSOR_SIZE_N, args.row_tile_size, args.num_elem_word)
+        # Reshape input_matrix_chw to TENSOR_SIZE_M x TENSOR_SIZE_N
         input_matrix_chw_flat = [elem for row in input_matrix_chw for elem in row]
-        input_matrix_chw = [input_matrix_chw_flat[i * MATRIX_DIM_N:(i + 1) * MATRIX_DIM_N] for i in range(MATRIX_DIM_M)]
-        transposed_chw = transpose(input_matrix_chw, MATRIX_DIM_M, MATRIX_DIM_N, TRANSP_MODE)
-        transposed_chw_flat = [elem for row in transposed_chw for elem in row]
-        transposed_chw = [transposed_chw_flat[i * MATRIX_DIM_N:(i + 1) * MATRIX_DIM_N] for i in range(MATRIX_DIM_M)]
-        output_matrix = cim_layout(transposed_chw, MATRIX_DIM_M, MATRIX_DIM_N, args.cim_mode, args.cim_inner_dim, args.cim_outer_dim, args.num_elem_word)
+        input_matrix_chw = [input_matrix_chw_flat[i * TENSOR_SIZE_N:(i + 1) * TENSOR_SIZE_N] for i in range(TENSOR_SIZE_M)]
+        print("\nInput Matrix reshaped to CHW layout:")
+        print(input_matrix_chw)
+        transposed_chw = transpose(input_matrix_chw, TENSOR_SIZE_M, TENSOR_SIZE_N, TRANSP_MODE)
+        print("\nTransposed CHW Matrix:")
+        print(transposed_chw)
+        output_matrix = cim_layout(transposed_chw, TENSOR_SIZE_N, TENSOR_SIZE_M, args.row_tile_size, args.num_elem_word)
     else:
         raise ValueError("[GM] datamover_mode must be 0 (copy), 1 (transpose), or 2 (CIM).")
 
@@ -409,11 +371,10 @@ def main():
         'datamover_mode': args.datamover_mode,
         'transp_mode': args.transp_mode,
         'cim_mode': args.cim_mode,
-        'cim_inner_dim': args.cim_inner_dim,
-        'cim_outer_dim': args.cim_outer_dim,
-        'matrix_dim_m': args.matrix_dim_m,
+        'row_tile_size': args.row_tile_size,
+        'size_m': args.size_m,
         'num_channels': args.num_channels,
-        'matrix_dim_n': args.matrix_dim_n
+        'size_n': args.size_n
     }
     write_data_header_file(OUTPUT_DIR, input_matrix, output_matrix, config_params)
 

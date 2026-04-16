@@ -2,7 +2,7 @@
  * datamover_package.sv
  * Francesco Conti <f.conti@unibo.it>
  *
- * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
+ *           Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 package datamover_package;
@@ -38,9 +39,9 @@ package datamover_package;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
     logic [2:0]                       transp_stride; // 1, 2, or 4 elements
     datamover_mode_e                  datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
-    logic [11:0]                      matrix_dim_m;
-    logic [11:0]                      matrix_dim_n;
-    logic [20:0]                      total_elements; // num_channels * dim_m * dim_n (pre-computed by HAL)
+    logic [11:0]                      tensor_size_m;
+    logic [11:0]                      tensor_size_n;
+    logic [20:0]                      total_elements; // num_channels * size_m * size_n (pre-computed by HAL)
     logic [10:0]                      num_channels;   // number of channels (for unfolding/folding)
   } ctrl_engine_t;
 
@@ -73,8 +74,8 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REG_OUT_D2           = 32'h24;  // [31:16] out_d2_stride; [15:0] out_d2_len
   parameter int unsigned DATAMOVER_REG_OUT_D3           = 32'h28;  // [31:16] out_d3_stride; [15:0] out_d3_len
   parameter int unsigned DATAMOVER_REG_IN_OUT_D4_STRIDE = 32'h2C;  // [31:16] out_d4_stride; [15:0] in_d4_stride (d4_len unnecessary due to tot_len)
-  parameter int unsigned DATAMOVER_REG_MATRIX_DIM        = 32'h30;  // [31:16] matrix_dim_n; [15:0] matrix_dim_m
-  parameter int unsigned DATAMOVER_REG_CHANNELS          = 32'h34;  // [31:11] total_elements = num_channels * dim_m * dim_n (pre-compute to save HW resources); [10:0] num_channels (for unfolding/folding)
+  parameter int unsigned DATAMOVER_REG_MATRIX_DIM        = 32'h30;  // [31:16] tensor_size_n; [15:0] tensor_size_m
+  parameter int unsigned DATAMOVER_REG_CHANNELS          = 32'h34;  // [31:11] total_elements = num_channels * size_m * size_n (pre-compute to save HW resources); [10:0] num_channels (for unfolding/folding)
   parameter int unsigned DATAMOVER_REG_CTRL_ENGINE       = 32'h38;  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
 
   // Note: increase N_IO_REGS in datamover_top.sv when adding new registers here!

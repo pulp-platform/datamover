@@ -2,6 +2,9 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
+# Standalone testing setup OUTDATED!
+# ToDo: Implement SW-based testing with a CPU core
+
 include config.mk
 
 SHELL = /usr/bin/env bash
@@ -64,8 +67,8 @@ TESTBENCH_DEFINES += -DSTIM_MEM_SIZE=${STIM_MEM_SIZE}
 TESTBENCH_DEFINES += -DSTIM_TRANSP_MODE=${STIM_TRANSP_MODE}
 # TESTBENCH_DEFINES += -DSTIM_TRANSP_LEN=${STIM_TRANSP_LEN}
 
-TESTBENCH_DEFINES += -DSTIM_MATRIX_DIM_M=${STIM_MATRIX_DIM_M}
-TESTBENCH_DEFINES += -DSTIM_MATRIX_DIM_N=${STIM_MATRIX_DIM_N}
+TESTBENCH_DEFINES += -DSTIM_TENSOR_SIZE_M=${STIM_TENSOR_SIZE_M}
+TESTBENCH_DEFINES += -DSTIM_TENSOR_SIZE_N=${STIM_TENSOR_SIZE_N}
 
 TESTBENCH_DEFINES += -DSTIM_NUM_CHANNELS=${STIM_NUM_CHANNELS}
 TESTBENCH_DEFINES += -DSTIM_TOTAL_ELEMENTS=${STIM_TOTAL_ELEMENTS}
@@ -86,25 +89,25 @@ help:
 	@echo "=========================================="
 	@echo ""
 	@echo "Available presets:"
-	@echo "  small-matrix    : 4x4 matrix (transpose)"
-	@echo "  medium-matrix   : 64x64 matrix (transpose)"
-	@echo "  large-matrix    : 448x448 matrix (transpose)"
-	@echo "  transpose-test  : 32x32 matrix (transpose)"
-	@echo "  rect-wide       : 64x256 wide rectangular matrix (transpose)"
-	@echo "  rect-tall       : 256x64 tall rectangular matrix (transpose)"
-	@echo "  rect-narrow     : 16x128 narrow rectangular matrix (transpose)"
-	@echo "  rect-elongated  : 128x32 elongated rectangular matrix (transpose)"
-	@echo "  copy-small      : 4x4 matrix (copy mode)"
-	@echo "  copy-medium     : 64x64 matrix (copy mode)"
-	@echo "  cim-small       : 32x128 matrix (CIM mode)"
-	@echo "  cim-medium      : 64x256 matrix (CIM mode)"
-	@echo "  cim-large       : 128x256 matrix (CIM mode)"
+	@echo "  small-tensor    : 4x4 tensor (transpose)"
+	@echo "  medium-tensor   : 64x64 tensor (transpose)"
+	@echo "  large-tensor    : 448x448 tensor (transpose)"
+	@echo "  transpose-test  : 32x32 tensor (transpose)"
+	@echo "  rect-wide       : 64x256 wide rectangular tensor (transpose)"
+	@echo "  rect-tall       : 256x64 tall rectangular tensor (transpose)"
+	@echo "  rect-narrow     : 16x128 narrow rectangular tensor (transpose)"
+	@echo "  rect-elongated  : 128x32 elongated rectangular tensor (transpose)"
+	@echo "  copy-small      : 4x4 tensor (copy mode)"
+	@echo "  copy-medium     : 64x64 tensor (copy mode)"
+	@echo "  cim-small       : 32x128 tensor (CIM mode)"
+	@echo "  cim-medium      : 64x256 tensor (CIM mode)"
+	@echo "  cim-large       : 128x256 tensor (CIM mode)"
 	@echo "  custom          : User-defined (config.mk default)"
 	@echo ""
 	@echo "Usage examples:"
-	@echo "  make sim CONFIG_PRESET=small-matrix"
+	@echo "  make sim CONFIG_PRESET=small-tensor"
 	@echo "  make sim CONFIG_PRESET=transpose-test TRANSP_MODE=2"
-	@echo "  make sim MATRIX_DIM_M=64 MATRIX_DIM_N=32"
+	@echo "  make sim TENSOR_SIZE_M=64 TENSOR_SIZE_N=32"
 	@echo ""
 	@echo "Test targets:"
 	@echo "  make test-all-presets              : Test all presets (detailed reporting)"
@@ -119,7 +122,7 @@ help:
 test-all-presets:
 	@echo "Testing all configuration presets..."
 	@failed_tests=""; \
-	for preset in small-matrix medium-matrix large-matrix transpose-test rect-wide rect-tall rect-narrow rect-elongated copy-small copy-medium cim-small cim-medium cim-large; do \
+	for preset in small-tensor medium-tensor large-tensor transpose-test rect-wide rect-tall rect-narrow rect-elongated copy-small copy-medium cim-small cim-medium cim-large; do \
 		echo "=== Testing CONFIG_PRESET=$$preset ==="; \
 		if $(MAKE) sim CONFIG_PRESET=$$preset; then \
 			echo "✓ $$preset: PASSED"; \
@@ -169,7 +172,7 @@ test-transpose-grid:
 			for word_width in 16 32 64; do \
 				total_tests=$$((total_tests + 1)); \
 				echo "=== Testing BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
-				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
+				if $(MAKE) sim CONFIG_PRESET=medium-tensor BANDWIDTH=$$bandwidth DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
 					echo "✓ BANDWIDTH=$$bandwidth TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
 					passed_tests=$$((passed_tests + 1)); \
 				else \
@@ -203,7 +206,7 @@ test-transpose-grid-misaligned:
 			for word_width in 32; do \
 				total_tests=$$((total_tests + 1)); \
 				echo "=== Testing BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
-				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
+				if $(MAKE) sim CONFIG_PRESET=medium-tensor BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
 					echo "✓ BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
 					passed_tests=$$((passed_tests + 1)); \
 				else \
@@ -218,7 +221,7 @@ test-transpose-grid-misaligned:
 			for word_width in 64; do \
 				total_tests=$$((total_tests + 1)); \
 				echo "=== Testing BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width ==="; \
-				if $(MAKE) sim CONFIG_PRESET=medium-matrix BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
+				if $(MAKE) sim CONFIG_PRESET=medium-tensor BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 DATAMOVER_MODE=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width; then \
 					echo "✓ BANDWIDTH=$$bandwidth MISALIGNED_ACCESSES=1 TRANSP_MODE=$$transp_mode WORD_WIDTH=$$word_width: PASSED"; \
 					passed_tests=$$((passed_tests + 1)); \
 				else \
@@ -249,35 +252,31 @@ test-cim-grid:
 	passed_tests=0; \
 	for bandwidth in 128 256; do \
 		for word_width in 32 64; do \
-			for cim_inner_dim in 32 64; do \
-				for cim_outer_dim in 32 64; do \
-					total_tests=$$((total_tests + 1)); \
-					echo "=== Testing BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim ==="; \
-					if $(MAKE) sim CONFIG_PRESET=cim-large DATAMOVER_MODE=2 CIM_MODE=0 BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim; then \
-						echo "✓ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim: PASSED"; \
-						passed_tests=$$((passed_tests + 1)); \
-					else \
-						echo "✗ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim: FAILED"; \
-						failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/WORD_WIDTH=$$word_width/CIM_INNER_DIM=$$cim_inner_dim/CIM_OUTER_DIM=$$cim_outer_dim"; \
-					fi; \
-				done; \
+			for row_tile_size in 32 64; do \
+				total_tests=$$((total_tests + 1)); \
+				echo "=== Testing BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size ==="; \
+				if $(MAKE) sim CONFIG_PRESET=cim-large DATAMOVER_MODE=2 CIM_MODE=0 BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size; then \
+					echo "✓ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size: PASSED"; \
+					passed_tests=$$((passed_tests + 1)); \
+				else \
+					echo "✗ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size: FAILED"; \
+					failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/WORD_WIDTH=$$word_width/ROW_TILE_SIZE=$$row_tile_size"; \
+				fi; \
 			done; \
 		done; \
 	done; \
 	for bandwidth in 512; do \
 		for word_width in 32 64; do \
-			for cim_inner_dim in 64; do \
-				for cim_outer_dim in 64; do \
-					total_tests=$$((total_tests + 1)); \
-					echo "=== Testing BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim ==="; \
-					if $(MAKE) sim CONFIG_PRESET=cim-large DATAMOVER_MODE=2 CIM_MODE=0 BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim; then \
-						echo "✓ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim: PASSED"; \
-						passed_tests=$$((passed_tests + 1)); \
-					else \
-						echo "✗ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width CIM_INNER_DIM=$$cim_inner_dim CIM_OUTER_DIM=$$cim_outer_dim: FAILED"; \
-						failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/WORD_WIDTH=$$word_width/CIM_INNER_DIM=$$cim_inner_dim/CIM_OUTER_DIM=$$cim_outer_dim"; \
-					fi; \
-				done; \
+			for row_tile_size in 64; do \
+				total_tests=$$((total_tests + 1)); \
+				echo "=== Testing BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size ==="; \
+				if $(MAKE) sim CONFIG_PRESET=cim-large DATAMOVER_MODE=2 CIM_MODE=0 BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size; then \
+					echo "✓ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size: PASSED"; \
+					passed_tests=$$((passed_tests + 1)); \
+				else \
+					echo "✗ BANDWIDTH=$$bandwidth WORD_WIDTH=$$word_width ROW_TILE_SIZE=$$row_tile_size: FAILED"; \
+					failed_tests="$$failed_tests BANDWIDTH=$$bandwidth/WORD_WIDTH=$$word_width/ROW_TILE_SIZE=$$row_tile_size"; \
+				fi; \
 			done; \
 		done; \
 	done; \
@@ -295,9 +294,6 @@ test-cim-grid:
 		echo "====== SUMMARY: All CIM configuration combinations PASSED! ======"; \
 	fi
 
-# ToDo: CIM tests grid
-
-
 # Validate current configuration
 validate-config:
 	@echo "Validating current configuration..."
@@ -306,14 +302,13 @@ validate-config:
 		--word_width $(WORD_WIDTH) \
 		--elem_width $(ELEM_WIDTH) \
 		--memory_size $(MEMORY_SIZE) \
-		--num_channels $(MATRIX_DIM_C) \
 		--datamover_mode $(DATAMOVER_MODE) \
 		--transp_mode $(TRANSP_MODE) \
 		--cim_mode $(CIM_MODE) \
-		--cim_inner_dim $(CIM_INNER_DIM) \
-		--cim_outer_dim $(CIM_OUTER_DIM) \
-		--matrix_dim_m $(MATRIX_DIM_M) \
-		--matrix_dim_n $(MATRIX_DIM_N)
+		--row_tile_size $(ROW_TILE_SIZE) \
+		--size_m $(TENSOR_SIZE_M) \
+		--size_n $(TENSOR_SIZE_N) \
+		--num_channels $(NUM_CHANNELS)
 
 clean-sim:
 	rm -rf $(SIM_PATH)/work
@@ -342,15 +337,13 @@ stimuli: clean-stimuli validate-config
 	--bandwidth_bits $(BANDWIDTH) \
 	--num_elem_word $(NUM_ELEM_WORD) \
 	--elem_width $(ELEM_WIDTH) \
-	--misaligned_accesses $(MISALIGNED_ACCESSES) \
 	--datamover_mode $(DATAMOVER_MODE) \
 	--transp_mode $(STIM_TRANSP_MODE) \
 	--cim_mode $(CIM_MODE) \
-	--cim_inner_dim $(CIM_INNER_DIM) \
-	--cim_outer_dim $(CIM_OUTER_DIM) \
-	--matrix_dim_m $(MATRIX_DIM_M) \
-	--matrix_dim_n $(MATRIX_DIM_N) \
-	--num_channels $(MATRIX_DIM_C) \
+	--row_tile_size $(ROW_TILE_SIZE) \
+	--size_m $(TENSOR_SIZE_M) \
+	--size_n $(TENSOR_SIZE_N) \
+	--num_channels $(NUM_CHANNELS) \
 	--output_dir "verif/python/generated"
 
 # Bender

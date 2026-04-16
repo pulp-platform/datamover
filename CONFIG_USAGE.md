@@ -1,5 +1,6 @@
 # Configuration Examples and Usage Guide
 
+NOTE: OUTDATED TESTING METHODOLOGY!
 This document describes how to use the flexible configuration system for the datamover HWPE project.
 
 ## 🚀 Quick Commands
@@ -12,7 +13,7 @@ make help
 make validate-config
 
 # Run with preset
-make sim CONFIG_PRESET=small-matrix
+make sim CONFIG_PRESET=small-tensor
 
 # Override specific parameter
 make sim CONFIG_PRESET=transpose-test TRANSP_MODE=4
@@ -35,19 +36,19 @@ make test-cim-grid
 Run simulations with predefined configurations:
 
 ```bash
-# Small matrix for quick testing
-make sim CONFIG_PRESET=small-matrix
+# Small tensor for quick testing
+make sim CONFIG_PRESET=small-tensor
 
-# Medium matrix for moderate testing
-make sim CONFIG_PRESET=medium-matrix
+# Medium tensor for moderate testing
+make sim CONFIG_PRESET=medium-tensor
 
-# Large matrix for stress testing
-make sim CONFIG_PRESET=large-matrix
+# Large tensor for stress testing
+make sim CONFIG_PRESET=large-tensor
 
 # Transpose-focused testing
 make sim CONFIG_PRESET=transpose-test
 
-# Rectangular matrix testing
+# Rectangular tensor testing
 make sim CONFIG_PRESET=rect-wide
 make sim CONFIG_PRESET=rect-tall
 make sim CONFIG_PRESET=rect-narrow
@@ -68,14 +69,14 @@ make sim CONFIG_PRESET=cim-large
 Override specific parameters while keeping preset base:
 
 ```bash
-# Use small-matrix preset but change transpose mode
-make sim CONFIG_PRESET=small-matrix TRANSP_MODE=2
+# Use small-tensor preset but change transpose mode
+make sim CONFIG_PRESET=small-tensor TRANSP_MODE=2
 
-# Use medium-matrix preset but different element width
-make sim CONFIG_PRESET=medium-matrix ELEM_WIDTH=16
+# Use medium-tensor preset but different element width
+make sim CONFIG_PRESET=medium-tensor ELEM_WIDTH=16
 
-# Override matrix dimensions
-make sim CONFIG_PRESET=transpose-test MATRIX_DIM_M=64 MATRIX_DIM_N=64
+# Override tensor dimensions
+make sim CONFIG_PRESET=transpose-test TENSOR_SIZE_M=64 TENSOR_SIZE_N=64
 ```
 
 ### Custom Configuration
@@ -84,7 +85,7 @@ Use completely custom parameters:
 
 ```bash
 # Custom configuration via command line
-make sim CONFIG_PRESET=custom BANDWIDTH=512 ELEM_WIDTH=16 MATRIX_DIM_M=128 MATRIX_DIM_N=128
+make sim CONFIG_PRESET=custom BANDWIDTH=512 ELEM_WIDTH=16 TENSOR_SIZE_M=128 TENSOR_SIZE_N=128
 
 # Or edit config.mk for persistent custom settings
 make sim CONFIG_PRESET=custom
@@ -100,11 +101,11 @@ Parameters are resolved in this order (highest priority first):
 
 ## Available Presets
 
-| Preset | Description | Matrix Size | Memory | Mode |
+| Preset | Description | Tensor Size | Memory | Mode |
 |--------|-------------|-------------|--------|------|
-| `small-matrix` | Quick testing | 4x4 | 2KB | Transpose |
-| `medium-matrix` | Moderate testing | 64x64 | 16KB | Transpose |
-| `large-matrix` | Stress testing | 448x448 | 512KB | Transpose |
+| `small-tensor` | Quick testing | 4x4 | 2KB | Transpose |
+| `medium-tensor` | Moderate testing | 64x64 | 16KB | Transpose |
+| `large-tensor` | Stress testing | 448x448 | 512KB | Transpose |
 | `transpose-test` | Transpose focus | 32x32 | 64KB | Transpose |
 | `rect-wide` | Wide rectangle | 64x256 | 128KB | Transpose |
 | `rect-tall` | Tall rectangle | 256x64 | 128KB | Transpose |
@@ -128,17 +129,17 @@ The datamover supports three main operation modes:
 - **Example**: `make sim CONFIG_PRESET=copy-small`
 
 ### Transpose Mode (DATAMOVER_MODE=1)
-- **Purpose**: Matrix transposition during data movement
+- **Purpose**: Tensor transposition during data movement
 - **Use case**: Data layout transformations for optimized access patterns
 - **Transpose elements**: 1, 2, or 4 elements per cycle (`TRANSP_MODE`)
-- **Presets**: `small-matrix`, `medium-matrix`, `large-matrix`, `transpose-test`, `rect-*`
+- **Presets**: `small-tensor`, `medium-tensor`, `large-tensor`, `transpose-test`, `rect-*`
 - **Example**: `make sim CONFIG_PRESET=transpose-test TRANSP_MODE=2`
 
 ### CIM Mode (DATAMOVER_MODE=2)
 - **Purpose**: Compute-In-Memory data layout conversion
 - **Use case**: Converting row-major data to CIM accelerator layouts
-- **CIM layouts**: A-Layout (`CIM_MODE=0`) or B-Layout (`CIM_MODE=1`)
-- **Dimensions**: Configurable `CIM_INNER_DIM` and `CIM_OUTER_DIM`
+- **CIM layout**: Row-major -> CIM-layout (`CIM_MODE=0`) or CIM-layout -> row-major (`CIM_MODE=1`)
+- **Dimensions**: Configurable `ROW_TILE_SIZE`
 - **Presets**: `cim-small`, `cim-medium`, `cim-large`
 - **Example**: `make sim CONFIG_PRESET=cim-medium`
 
@@ -146,15 +147,14 @@ The datamover supports three main operation modes:
 
 | Parameter | Values | Description |
 |-----------|---------|-------------|
-| `DATAMOVER_MODE` | 0,1,2 | Operation mode (0=Copy, 1=Transpose, 2=CIM) |
+| `DATAMOVER_MODE` | 0,1,2 | Operation mode (0=Copy, 1=Transpose, 2=CIM layout conversion, 3=CIM transpose, 4=unfold, 5=fold) |
 | `TRANSP_MODE` | 0,1,2,4 | Transpose elements per cycle |
-| `CIM_MODE` | 0,1 | CIM layout (0=A-Layout, 1=B-Layout) |
-| `CIM_INNER_DIM` | 32,64,... | CIM inner dimension in elements |
-| `CIM_OUTER_DIM` | 16,32,64,... | CIM outer dimension in elements |
+| `CIM_MODE` | 0,1 | CIM layout (0=row-major->CIM-Layout, 1=CIM-Layout->row_major) |
+| `ROW_TILE_SIZE` | 32,64,... | Row tile size in elements |
 | `ELEM_WIDTH` | 8 | Element width in bits |
 | `BANDWIDTH` | 64,128,256,512,1024 | Memory bandwidth in bits |
-| `MATRIX_DIM_M` | Any | Matrix height in elements |
-| `MATRIX_DIM_N` | Any | Matrix width in elements |
+| `TENSOR_SIZE_M` | Any | Tensor height in elements |
+| `TENSOR_SIZE_N` | Any | Tensor width in elements |
 | `MEMORY_SIZE` | Any | Available memory in words |
 | `WORD_WIDTH` | 16,32,64 | Word width in bits (typically 32) |
 
@@ -205,8 +205,8 @@ ifeq ($(CONFIG_PRESET),my-test)
     ELEM_WIDTH = 16
     MEMORY_SIZE = 32768
     TRANSP_MODE = 4
-    MATRIX_DIM_M = 64
-    MATRIX_DIM_N = 32
+    TENSOR_SIZE_M = 64
+    TENSOR_SIZE_N = 32
     CONFIG_DESC = "Custom test for specific use case"
 endif
 ```
@@ -237,9 +237,9 @@ The system includes the following built-in test targets:
 # Built-in targets (already available)
 test-all-presets:
 	# Tests all 8 configuration presets (stops on first failure)
-	$(MAKE) sim CONFIG_PRESET=small-matrix
-	$(MAKE) sim CONFIG_PRESET=medium-matrix
-	$(MAKE) sim CONFIG_PRESET=large-matrix
+	$(MAKE) sim CONFIG_PRESET=small-tensor
+	$(MAKE) sim CONFIG_PRESET=medium-tensor
+	$(MAKE) sim CONFIG_PRESET=large-tensor
 	$(MAKE) sim CONFIG_PRESET=transpose-test
 	$(MAKE) sim CONFIG_PRESET=rect-wide
 	$(MAKE) sim CONFIG_PRESET=rect-tall
@@ -264,9 +264,9 @@ For additional custom test suites, you can create your own targets:
 # Add to your Makefile for custom test suites
 test-custom-suite:
 	@echo "Testing custom configuration suite..."
-	$(MAKE) sim CONFIG_PRESET=small-matrix TRANSP_MODE=2
-	$(MAKE) sim CONFIG_PRESET=medium-matrix ELEM_WIDTH=16
-	$(MAKE) sim CONFIG_PRESET=custom BANDWIDTH=1024 MATRIX_DIM_M=64 MATRIX_DIM_N=64
+	$(MAKE) sim CONFIG_PRESET=small-tensor TRANSP_MODE=2
+	$(MAKE) sim CONFIG_PRESET=medium-tensor ELEM_WIDTH=16
+	$(MAKE) sim CONFIG_PRESET=custom BANDWIDTH=1024 TENSOR_SIZE_M=64 TENSOR_SIZE_N=64
 ```
 
 ### Configuration Validation
@@ -274,7 +274,7 @@ test-custom-suite:
 The system includes automatic validation:
 
 - TRANSP_MODE must be 0, 1, 2, or 4
-- Matrix dimensions must fit in available memory
+- Tensor dimensions must fit in available memory
 - Bandwidth and element width must be compatible
 
 ### Debug Configuration
@@ -286,19 +286,19 @@ To see all computed values and configuration info:
 make help
 
 # Validate configuration with detailed output
-make validate-config CONFIG_PRESET=small-matrix
+make validate-config CONFIG_PRESET=small-tensor
 
 # Enable debug output in config.mk (uncomment $(info) lines)
-make sim CONFIG_PRESET=small-matrix | grep -E "(BANDWIDTH|MATRIX|STIM)"
+make sim CONFIG_PRESET=small-tensor | grep -E "(BANDWIDTH|TENSOR|STIM)"
 ```
 
 ## 💡 Usage Patterns
 
 ```bash
 # Development cycle
-make sim CONFIG_PRESET=small-matrix      # Quick check
+make sim CONFIG_PRESET=small-tensor      # Quick check
 make sim CONFIG_PRESET=transpose-test    # Feature test
-make sim CONFIG_PRESET=large-matrix      # Stress test
+make sim CONFIG_PRESET=large-tensor      # Stress test
 
 # Research/tuning
 make sim CONFIG_PRESET=custom BANDWIDTH=1024 ELEM_WIDTH=32
@@ -310,26 +310,26 @@ make help
 
 ## Tips and Best Practices
 
-1. **Start Small**: Use `small-matrix` for initial testing, then scale up
+1. **Start Small**: Use `small-tensor` for initial testing, then scale up
 2. **Test Transpose**: Use `transpose-test` preset for transpose functionality
 3. **Rectangular Testing**: Use rectangular presets (`rect-wide`, `rect-tall`, etc.) for non-square matrices
 4. **Parameter Validation**: Always run `make validate-config` to check computed values
 5. **Documentation**: Document custom presets with clear descriptions
-6. **Memory Requirements**: Ensure matrix dimensions fit within available memory
-7. **Bandwidth Alignment**: Both matrix dimensions should be ≥ BANDWIDTH/ELEM_WIDTH
+6. **Memory Requirements**: Ensure tensor dimensions fit within available memory
+7. **Bandwidth Alignment**: Both tensor dimensions should be ≥ BANDWIDTH/ELEM_WIDTH
 
 ## Example Workflows
 
 ### Development Workflow
 ```bash
 # Quick functionality check
-make sim CONFIG_PRESET=small-matrix
+make sim CONFIG_PRESET=small-tensor
 
 # Detailed transpose testing
 make sim CONFIG_PRESET=transpose-test
 
 # Stress testing with large matrices
-make sim CONFIG_PRESET=large-matrix
+make sim CONFIG_PRESET=large-tensor
 ```
 
 ### CI/Testing Workflow
@@ -351,8 +351,8 @@ make test-cim-grid
 make sim CONFIG_PRESET=custom \
     BANDWIDTH=1024 \
     ELEM_WIDTH=32 \
-    MATRIX_DIM_M=256 \
-    MATRIX_DIM_N=128 \
+    TENSOR_SIZE_M=256 \
+    TENSOR_SIZE_N=128 \
     TRANSP_MODE=4
 ```
 
@@ -375,20 +375,20 @@ The configuration system consists of these key files:
    make validate-config CONFIG_PRESET=my-preset  # Check for errors
    ```
 
-2. **Memory insufficient**: Matrix too large for available memory
+2. **Memory insufficient**: Tensor too large for available memory
    ```bash
-   # Reduce matrix size or increase MEMORY_SIZE
-   make sim CONFIG_PRESET=small-matrix  # Use smaller preset
+   # Reduce tensor size or increase MEMORY_SIZE
+   make sim CONFIG_PRESET=small-tensor  # Use smaller preset
    ```
 
-3. **Bandwidth alignment warnings**: Matrix dimensions not aligned to bandwidth
+3. **Bandwidth alignment warnings**: Tensor dimensions not aligned to bandwidth
    ```bash
-   # Adjust matrix dimensions to be multiples of BANDWIDTH/ELEM_WIDTH
-   make sim MATRIX_DIM_M=32 MATRIX_DIM_N=32  # Use aligned dimensions
+   # Adjust tensor dimensions to be multiples of BANDWIDTH/ELEM_WIDTH
+   make sim TENSOR_SIZE_M=32 TENSOR_SIZE_N=32  # Use aligned dimensions
    ```
 
 4. **Configuration not taking effect**: Check parameter precedence
    ```bash
    # Command line overrides presets
-   make sim CONFIG_PRESET=small-matrix TRANSP_MODE=2  # Override works
+   make sim CONFIG_PRESET=small-tensor TRANSP_MODE=2  # Override works
    ```

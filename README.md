@@ -15,7 +15,7 @@ Configure the hardware and testbench parameters in `config.mk`.
 - `NUM_ELEM_WORD * ELEM_WIDTH` is the width of a memory bank word. `BANDWIDTH` must be divisible by such word width, as `BANDWIDTH / (NUM_ELEM_WORD * ELEM_WIDTH)` is the number of banks accessed in parallel by the HWPE in one memory access.
 - `NUM_ELEM_WORD` must be a power of two due to memory addressing. Currently, the configurations `NUM_ELEM_WORD` = 2,4 support the datamover's transposition mode (1 elem, 2 elems, 4 elems). `NUM_ELEM_WORD` = 1 and `NUM_ELEM_WORD` > 4 is not supported.
 
-### Testbench parameters
+### Testbench parameters - OUTDATED
 
 The following parameters are used to generate the testbench stimuli and to configure the datamover registers.
 
@@ -66,7 +66,7 @@ make sim
 ```
 By default QuestaSim GUI is active. You can simulate the RTL in CLI mode with `GUI=0 make sim`.
 
-## Testing and Validation
+## Testing and Validation - OUTDATED
 
 The datamover HWPE provides several test targets for comprehensive validation:
 

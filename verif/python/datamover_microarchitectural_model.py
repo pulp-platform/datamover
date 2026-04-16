@@ -6,6 +6,8 @@ from unittest import case
 import numpy as np
 from dataclasses import dataclass
 
+# OUTDATED: replaced by datamover_golden_model.py
+
 RANDOM_STIMULI = False  # If False, stimuli are generated in a counting fashion
 
 # HW Parameters

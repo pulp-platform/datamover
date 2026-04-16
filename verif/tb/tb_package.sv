@@ -2,7 +2,7 @@
  * tb_package.sv
  * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  *
- * Copyright (C) 2018-2023 ETH Zurich, University of Bologna
+ * Copyright (C) 2018-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -32,7 +32,6 @@ package tb_package;
   parameter BANDWIDTH = `BANDWIDTH;
   parameter NUM_ELEM_WORD = `NUM_ELEM_WORD;
   parameter ELEM_WIDTH = `ELEM_WIDTH;
-  parameter MISALIGNED_ACCESSES = `MISALIGNED_ACCESSES;
 
   parameter logic [2:0] TRANSP_MODE = `STIM_TRANSP_MODE;
 
@@ -189,8 +188,8 @@ package tb_package;
           if (read_data !== golden_data) begin
               status = 1;
               $display("MISMATCH at address %0d: Expected %h, Actual %h", start_addr + i, golden_data, read_data);
-          end else if (i<100) begin//else begin
-              $display("MATCH at address %0d: %h", start_addr + i, read_data);
+        //   end else begin
+        //       $display("MATCH at address %0d: %h", start_addr + i, read_data);
           end
       end
 

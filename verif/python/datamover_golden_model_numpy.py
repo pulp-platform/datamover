@@ -17,8 +17,7 @@ MEMORY_SIZE = 131072
 DATAMOVER_MODE = 5        # 0: copy, 1: transpose, 2: CIM data layout conversion, 3: CIM layout transpose, 4: unfold (MobileViT), 5: fold (MobileViT), other values: not accepted
 TRANSP_MODE = 1
 CIM_MODE = 0
-CIM_INNER_DIM = 64
-CIM_OUTER_DIM = 64
+ROW_TILE_SIZE = 64
 SIZE_C = CHANNELS
 SIZE_M = HEIGHT
 SIZE_N = WIDTH
@@ -56,11 +55,10 @@ def write_data_header_file(output_dir, input_matrix, output_matrix, config_param
         f"#define DATAMOVER_MODE {config_params['datamover_mode']}",
         f"#define TRANSP_MODE {config_params['transp_mode']}",
         f"#define CIM_MODE {config_params['cim_mode']}",
-        f"#define CIM_INNER_DIM {config_params['cim_inner_dim']}",
-        f"#define CIM_OUTER_DIM {config_params['cim_outer_dim']}",
-        f"#define SIZE_C {config_params['matrix_dim_c']}",
-        f"#define SIZE_M {config_params['matrix_dim_m']}",
-        f"#define SIZE_N {config_params['matrix_dim_n']}",
+        f"#define ROW_TILE_SIZE {config_params['row_tile_size']}",
+        f"#define SIZE_C {config_params['size_c']}",
+        f"#define SIZE_M {config_params['size_m']}",
+        f"#define SIZE_N {config_params['size_n']}",
         "",
         "PI_L1 uint8_t golden_in [SIZE_C*SIZE_M*SIZE_N] = {",       # PI_L1 only for GVSoC (siracusa)
     ]
@@ -167,11 +165,10 @@ def main():
         "datamover_mode": DATAMOVER_MODE,
         "transp_mode": TRANSP_MODE,
         "cim_mode": CIM_MODE,
-        "cim_inner_dim": CIM_INNER_DIM,
-        "cim_outer_dim": CIM_OUTER_DIM,
-        "matrix_dim_c": SIZE_C,
-        "matrix_dim_m": SIZE_M,
-        "matrix_dim_n": SIZE_N,
+        "row_tile_size": ROW_TILE_SIZE,
+        "size_c": SIZE_C,
+        "size_m": SIZE_M,
+        "size_n": SIZE_N,
     }
     header_file = write_data_header_file(output_dir, input_tensor, output_tensor, config_params)
     print(f"\nWrote golden header to: {header_file}")

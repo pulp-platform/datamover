@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ETH Zurich and University of Bologna
+ * Copyright (C) 2025-2026 ETH Zurich and University of Bologna
  *
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
@@ -13,7 +13,7 @@
 
 /*
  * Authors: Sergio Mazzola <smazzola@iis.ee.ethz.ch>
- *          Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>s
+ *          Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  */
 
 // A wrapper for datamover_top that unrolls the interfaces to HCI and
@@ -33,7 +33,7 @@ module datamover_top_wrap
   parameter bit WAIVE_RSP3_ASSERT = 1'b0,
   parameter bit WAIVE_RSP5_ASSERT = 1'b0,
 `endif
-  parameter int unsigned ADDR_WIDTH = 32,         // width of addres bus
+  parameter int unsigned ADDR_WIDTH = 32,         // width of address bus
   parameter int unsigned ID = 10,                 // control slave peripheral ID width
   parameter int unsigned BANDWIDTH = 288,         // total bandwidth of HWPE to TCDM (in bits)
   parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a memory bank word
@@ -112,13 +112,13 @@ module datamover_top_wrap
       // All banks are accessed at the same time, so `req` and `wen` are the same for all banks
       assign tcdm_req[i]  = tcdm.req;
       assign tcdm_wen[i]  = tcdm.wen;
-      // The datamover accessess a number of NUM_WORDS adjacent words.
+      // The datamover accesses a number of NUM_WORDS adjacent words.
       // Assuming the memory is element-indexed, i.e., every word-element is individually addressable
       // on the address bus: to go from word `n` to word `n+1` we have to skip NUM_ELEM_WORD addresses.
       assign tcdm_add[i]  = tcdm.add + i * NUM_ELEM_WORD;
       assign tcdm_be[i]   = tcdm.be[(i+1)*NUM_ELEM_WORD - 1 : i*NUM_ELEM_WORD];
       assign tcdm_data[i] = tcdm.data[(i+1)*WORD_WIDTH - 1 : i*WORD_WIDTH];
-    end 
+    end
       assign tcdm.gnt     = &(tcdm_gnt); // only when all words are granted
       assign tcdm.r_data  = { >> {tcdm_r_data}};
       assign tcdm.r_valid = &(tcdm_r_valid); // only when all words are valid

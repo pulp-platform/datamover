@@ -10,26 +10,26 @@
 #########################################
 
 # Available presets:
-# - small-matrix    : Small 4x4 matrix for quick testing (transpose)
-# - medium-matrix   : Medium 64x64 matrix for moderate testing (transpose)
-# - large-matrix    : Large 448x448 matrix for stress testing (transpose)
+# - small-tensor    : Small 4x4 tensor for quick testing (transpose)
+# - medium-tensor   : Medium 64x64 tensor for moderate testing (transpose)
+# - large-tensor    : Large 448x448 tensor for stress testing (transpose)
 # - transpose-test  : Optimized for transpose functionality verification
-# - rect-wide       : Wide rectangular matrix (64x256) (transpose)
-# - rect-tall       : Tall rectangular matrix (256x64) (transpose)
-# - rect-narrow     : Narrow rectangular matrix (16x128) (transpose)
-# - rect-elongated  : Elongated rectangular matrix (128x32) (transpose)
-# - copy-small      : Small 4x4 matrix for copy mode testing
-# - copy-medium     : Medium 64x64 matrix for copy mode testing
-# - cim-small       : CIM 32x128 matrix, CIM_INNER_DIM=32, 128-bit bandwidth
-# - cim-medium      : CIM 64x256 matrix, CIM_INNER_DIM=64, 256-bit bandwidth
-# - cim-large       : CIM 128x256 matrix, CIM_INNER_DIM=64, 512-bit bandwidth
+# - rect-wide       : Wide rectangular tensor (64x256) (transpose)
+# - rect-tall       : Tall rectangular tensor (256x64) (transpose)
+# - rect-narrow     : Narrow rectangular tensor (16x128) (transpose)
+# - rect-elongated  : Elongated rectangular tensor (128x32) (transpose)
+# - copy-small      : Small 4x4 tensor for copy mode testing
+# - copy-medium     : Medium 64x64 tensor for copy mode testing
+# - cim-small       : CIM 32x128 tensor, ROW_TILE_SIZE=32, 128-bit bandwidth
+# - cim-medium      : CIM 64x256 tensor, ROW_TILE_SIZE=64, 256-bit bandwidth
+# - cim-large       : CIM 128x256 tensor, ROW_TILE_SIZE=64, 512-bit bandwidth
 # - custom          : User-defined configuration (default)
 
 # Select configuration preset (can be overridden via command line)
 CONFIG_PRESET ?= custom
 
 # Preset-specific configurations
-ifeq ($(CONFIG_PRESET),small-matrix)
+ifeq ($(CONFIG_PRESET),small-tensor)
     BANDWIDTH = 32
     WORD_WIDTH = 32
     ELEM_WIDTH = 8
@@ -38,14 +38,13 @@ ifeq ($(CONFIG_PRESET),small-matrix)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 1
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 4
-    MATRIX_DIM_N = 4
-    CONFIG_DESC = "Small 4x4 matrix, 1-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 4
+    TENSOR_SIZE_N = 4
+    CONFIG_DESC = "Small 4x4 tensor, 1-element transpose"
 endif
 
-ifeq ($(CONFIG_PRESET),medium-matrix)
+ifeq ($(CONFIG_PRESET),medium-tensor)
     BANDWIDTH = 128
     WORD_WIDTH = 32
     ELEM_WIDTH = 8
@@ -54,14 +53,13 @@ ifeq ($(CONFIG_PRESET),medium-matrix)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 1
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 64
-    MATRIX_DIM_N = 64
-    CONFIG_DESC = "Medium 64x64 matrix, 1-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 64
+    TENSOR_SIZE_N = 64
+    CONFIG_DESC = "Medium 64x64 tensor, 1-element transpose"
 endif
 
-ifeq ($(CONFIG_PRESET),large-matrix)
+ifeq ($(CONFIG_PRESET),large-tensor)
     BANDWIDTH = 512
     WORD_WIDTH = 32
     ELEM_WIDTH = 8
@@ -70,11 +68,10 @@ ifeq ($(CONFIG_PRESET),large-matrix)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 1
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 448
-    MATRIX_DIM_N = 448
-    CONFIG_DESC = "Large 448x448 matrix, 1-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 448
+    TENSOR_SIZE_N = 448
+    CONFIG_DESC = "Large 448x448 tensor, 1-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),transpose-test)
@@ -86,11 +83,10 @@ ifeq ($(CONFIG_PRESET),transpose-test)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 2
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 32
-    MATRIX_DIM_N = 32
-    CONFIG_DESC = "32x32 matrix, 2-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 32
+    TENSOR_SIZE_N = 32
+    CONFIG_DESC = "32x32 tensor, 2-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),rect-wide)
@@ -102,11 +98,10 @@ ifeq ($(CONFIG_PRESET),rect-wide)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 4
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 64
-    MATRIX_DIM_N = 256
-    CONFIG_DESC = "Wide rectangular matrix 64x256, 4-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 64
+    TENSOR_SIZE_N = 256
+    CONFIG_DESC = "Wide rectangular tensor 64x256, 4-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),rect-tall)
@@ -118,11 +113,10 @@ ifeq ($(CONFIG_PRESET),rect-tall)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 2
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 256
-    MATRIX_DIM_N = 64
-    CONFIG_DESC = "Tall rectangular matrix 256x64, 2-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 256
+    TENSOR_SIZE_N = 64
+    CONFIG_DESC = "Tall rectangular tensor 256x64, 2-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),rect-narrow)
@@ -134,11 +128,10 @@ ifeq ($(CONFIG_PRESET),rect-narrow)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 1
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 16
-    MATRIX_DIM_N = 128
-    CONFIG_DESC = "Narrow rectangular matrix 16x128, 1-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 16
+    TENSOR_SIZE_N = 128
+    CONFIG_DESC = "Narrow rectangular tensor 16x128, 1-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),rect-elongated)
@@ -150,11 +143,10 @@ ifeq ($(CONFIG_PRESET),rect-elongated)
     DATAMOVER_MODE = 1
     TRANSP_MODE = 2
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 128
-    MATRIX_DIM_N = 32
-    CONFIG_DESC = "Elongated rectangular matrix 128x32, 2-element transpose"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 128
+    TENSOR_SIZE_N = 32
+    CONFIG_DESC = "Elongated rectangular tensor 128x32, 2-element transpose"
 endif
 
 ifeq ($(CONFIG_PRESET),copy-small)
@@ -166,11 +158,10 @@ ifeq ($(CONFIG_PRESET),copy-small)
     DATAMOVER_MODE = 0
     TRANSP_MODE = 0
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 4
-    MATRIX_DIM_N = 4
-    CONFIG_DESC = "Small 4x4 matrix, copy mode"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 4
+    TENSOR_SIZE_N = 4
+    CONFIG_DESC = "Small 4x4 tensor, copy mode"
 endif
 
 ifeq ($(CONFIG_PRESET),copy-medium)
@@ -182,11 +173,10 @@ ifeq ($(CONFIG_PRESET),copy-medium)
     DATAMOVER_MODE = 0
     TRANSP_MODE = 0
     CIM_MODE = 0
-    CIM_INNER_DIM = 0
-    CIM_OUTER_DIM = 0
-    MATRIX_DIM_M = 64
-    MATRIX_DIM_N = 64
-    CONFIG_DESC = "Medium 64x64 matrix, copy mode"
+    ROW_TILE_SIZE = 0
+    TENSOR_SIZE_M = 64
+    TENSOR_SIZE_N = 64
+    CONFIG_DESC = "Medium 64x64 tensor, copy mode"
 endif
 
 ifeq ($(CONFIG_PRESET),cim-small)
@@ -198,11 +188,10 @@ ifeq ($(CONFIG_PRESET),cim-small)
     DATAMOVER_MODE = 2
     TRANSP_MODE = 0
     CIM_MODE = 0
-    CIM_INNER_DIM = 32
-    CIM_OUTER_DIM = 16
-    MATRIX_DIM_M = 32
-    MATRIX_DIM_N = 128
-    CONFIG_DESC = "CIM 32x128 matrix, CIM_INNER_DIM=32, 128-bit bandwidth"
+    ROW_TILE_SIZE = 32
+    TENSOR_SIZE_M = 32
+    TENSOR_SIZE_N = 128
+    CONFIG_DESC = "CIM 32x128 tensor, ROW_TILE_SIZE=32, 128-bit bandwidth"
 endif
 
 ifeq ($(CONFIG_PRESET),cim-medium)
@@ -214,11 +203,10 @@ ifeq ($(CONFIG_PRESET),cim-medium)
     DATAMOVER_MODE = 2
     TRANSP_MODE = 0
     CIM_MODE = 0
-    CIM_INNER_DIM = 64
-    CIM_OUTER_DIM = 32
-    MATRIX_DIM_M = 64
-    MATRIX_DIM_N = 256
-    CONFIG_DESC = "CIM 64x256 matrix, CIM_INNER_DIM=64, 256-bit bandwidth"
+    ROW_TILE_SIZE = 64
+    TENSOR_SIZE_M = 64
+    TENSOR_SIZE_N = 256
+    CONFIG_DESC = "CIM 64x256 tensor, ROW_TILE_SIZE=64, 256-bit bandwidth"
 endif
 
 ifeq ($(CONFIG_PRESET),cim-large)
@@ -230,11 +218,10 @@ ifeq ($(CONFIG_PRESET),cim-large)
     DATAMOVER_MODE = 2
     TRANSP_MODE = 0
     CIM_MODE = 0
-    CIM_INNER_DIM = 64
-    CIM_OUTER_DIM = 64
-    MATRIX_DIM_M = 128
-    MATRIX_DIM_N = 256
-    CONFIG_DESC = "CIM 128x256 matrix, CIM_INNER_DIM=64, 512-bit bandwidth"
+    ROW_TILE_SIZE = 64
+    TENSOR_SIZE_M = 128
+    TENSOR_SIZE_N = 256
+    CONFIG_DESC = "CIM 128x256 tensor, ROW_TILE_SIZE=64, 512-bit bandwidth"
 endif
 
 ifeq ($(CONFIG_PRESET),custom)

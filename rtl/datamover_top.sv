@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 ETH Zurich and University of Bologna
+ * Copyright (C) 2020-2026 ETH Zurich and University of Bologna
  *
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
@@ -14,6 +14,7 @@
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
+ *           Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 `include "hci_helpers.svh"
@@ -23,12 +24,12 @@ module datamover_top
   import hci_package::*;
   import datamover_package::*;
 #(
-  parameter int unsigned ID = 4,                 // control slave peripheral ID width - ToDo(cdurrer): necessary?
-  parameter int unsigned BANDWIDTH = 288,         // total bandwidth of HWPE to TCDM (in bits)
-  parameter int unsigned NUM_ELEM_WORD = 4,       // number of elements in a memory bank word
+  parameter int unsigned ID = 4,                  // control slave peripheral ID width
+  parameter int unsigned BANDWIDTH = 512,         // total bandwidth of HWPE to TCDM (in bits)
+  parameter int unsigned NUM_ELEM_WORD = 8,       // number of elements in a memory bank word
   parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
-  parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
-  parameter int unsigned N_CONTEXT = 4,           // number of context for control slave regfile
+  parameter int unsigned N_CORES   = 2,           // number of cores for event inputs
+  parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
   parameter int unsigned MISALIGNED_ACCESSES = 0, // enable misaligned accesses on TCDM interface
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
@@ -72,11 +73,6 @@ module datamover_top
   flags_slave_t slave_flags;
   ctrl_regfile_t reg_file;
 
-  // Data in and data out internal HWPE-Streams. Notice that the data width
-  // is set to 256 bits by default, 32 bits less than the default external
-  // bandwidth. The additional 32 bits of memory bandwidth are used to
-  // support access to non-word-aligned data packets.
-
   // number of elements (in the full bandwidth, not a single bank word)
   localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
 
@@ -96,10 +92,10 @@ module datamover_top
     .clk(clk_i)
   );
 
-  // The streamer exposes on the memory side a single TCDM 288-bit interface
+  // The streamer exposes on the memory side a single TCDM 512-bit interface
   // meant to be directly plugged into an Heterogeneous Cluster Interconnect.
   // On the accelerator side, it exposes an outgoing data in stream and
-  // an incoming data out HWPE-Streams, each 256-bit wide.
+  // an incoming data out HWPE-Streams, each 512-bit wide.
   datamover_streamer #(
     .BANDWIDTH             ( BANDWIDTH             ),
     .NUM_ELEM_WORD         ( NUM_ELEM_WORD         ),
@@ -120,8 +116,9 @@ module datamover_top
     .flags_o    ( streamer_flags )
   );
 
-  // The "engine", i.e., the datapath of the HWPE, is as simple as it gets:
-  // a FIFO copying the data in stream into the data out one!             ToDo(cdurrer): update comment
+  // The engine transforms the data_in stream into data_out. Supported modes:
+  // copy, transpose, CIM layout conversion, unfold, and fold.
+  // An internal buffer (elem_matrix) of size BWxBW is used to reshuffle the data.
   datamover_engine #(
     .FIFO_DEPTH ( 4          ),
     .BANDWIDTH_ALIGNED ( BANDWIDTH_ALIGNED ),
@@ -138,13 +135,7 @@ module datamover_top
     .data_out   ( data_out       )
   );
 
-  // The slave module exposes a peripheral interconnect HWPE-Periph plug;
-  // in the default configuration, it provides 4 contexts with 11 registers
-  // each, which are exposed into `reg_file.hwpe_params`
-
-  // Previously it was 2 contexts with 13 registers: since the datamover is used for relatively
-  // fine-grained jobs, the new config makes offloading faster by compacting the LEN registers
-  // and allows for more contexts
+  // The slave module exposes a peripheral interconnect HWPE-Periph plug
   hwpe_ctrl_slave #(
     .REGFILE_SCM    ( 0  ),
     .N_CORES        ( N_CORES   ),
@@ -251,23 +242,16 @@ module datamover_top
                                 reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b001 ? 1 :
                                 reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][2:0] == 3'b010 ? 2 : 4;
     engine_ctrl.datamover_mode = datamover_mode_e'(reg_file.hwpe_params[DATAMOVER_REG_CTRL_ENGINE >> 2][7:3]);
-    engine_ctrl.matrix_dim_m = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_DIM >> 2][15:0];
-    engine_ctrl.matrix_dim_n = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_DIM >> 2][31:16];
+    engine_ctrl.tensor_size_m = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_DIM >> 2][15:0];
+    engine_ctrl.tensor_size_n = reg_file.hwpe_params[DATAMOVER_REG_MATRIX_DIM >> 2][31:16];
     engine_ctrl.num_channels   = reg_file.hwpe_params[DATAMOVER_REG_CHANNELS >> 2][10:0];
     engine_ctrl.total_elements = reg_file.hwpe_params[DATAMOVER_REG_CHANNELS >> 2][31:11];
-    engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): What exactly did transp_len do? Use it to handle leftovers?
-    // if(reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16] == '0) begin // no leftover
-    //   engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;                    // ToDo(cdurrer): why?
-    // end
-    // else begin // in case of leftover, use the reg content as length
-    //   engine_ctrl.transp_len = reg_file.hwpe_params[DATAMOVER_REG_TRANSP_MODE >> 2][31:16];   // ToDo(cdurrer): mention this option in config/pkg/TB
-    // end
+    engine_ctrl.transp_len = BANDWIDTH_ALIGNED/ELEM_WIDTH;
   end
 
   // Bind the output event, which is propagated to the event unit and used
   // to implement HWPE datamover barriers.
   assign evt_o = slave_flags.evt[N_CORES-1:0];
-
 
   localparam int unsigned DEBUG_DW  = `HCI_SIZE_GET_DW(tcdm);
   localparam int unsigned DEBUG_BW  = `HCI_SIZE_GET_BW(tcdm);

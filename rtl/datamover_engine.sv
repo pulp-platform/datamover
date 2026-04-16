@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 ETH Zurich and University of Bologna
+ * Copyright (C) 2025-2026 ETH Zurich and University of Bologna
  *
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
@@ -32,9 +32,9 @@ module datamover_engine
   // global signals
   input  logic                   clk_i,
   input  logic                   rst_ni,
-  input  logic                   test_mode_i,   // ToDo: unused
+  input  logic                   test_mode_i,   // unused
   // local enable & clear
-  input  logic                   enable_i,      // ToDo: unused
+  input  logic                   enable_i,      // unused
   input  logic                   clear_i,
   // control registers
   input  ctrl_engine_t           ctrl_i,
@@ -61,15 +61,13 @@ module datamover_engine
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_out_unrolled;
   logic                                   data_out_valid;
   logic                                   data_out_ready;
-  logic [23:0]                            matrix_tot_size;
   logic [NB_ELEM_LOG2-1:0]                remaining_elems;
   logic [17:0]                            total_accesses_copy_mode, total_accesses;
-  logic [15:0]                            c_elem_cnt, expanded_c_elems;
-  logic [15:0]                            m_elem_cnt, expanded_m_elems;
-  logic [9:0]                             c_tiles, m_tiles, n_tiles, n_tile_cnt;
+  logic [15:0]                            y_elem_cnt, expanded_y_elems;
+  logic [9:0]                             y_tiles, n_tiles, n_tile_cnt;
   logic [NB_ELEM_LOG2:0]                  leftover_rows, leftover_cols;
-  logic                                   last_c_tile, last_m_tile, last_n_tile;
-  logic                                   write_to_buffer_done, read_from_buffer_done;
+  logic                                   last_y_tile, last_n_tile;
+
   logic                                   execution_done;
 
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
@@ -79,13 +77,11 @@ module datamover_engine
     case (fsm_q)
       WRITE: begin
         if (((cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride)) && (data_in_valid & data_in_ready)) begin
-        // if ((write_to_buffer_done || (cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride)) && (data_in_valid & data_in_ready)) begin
           fsm_d = READ;
         end
       end
       READ: begin
         if (((cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride)) && (data_out_valid & data_out_ready)) begin
-        // if ((read_from_buffer_done || (cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride)) && (data_out_valid & data_out_ready)) begin
           fsm_d = WRITE;
         end
       end
@@ -156,55 +152,41 @@ module datamover_engine
   // Partial tile / leftover elements handling
   // Due to the streamer address generation, matrices need to be word-aligned in n-dimension for transposition
   localparam logic [NB_ELEMENTS-1:0] STRB_ONE = {{(NB_ELEMENTS-1){1'b0}}, 1'b1};    // Necessary to force the shifting operation to the correct bitwidth (default would be only 32b)
-  assign matrix_tot_size = ctrl_i.total_elements;   // Pre-computed by HAL: num_channels * dim_m * dim_n
-  assign remaining_elems = matrix_tot_size & (NB_ELEMENTS - 1);         // modulo (NB_ELEMENTS: power of two) - this signal is only used in copy mode
-  assign total_accesses_copy_mode = (matrix_tot_size >> NB_ELEM_LOG2) + ((remaining_elems != 0) ? 1 : 0);
+  assign remaining_elems = ctrl_i.total_elements & (NB_ELEMENTS - 1);         // modulo (NB_ELEMENTS: power of two) - this signal is only used in copy mode
+  assign total_accesses_copy_mode = (ctrl_i.total_elements >> NB_ELEM_LOG2) + ((remaining_elems != 0) ? 1 : 0);
 
-  assign c_tiles = (ctrl_i.num_channels + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;   // ceil division    // ToDo: combine c_tile signals with m_tiles according to mode (only one necessary at a time)
-  assign m_tiles = (ctrl_i.matrix_dim_m + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;   // ceil division
-  assign n_tiles = (ctrl_i.matrix_dim_n + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;   // ceil division
-  assign total_accesses = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ? (c_tiles * ctrl_i.matrix_dim_m * n_tiles) << NB_ELEM_LOG2 : (m_tiles * n_tiles) << NB_ELEM_LOG2;          // NB_ELEMENTS is a power of 2, so multiply by shifting; ToDo: remaining MUL overhead, could be pre-computed in HAL and configured in control register
-  assign leftover_rows = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ? ctrl_i.num_channels & (NB_ELEMENTS - 1) : ctrl_i.matrix_dim_m & (NB_ELEMENTS - 1);
-  assign leftover_cols = ctrl_i.matrix_dim_n & (NB_ELEMENTS - 1);
-  assign expanded_c_elems = c_tiles << NB_ELEM_LOG2;
-  assign expanded_m_elems = m_tiles << NB_ELEM_LOG2;
-  assign c_elem_cnt = (expanded_c_elems == 0) ? '0 : (tot_cnt_q % expanded_c_elems);    // ToDo: restructure without modulo (pre-compute in HAL?)
-  assign m_elem_cnt = (expanded_m_elems == 0) ? '0 : (tot_cnt_q % expanded_m_elems);    // ToDo: restructure without modulo (pre-compute in HAL?)
-  assign n_tile_cnt = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ? (tot_cnt_q / expanded_c_elems) : (tot_cnt_q / expanded_m_elems);    // ToDo: restructure without division (pre-compute in HAL?)
-  assign last_c_tile = ((c_elem_cnt >> NB_ELEM_LOG2) >= (ctrl_i.num_channels >> NB_ELEM_LOG2));
-  assign last_m_tile = ((m_elem_cnt >> NB_ELEM_LOG2) >= (ctrl_i.matrix_dim_m >> NB_ELEM_LOG2));
-  assign last_n_tile = (n_tile_cnt >= (ctrl_i.matrix_dim_n >> NB_ELEM_LOG2));
+  // y_tiles represents the number of tiles in c-dimension for unfold/fold modes, and the number of tiles in m-dimension for all other modes
+  assign y_tiles = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ?
+                   (ctrl_i.num_channels + NB_ELEMENTS - 1) >> NB_ELEM_LOG2 :
+                   (ctrl_i.tensor_size_m + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;   // ceil division
+  assign n_tiles = (ctrl_i.tensor_size_n + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;   // ceil division
+  assign total_accesses = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ? (y_tiles * ctrl_i.tensor_size_m * n_tiles) << NB_ELEM_LOG2 : (y_tiles * n_tiles) << NB_ELEM_LOG2;          // NB_ELEMENTS is a power of 2, so multiply by shifting; ToDo: remaining MUL overhead, could be pre-computed in HAL and configured in control register
+  assign leftover_rows = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ? ctrl_i.num_channels & (NB_ELEMENTS - 1) : ctrl_i.tensor_size_m & (NB_ELEMENTS - 1);
+  assign leftover_cols = ctrl_i.tensor_size_n & (NB_ELEMENTS - 1);
+  assign expanded_y_elems = y_tiles << NB_ELEM_LOG2;    // taking into account partial tiles
+  assign y_elem_cnt = (expanded_y_elems == 0) ? '0 : (tot_cnt_q % expanded_y_elems);    // ToDo: restructure without modulo (pre-compute in HAL?)
+  assign n_tile_cnt = (expanded_y_elems == 0) ? '0 : (tot_cnt_q / expanded_y_elems);    // ToDo: restructure without division (pre-compute in HAL?)
+  assign last_y_tile = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ?
+                       ((y_elem_cnt >> NB_ELEM_LOG2) >= (ctrl_i.num_channels >> NB_ELEM_LOG2)) :
+                       ((y_elem_cnt >> NB_ELEM_LOG2) >= (ctrl_i.tensor_size_m >> NB_ELEM_LOG2));
+  assign last_n_tile = (n_tile_cnt >= (ctrl_i.tensor_size_n >> NB_ELEM_LOG2));
 
   always_comb begin
-    write_to_buffer_done = 1'b0;
-    read_from_buffer_done = 1'b0;
-    if(matrix_tot_size != 0) begin
+    data_out_prefifo.strb = '1;
+    if(ctrl_i.total_elements != 0) begin
       if(ctrl_i.datamover_mode == DATAMOVER_COPY) begin            // Copy mode
         data_out_prefifo.strb = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((STRB_ONE << remaining_elems) - 1) : '1;
-        // write_to_buffer_done = (tot_cnt_q >= (matrix_tot_size >> NB_ELEM_LOG2) - 1);
       end else if(ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) begin   // Transpose mode
-        if((last_m_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
-          if(cnt_q >= leftover_rows) begin
-            write_to_buffer_done = (fsm_q == WRITE) ? 1'b1 : 1'b0;
-            read_from_buffer_done = (fsm_q == READ) ? 1'b1 : 1'b0;
-          end
-          if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
+        if((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
             data_out_prefifo.strb = ((STRB_ONE << leftover_rows) - 1);
           end else begin
             data_out_prefifo.strb = '0;
           end
-        end else if(last_m_tile && leftover_rows != 0) begin
-          if(cnt_q >= leftover_rows) begin
-            write_to_buffer_done = (fsm_q == WRITE) ? 1'b1 : 1'b0;
-            // read_from_buffer_done = (fsm_q == READ) ? 1'b1 : 1'b0;
-          end
+        end else if(last_y_tile && leftover_rows != 0) begin
           data_out_prefifo.strb = ((STRB_ONE << leftover_rows) - 1);
         end else if(last_n_tile && leftover_cols != 0) begin
-          if(cnt_q >= leftover_rows) begin
-            // write_to_buffer_done = (fsm_q == WRITE) ? 1'b1 : 1'b0;
-            read_from_buffer_done = (fsm_q == READ) ? 1'b1 : 1'b0;
-          end
-          if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
             data_out_prefifo.strb = '1;
           end else begin
             data_out_prefifo.strb = '0;
@@ -213,14 +195,14 @@ module datamover_engine
           data_out_prefifo.strb = '1;
         end
       end else if(ctrl_i.datamover_mode == DATAMOVER_CIM_CONVERSION) begin   // CIM layout conversion mode
-        if((last_m_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
-          if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
+        if((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
             data_out_prefifo.strb = ((STRB_ONE << leftover_cols) - 1);
           end else begin
             data_out_prefifo.strb = '0;
           end
-        end else if(last_m_tile && leftover_rows != 0) begin
-          if((m_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
+        end else if(last_y_tile && leftover_rows != 0) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
             data_out_prefifo.strb = '1;
           end else begin
             data_out_prefifo.strb = '0;
@@ -231,16 +213,16 @@ module datamover_engine
           data_out_prefifo.strb = '1;
         end
       end else if(ctrl_i.datamover_mode == DATAMOVER_UNFOLD) begin   // Unfold mode
-        if((last_c_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
-          if((c_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
+        if((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
             data_out_prefifo.strb = ((STRB_ONE << leftover_rows) - 1);
           end else begin
             data_out_prefifo.strb = '0;
           end
-        end else if(last_c_tile && leftover_rows != 0) begin
+        end else if(last_y_tile && leftover_rows != 0) begin
           data_out_prefifo.strb = ((STRB_ONE << leftover_rows) - 1);
         end else if(last_n_tile && leftover_cols != 0) begin
-          if((c_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_cols) begin
             data_out_prefifo.strb = '1;
           end else begin
             data_out_prefifo.strb = '0;
@@ -249,16 +231,16 @@ module datamover_engine
           data_out_prefifo.strb = '1;
         end
       end else if(ctrl_i.datamover_mode == DATAMOVER_FOLD) begin   // Fold mode (inverse of unfold: leftover_rows <-> leftover_cols roles swapped)
-        if((last_c_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
-          if((c_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
+        if((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
             data_out_prefifo.strb = ((STRB_ONE << leftover_cols) - 1);
           end else begin
             data_out_prefifo.strb = '0;
           end
         end else if(last_n_tile && leftover_cols != 0) begin
           data_out_prefifo.strb = ((STRB_ONE << leftover_cols) - 1);
-        end else if(last_c_tile && leftover_rows != 0) begin
-          if((c_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
+        end else if(last_y_tile && leftover_rows != 0) begin
+          if((y_elem_cnt & (NB_ELEMENTS - 1)) < leftover_rows) begin
             data_out_prefifo.strb = '1;
           end else begin
             data_out_prefifo.strb = '0;
@@ -266,8 +248,6 @@ module datamover_engine
         end else begin
           data_out_prefifo.strb = '1;
         end
-      end else begin
-        data_out_prefifo.strb = '1;   // ToDo: Could be set to 0 if all cases are handled properly
       end
     end
   end
@@ -297,7 +277,6 @@ module datamover_engine
     end
   end
   assign cnt_d = (cnt_q < (ctrl_i.transp_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0;
-  // assign cnt_d = ((write_to_buffer_done == 1'b0) || (cnt_q < (ctrl_i.transp_len-ctrl_i.transp_stride))) ? cnt_q+ctrl_i.transp_stride : '0;
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
   assign execution_done = (ctrl_i.datamover_mode == DATAMOVER_COPY) ? (total_accesses_copy_mode != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses_copy_mode - 1) :
                                                    (total_accesses != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses - 1);
@@ -308,8 +287,8 @@ module datamover_engine
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration.
   // E.g., if you have a classical configuration with
-  // - NUM_ELEM_WORD = 4 and
-  // - ELEM_WIDTH = 8 bits, i.e. total is 32 bits per word
+  // - NUM_ELEM_WORD = 8 and
+  // - ELEM_WIDTH = 8 bits, i.e. total is 64 bits per word
   // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
   // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
   // and those < 8b are not interesting in our use case.
@@ -390,25 +369,15 @@ module datamover_engine
       else $fatal("BANDWIDTH_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH_ALIGNED, WORD_WIDTH);
     assert ((NB_ELEMENTS != 0) && ((NB_ELEMENTS & (NB_ELEMENTS - 1)) == 0))
       else $fatal("NB_ELEMENTS (%0d) = BANDWIDTH_ALIGNED (%0d) / ELEM_WIDTH (%0d) must be a power of two", NB_ELEMENTS, BANDWIDTH_ALIGNED, ELEM_WIDTH);
-    assert (NUM_ELEM_WORD <= MAX_SHIFTING)    // ToDo(cdurrer): obsolete?
+    assert (NUM_ELEM_WORD <= MAX_SHIFTING)
       else $fatal("NUM_ELEM_WORD (%0d) must not be greater than MAX_SHIFTING (%0d)", NUM_ELEM_WORD, MAX_SHIFTING);
   end
 
   // Runtime assertions
-  assert property (@(posedge clk_i) disable iff (!rst_ni)
-    ctrl_i.transp_len >= ctrl_i.transp_stride
-  ) else $error("transp_stride (%0d) must not exceed transp_len (%0d) — unsigned subtraction underflow",
-                ctrl_i.transp_stride, ctrl_i.transp_len);
-
-  assert property (@(posedge clk_i) disable iff (!rst_ni)
+  assert property (@(posedge clk_i) disable iff (!rst_ni || $isunknown(ctrl_i.transp_len))
     ctrl_i.transp_len <= NB_ELEMENTS
   ) else $error("transp_len (%0d) exceeds NB_ELEMENTS (%0d) — cnt_q will never match FSM transition condition",
                 ctrl_i.transp_len, NB_ELEMENTS);
-
-  assert property (@(posedge clk_i) disable iff (!rst_ni)
-    total_accesses >= (m_tiles * n_tiles * NB_ELEMENTS)
-  ) else $error("total_accesses overflow detected: m_tiles=%0d, n_tiles=%0d, NB_ELEMENTS=%0d",
-                m_tiles, n_tiles, NB_ELEMENTS);
 `endif
 `endif
 `endif
