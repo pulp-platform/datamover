@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 ETH Zurich and University of Bologna
+ * Copyright (C) 2020-2026 ETH Zurich and University of Bologna
  *
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
@@ -14,6 +14,7 @@
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
  *           Sergio Mazzola <smazzola@iis.ee.ethz.ch>
+ *           Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 `include "hci_helpers.svh"
@@ -49,6 +50,7 @@ module datamover_streamer
 );
 
   localparam int unsigned BW = `HCI_SIZE_GET_BW(tcdm);
+  localparam int unsigned AW = `HCI_SIZE_GET_AW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
   localparam int unsigned IW  = `HCI_SIZE_GET_IW(tcdm);
   localparam int unsigned EW  = `HCI_SIZE_GET_EW(tcdm);
@@ -61,10 +63,15 @@ module datamover_streamer
   hci_core_intf #(
     .DW  ( BANDWIDTH ),
     .BW  ( BW ),
+    .AW  ( AW ),
     .UW  ( UW ),
     .IW  ( IW ),
     .EW  ( EW ),
     .EHW ( EHW)
+    // `ifndef SYNTHESIS
+    // ,.WAIVE_RQ4_ASSERT ( 1'b1 )    // ToDo: make sure that these waives are not hiding real issues in the design
+    // ,.WAIVE_RQ3_ASSERT ( 1'b1 )
+    // `endif
   ) virt_tcdm [1:0] (
     .clk ( clk_i )
   );
@@ -74,6 +81,7 @@ module datamover_streamer
   hci_core_intf #(
     .DW ( BANDWIDTH ),
     .BW ( BW ),
+    .AW ( AW ),
     .UW ( UW ),
     .IW ( IW ),
     .EW ( EW ),
@@ -81,7 +89,7 @@ module datamover_streamer
   ) tcdm_prefifo (
     .clk ( clk_i )
   );
-  
+
   // "Virtual" TCDM interface, used to embody data after the TCDM FIFO
   // (if present) but before the load filter. Notice this is technically
   // an array of interfaces, with one single instance inside. This is
@@ -89,10 +97,11 @@ module datamover_streamer
   hci_core_intf #(
     .DW  ( BANDWIDTH ),
     .BW  ( BW ),
-    .UW  ( UW                        ),
-    .IW  ( IW                        ),
-    .EW  ( EW                        ),
-    .EHW ( EHW                       )
+    .AW  ( AW ),
+    .UW  ( UW ),
+    .IW  ( IW ),
+    .EW  ( EW ),
+    .EHW ( EHW)
   ) tcdm_prefilter [0:0] (
     .clk ( clk_i )
   );
@@ -104,6 +113,7 @@ module datamover_streamer
     .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .DIM_ENABLE_1H         ( 4'b1111               ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_source (
     .clk_i       ( clk_i                         ),
@@ -124,6 +134,7 @@ module datamover_streamer
     .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .DIM_ENABLE_1H         ( 4'b1111               ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_sink (
     .clk_i       ( clk_i                       ),
@@ -149,6 +160,7 @@ module datamover_streamer
       hci_core_load_store_mixer #(
         .DW ( BANDWIDTH ),
         .BW ( BW ),
+        .AW ( AW ),
         .UW ( UW ),
         .EW ( EW )
       ) i_ld_st_mux_static (
@@ -160,7 +172,7 @@ module datamover_streamer
         .out      ( tcdm_prefifo )
       );
 
-      // The HCI core FIFO the request path from the response path, easing
+      // The HCI core FIFO decouples the request path from the response path, easing
       // timing closure when integrating the accelerator in a cluster.
       hci_core_fifo #(
         .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
@@ -194,7 +206,7 @@ module datamover_streamer
   endgenerate
 
   // The HCI core filter is meant to filter out r_valid strobes that the
-  // cluster may generate even when the TCDM access is a write. These 
+  // cluster may generate even when the TCDM access is a write. These
   // pollute HCI TCDM FIFOs and mixers, and it is better to remove them
   // altogether.
   hci_core_r_valid_filter #(

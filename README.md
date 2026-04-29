@@ -15,15 +15,20 @@ Configure the hardware and testbench parameters in `config.mk`.
 - `NUM_ELEM_WORD * ELEM_WIDTH` is the width of a memory bank word. `BANDWIDTH` must be divisible by such word width, as `BANDWIDTH / (NUM_ELEM_WORD * ELEM_WIDTH)` is the number of banks accessed in parallel by the HWPE in one memory access.
 - `NUM_ELEM_WORD` must be a power of two due to memory addressing. Currently, the configurations `NUM_ELEM_WORD` = 2,4 support the datamover's transposition mode (1 elem, 2 elems, 4 elems). `NUM_ELEM_WORD` = 1 and `NUM_ELEM_WORD` > 4 is not supported.
 
-### Testbench parameters
+### Testbench parameters - OUTDATED
 
 The following parameters are used to generate the testbench stimuli and to configure the datamover registers.
 
 `STIM_*_BASE_ADDR` = start address of the read/write access bursts (element-addressed)
 `STIM_*_LENGTH` = number of read/write accesses for the d0/d1 dimensions and in total (it is not an address offset!)
 `STIM_*_STRIDE` = stride between element across dimensions d0/d1 (element-addressed, e.g., stride d1 would be the distance in an element-addressed offset between A[row=0][col=0] and A[row=1][col=0])
+`STIM_*_D2/D3_LENGTH` = optional higher-dimension lengths when using multi-dimensional tiling (0 means unused)
+`STIM_*_D2/D3_STRIDE` = stride for the higher dimensions (element-addressed)
+`STIM_*_D4_STRIDE` = optional fourth-dimension stride (element-addressed)
 `STIM_MEM_SIZE` = number of words of the testbench memory
+`STIM_*_DIM_ENABLE` = 4-bit mask enabling address generation dimensions (d0..d3)
 `STIM_TRANSP_MODE` = transposition mode to configure for the datamover (`3'b000` = none, `3'b001` = 1 elem, `3'b010` = 2 elem, `3'b100` = 4 elem)
+`STIM_TRANSP_LEN` = transposition length (if set to 0: transp_len = BANDWIDTH_ALIGNED / ELEM_WIDTH)
 
 For the complete list of the datamover configuration registers, cf. `datamover_package.sv`.
 
@@ -61,6 +66,45 @@ make sim
 ```
 By default QuestaSim GUI is active. You can simulate the RTL in CLI mode with `GUI=0 make sim`.
 
+## Testing and Validation - OUTDATED
+
+The datamover HWPE provides several test targets for comprehensive validation:
+
+### Configuration Testing
+```sh
+# Test all configuration presets
+make test-all-presets
+
+# Test all transpose modes
+make test-transpose-modes
+
+# Test configuration parameter combinations (grid testing)
+make test-transpose-grid
+make test-cim-grid
+
+# Show available configurations
+make help
+```
+
+### Configuration Presets
+The system includes predefined test configurations:
+- `small-matrix`: 4×4 matrix (quick testing)
+- `medium-matrix`: 64×64 matrix (moderate testing)
+- `large-matrix`: 448×448 matrix (stress testing)
+- `transpose-test`: 32×32 matrix (transpose focus)
+- `rect-wide`: 64×256 matrix (4-element transpose)
+- `rect-tall`: 256×64 matrix (2-element transpose)
+- `rect-narrow`: 16×128 matrix (1-element transpose)
+- `rect-elongated`: 128×32 matrix (2-element transpose)
+- `copy-small`: 4×4 matrix (copy mode testing)
+- `copy-medium`: 64×64 matrix (copy mode testing)
+- `cim-small`: 32×128 matrix (CIM mode, 32 inner_dim, 128-bit bandwidth)
+- `cim-medium`: 64×256 matrix (CIM mode, 64 inner_dim, 256-bit bandwidth)
+- `cim-large`: 128×256 matrix (CIM mode, 64 inner_dim, 512-bit bandwidth)
+- `custom`: User-defined (config.mk default)
+
+For detailed configuration documentation, see `CONFIG_USAGE.md`.
+
 ## Test Results
 If the tests pass successfully, you should see the following message displayed at the end:
 ```
@@ -70,10 +114,12 @@ PASSED!!!!
 ## Contributors
 - Francesco Conti, University of Bologna (*f.conti@unibo.it*)
 - Arpan Suravi Prasad, ETH Zurich (*prasadar@iis.ee.ethz.ch*)
+- Sergio Mazzola, ETH Zurich (*smazzola@iis.ee.ethz.ch*)
+- Cyrill Durrer, ETH Zurich (*cdurrer@iis.ee.ethz.ch*)
 
 ## License
 This repository makes use of two licenses:
 - for all *software*: Apache License Version 2.0
 - for all *hardware*: Solderpad Hardware License Version 0.51
- 
+
 For further information have a look at the license files: `LICENSE.hw`, `LICENSE.sw`

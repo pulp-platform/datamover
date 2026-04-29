@@ -2,7 +2,7 @@
  * datamover_package.sv
  * Francesco Conti <f.conti@unibo.it>
  *
- * Copyright (C) 2019-2020 ETH Zurich, University of Bologna
+ * Copyright (C) 2019-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 /*
  * Authors:  Francesco Conti <f.conti@unibo.it>
+ *           Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
  */
 
 package datamover_package;
@@ -31,11 +32,17 @@ package datamover_package;
 
   parameter int unsigned MAX_BANDWIDTH = 512; // support maximum 512bits of bandwidth
 
-  typedef enum logic[1:0] { TRANSP_4ELEM, TRANSP_2ELEM, TRANSP_1ELEM, TRANSP_NONE } transp_mode_e;
+  typedef enum logic[1:0] { TRANSP_NONE, TRANSP_1ELEM, TRANSP_2ELEM, TRANSP_4ELEM } transp_mode_e;
+  typedef enum logic[4:0] { DATAMOVER_COPY, DATAMOVER_TRANSPOSE, DATAMOVER_CIM_CONVERSION, DATAMOVER_CIM_TRANSPOSE, DATAMOVER_UNFOLD, DATAMOVER_FOLD } datamover_mode_e;
   typedef struct packed {
     transp_mode_e                     transp_mode;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
-    logic [2:0]                       transp_stride; // 1, 2, or 4
+    logic [2:0]                       transp_stride; // 1, 2, or 4 elements
+    datamover_mode_e                  datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
+    logic [11:0]                      tensor_size_m;
+    logic [11:0]                      tensor_size_n;
+    logic [20:0]                      total_elements; // num_channels * size_m * size_n (pre-computed by HAL)
+    logic [10:0]                      num_channels;   // number of channels (for unfolding/folding)
   } ctrl_engine_t;
 
   parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset
@@ -54,18 +61,24 @@ package datamover_package;
   parameter int unsigned DATAMOVER_REGISTER_CXT0_OFFS  = 32'h80;  // Context 0 offset
   parameter int unsigned DATAMOVER_REGISTER_CXT1_OFFS  = 32'h120; // Context 1 offset
 
-  // Job-specific registers
-  parameter int unsigned DATAMOVER_REG_IN_PTR          = 32'h00;  // Input pointer
-  parameter int unsigned DATAMOVER_REG_OUT_PTR         = 32'h04;  // Output pointer
-  parameter int unsigned DATAMOVER_REG_LEN0            = 32'h08;  // [31:24] in_d1_len[7:0]; [23:12] in_d0_len; [11:0] tot_len
-  parameter int unsigned DATAMOVER_REG_LEN1            = 32'h0C;  // [27:24] in_d1_len[11:8]; [23:12] out_d1_len; [11:0] out_d0_len
-  parameter int unsigned DATAMOVER_REG_IN_D0_STRIDE    = 32'h10;  // Input dimension 0 stride
-  parameter int unsigned DATAMOVER_REG_IN_D1_STRIDE    = 32'h14;  // Input dimension 1 stride
-  parameter int unsigned DATAMOVER_REG_IN_D2_STRIDE    = 32'h18;  // Input dimension 2 stride
-  parameter int unsigned DATAMOVER_REG_OUT_D0_STRIDE   = 32'h1C;  // Output dimension 0 stride
-  parameter int unsigned DATAMOVER_REG_OUT_D1_STRIDE   = 32'h20;  // Output dimension 1 stride
-  parameter int unsigned DATAMOVER_REG_OUT_D2_STRIDE   = 32'h24;  // Output dimension 2 stride
-  parameter int unsigned DATAMOVER_REG_TRANSP_MODE     = 32'h28;  // Transposition mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
-                                                                  // Leftover: [31:16], if 0 then no leftover
+  // Job-specific registers (packed into 32-bit words to speed up configuration and save memory)
+  parameter int unsigned DATAMOVER_REG_IN_PTR           = 32'h00;  // Input pointer
+  parameter int unsigned DATAMOVER_REG_OUT_PTR          = 32'h04;  // Output pointer
+  parameter int unsigned DATAMOVER_REG_TOT_LEN          = 32'h08;  // Total length in number of accesses (BW)
+  parameter int unsigned DATAMOVER_REG_IN_D0            = 32'h0C;  // [31:16] in_d0_stride; [15:0] in_d0_len
+  parameter int unsigned DATAMOVER_REG_IN_D1            = 32'h10;  // [31:16] in_d1_stride; [15:0] in_d1_len
+  parameter int unsigned DATAMOVER_REG_IN_D2            = 32'h14;  // [31:16] in_d2_stride; [15:0] in_d2_len
+  parameter int unsigned DATAMOVER_REG_IN_D3            = 32'h18;  // [31:16] in_d3_stride; [15:0] in_d3_len
+  parameter int unsigned DATAMOVER_REG_OUT_D0           = 32'h1C;  // [31:16] out_d0_stride; [15:0] out_d0_len
+  parameter int unsigned DATAMOVER_REG_OUT_D1           = 32'h20;  // [31:16] out_d1_stride; [15:0] out_d1_len
+  parameter int unsigned DATAMOVER_REG_OUT_D2           = 32'h24;  // [31:16] out_d2_stride; [15:0] out_d2_len
+  parameter int unsigned DATAMOVER_REG_OUT_D3           = 32'h28;  // [31:16] out_d3_stride; [15:0] out_d3_len
+  parameter int unsigned DATAMOVER_REG_IN_OUT_D4_STRIDE = 32'h2C;  // [31:16] out_d4_stride; [15:0] in_d4_stride (d4_len unnecessary due to tot_len)
+  parameter int unsigned DATAMOVER_REG_MATRIX_DIM        = 32'h30;  // [31:16] tensor_size_n; [15:0] tensor_size_m
+  parameter int unsigned DATAMOVER_REG_CHANNELS          = 32'h34;  // [31:11] total_elements = num_channels * size_m * size_n (pre-compute to save HW resources); [10:0] num_channels (for unfolding/folding)
+  parameter int unsigned DATAMOVER_REG_CTRL_ENGINE       = 32'h38;  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
+
+  // Note: increase N_IO_REGS in datamover_top.sv when adding new registers here!
+
 
 endpackage

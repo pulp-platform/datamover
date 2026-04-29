@@ -1,8 +1,8 @@
-/* 
+/*
  * tb_package.sv
  * Arpan Suravi Prasad <prasadar@iis.ee.ethz.ch>
  *
- * Copyright (C) 2018-2023 ETH Zurich, University of Bologna
+ * Copyright (C) 2018-2026 ETH Zurich, University of Bologna
  * Copyright and related rights are licensed under the Solderpad Hardware
  * License, Version 0.51 (the "License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -13,8 +13,14 @@
  * specific language governing permissions and limitations under the License.
  */
 package tb_package;
-  /* Configuration */
+  // ATI timing parameters
+  timeunit 1ps;
+  timeprecision 1ps;
+  localparam TCP = 1.0ns; // clock period, 1 GHz clock
+  localparam TA  = 0.2ns; // application time
+  localparam TT  = 0.8ns; // test time
 
+  /* Configuration */
   localparam int ADDR_WIDTH = 32;
   localparam int PERIPH_ID = 10;
   localparam int MEMORY_SIZE= `STIM_MEM_SIZE;
@@ -34,13 +40,6 @@ package tb_package;
 
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH; // should correspond to bank width
   localparam int unsigned BANDWIDTH_WORDS = BANDWIDTH / WORD_WIDTH;
-
-  // // ATI timing parameters.
-  timeunit 1ps;
-  timeprecision 1ps;
-  localparam TCP = 1.0ns; // clock period, 1 GHz clock
-  localparam TA  = 0.2ns; // application time
-  localparam TT  = 0.8ns; // test time
 
   typedef struct{
     logic          req;
@@ -161,7 +160,7 @@ package tb_package;
 
       status = 0; // Assume pass initially
 
-      
+
       // Open the golden reference file for reading
       file = $fopen(golden_fname, "r");
       if (file == 0) begin
@@ -189,8 +188,8 @@ package tb_package;
           if (read_data !== golden_data) begin
               status = 1;
               $display("MISMATCH at address %0d: Expected %h, Actual %h", start_addr + i, golden_data, read_data);
-          end else begin
-              $display("MATCH at address %0d: %h", start_addr + i, read_data);
+        //   end else begin
+        //       $display("MATCH at address %0d: %h", start_addr + i, read_data);
           end
       end
 
@@ -204,6 +203,6 @@ package tb_package;
       end
   endtask
 
-  
+
 
 endpackage
