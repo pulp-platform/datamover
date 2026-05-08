@@ -1,0 +1,17 @@
+{
+  "_note": "DISABLED - RTL misaligned-access path is currently not supported",
+  "tests": [
+    {"hw_config": "bw160_w32_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw160_w32_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw160_w32_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw288_w32_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw288_w32_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw288_w32_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw320_w64_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw320_w64_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw320_w64_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw576_w64_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw576_w64_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw576_w64_m4096_ma", "params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}}
+  ]
+}

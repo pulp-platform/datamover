@@ -1,6 +1,6 @@
 {
   "tests": [
-    {"hw_config": "bw32_w32_m512",   "mode": "COPY", "params": {"TENSOR_SIZE_M": 4,  "TENSOR_SIZE_N": 4}},
-    {"hw_config": "bw128_w32_m4096", "mode": "COPY", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}}
+    {"hw_config": "bw32_w32_m512",   "params": {"DATAMOVER_MODE": 0, "TENSOR_SIZE_M": 4,  "TENSOR_SIZE_N": 4}},
+    {"hw_config": "bw128_w32_m4096", "params": {"DATAMOVER_MODE": 0, "TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}}
   ]
 }
