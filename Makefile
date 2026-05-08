@@ -316,7 +316,7 @@ clean-sim:
 
 sim-script: clean-sim
 	mkdir -p $(SIM_PATH)
-	$(BENDER_INSTALL_DIR)/bender script vsim $(BENDER_TARGETS) $(TESTBENCH_DEFINES) --vlog-arg="$(VLOG_FLAGS)" >> $(SIM_PATH)/compile.tcl
+	$(BENDER_VERSION) script vsim $(BENDER_TARGETS) $(TESTBENCH_DEFINES) --vlog-arg="$(VLOG_FLAGS)" >> $(SIM_PATH)/compile.tcl
 
 sim: stimuli sim-script validate-config
 	cd modelsim && \
