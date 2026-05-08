@@ -32,8 +32,8 @@ STIMULI_DIR ?= ${ROOT_DIR}/verif/python/generated
 
 STIMULI_FILE_PATH ?= ${STIMULI_DIR}/initial_memory.txt
 GOLDEN_FILE_PATH ?= ${STIMULI_DIR}/updated_memory.txt
-TESTBENCH_DEFINES  ?= -DSTIMULI_PATH=\\\"${STIMULI_FILE_PATH}\\\"
-TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"${GOLDEN_FILE_PATH}\\\"
+TESTBENCH_DEFINES  ?= -DSTIMULI_PATH=\\\"$(abspath ${STIMULI_FILE_PATH})\\\"
+TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"$(abspath ${GOLDEN_FILE_PATH})\\\"
 
 # Propagate paramters to testbench
 TESTBENCH_DEFINES += -DSTIM_READ_BASE_ADDR=${STIM_READ_BASE_ADDR}
@@ -344,7 +344,7 @@ stimuli: clean-stimuli validate-config
 	--size_m $(TENSOR_SIZE_M) \
 	--size_n $(TENSOR_SIZE_N) \
 	--num_channels $(NUM_CHANNELS) \
-	--output_dir "verif/python/generated"
+	--output_dir "$(STIMULI_DIR)"
 
 # Bender
 bender: check-bender
@@ -365,4 +365,29 @@ $(BENDER_INSTALL_DIR)/bender:
 	mkdir -p $(BENDER_INSTALL_DIR) && cd $(BENDER_INSTALL_DIR) && \
 	curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh -s -- $(BENDER_VERSION)
 
-.PHONY: all help test-all-presets test-transpose-modes test-transpose-grid test-cim-grid validate-config clean-sim sim-script sim clean-stimuli stimuli bender check-bender
+.PHONY: all help test-all-presets test-transpose-modes test-transpose-grid test-cim-grid validate-config clean-sim sim-script sim clean-stimuli stimuli bender check-bender run-test run-all-tests clean
+
+run-test:
+ifndef TEST_JSON
+	$(error TEST_JSON is required. Usage: make run-test TEST_JSON=utils/datamover_transpose_tests.json)
+endif
+	python -u -m utils.run_test $(TEST_JSON) \
+		$(if $(TEST),--test=$(TEST),) \
+		$(if $(PARALLEL),--parallel=$(PARALLEL),) \
+		$(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
+		$(if $(VSIM_FLAGS),--vsim-flags="$(VSIM_FLAGS)",)
+
+TEST_JSON_GLOB ?= utils/datamover_*_tests.json
+ALL_TESTS_VSIM_FLAGS ?= -c
+run-all-tests:
+	python -u -m utils.run_test --discover-glob="$(TEST_JSON_GLOB)" \
+		$(if $(PARALLEL),--parallel=$(PARALLEL),) \
+		$(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
+		--vsim-flags="$(ALL_TESTS_VSIM_FLAGS)"
+
+clean:
+	rm -rf modelsim/build_*
+	rm -rf modelsim/vsim
+	rm -rf reports/
+	rm -rf verif/python/generated
+	rm -rf utils/__pycache__ verif/python/__pycache__

@@ -1,6 +1,10 @@
 .bender
 .github
 modelsim/vsim
+modelsim/build_*
+reports/
+.venv/
+.uv-cache/
 test/BUILD
 **.log
 **.txt

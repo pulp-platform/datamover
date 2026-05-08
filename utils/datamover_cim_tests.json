@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {"hw_config": "bw128_w32_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 32, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw128_w32_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 64, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw128_w64_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 32, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw128_w64_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 64, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw256_w32_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 32, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw256_w32_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 64, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw256_w64_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 32, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw256_w64_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 64, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw512_w32_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 64, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}},
+    {"hw_config": "bw512_w64_m65536", "mode": "CIM_FWD", "params": {"ROW_TILE_SIZE": 64, "TENSOR_SIZE_M": 128, "TENSOR_SIZE_N": 256}}
+  ]
+}

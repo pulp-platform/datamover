@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {"hw_config": "bw256_w32_m16384", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 32, "TENSOR_SIZE_N": 32}},
+    {"hw_config": "bw256_w32_m16384", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 32, "TENSOR_SIZE_N": 32}},
+    {"hw_config": "bw256_w32_m16384", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 32, "TENSOR_SIZE_N": 32}},
+
+    {"hw_config": "bw256_w16_m4096", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w16_m4096", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w16_m4096", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w32_m4096", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w32_m4096", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w32_m4096", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w64_m4096", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w64_m4096", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw256_w64_m4096", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+
+    {"hw_config": "bw512_w16_m4096", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w16_m4096", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w16_m4096", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w32_m4096", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w32_m4096", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w32_m4096", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w64_m4096", "mode": "TRANSP_1", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w64_m4096", "mode": "TRANSP_2", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}},
+    {"hw_config": "bw512_w64_m4096", "mode": "TRANSP_4", "params": {"TENSOR_SIZE_M": 64, "TENSOR_SIZE_N": 64}}
+  ]
+}

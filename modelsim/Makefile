@@ -5,6 +5,8 @@
 .PHONY: lib build
 all: lib build
 
+MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
 QUESTA_SEPP ?= questa-2023.4
 GUI         ?= 1
 
@@ -28,4 +30,4 @@ build:
 	cd $(buildpath) && $(VSIM) -c -do 'source compile.tcl; quit'
 
 sim_tb_datamover_top_wrap: lib build
-	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source ../sim_tb_datamover_top_wrap.tcl'
+	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source $(MAKEFILE_DIR)/sim_tb_datamover_top_wrap.tcl'

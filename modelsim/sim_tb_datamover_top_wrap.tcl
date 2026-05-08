@@ -4,7 +4,8 @@
 
 set DEBUG ON
 
-# Set working library.
+set TCL_DIR [file dirname [file normalize [info script]]]
+
 set LIB work
 
 if {$DEBUG == "ON"} {
@@ -21,7 +22,7 @@ vsim -voptargs=$VOPT_ARG $DB_SW -pedanticerrors -lib $LIB tb_datamover_top_wrap
 
 if {$DEBUG == "ON"} {
     add log -r /*
-    source ../waves.tcl
+    source $TCL_DIR/waves.tcl
     run -a
 }
 
