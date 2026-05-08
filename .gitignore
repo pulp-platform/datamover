@@ -1,5 +1,4 @@
 .bender
-.github
 modelsim/vsim
 modelsim/build_*
 reports/
@@ -9,5 +8,4 @@ test/BUILD
 **.log
 **.txt
 **__pycache**
-verif/python/generated/**
 install
