@@ -244,6 +244,7 @@ def main():
     parser.add_argument("--size_m", type=int, default=64, help="Matrix height in elements")
     parser.add_argument("--size_n", type=int, default=64, help="Matrix width in elements")
     parser.add_argument("--output_dir", type=str, default="output", help="Directory for storing output files")
+    parser.add_argument("--no-debug", dest="no_debug", action="store_true", help="Skip writing debug logs (input/output matrix dumps)")
 
     args = parser.parse_args()
 
@@ -313,10 +314,19 @@ def main():
         for d0 in range(TENSOR_SIZE_N):
             input_matrix[d1][d0] = memory_flat[(READ_BASE_ADDR + d1 * TENSOR_SIZE_N + d0)]
 
-    # Print input matrix
-    print("Input Matrix:")
-    for i, row in enumerate(input_matrix):
-        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
+    debug_dir = None if args.no_debug else os.path.join(OUTPUT_DIR, "debug_logs")
+    def write_matrix_log(filename, matrix, wrap=64):
+        idx_w = max(1, len(str(len(matrix) - 1)))
+        with open(os.path.join(debug_dir, filename), "w") as f:
+            for i, row in enumerate(matrix):
+                off_w = max(1, len(str(max(len(row) - 1, 0))))
+                for off in range(0, len(row), wrap):
+                    chunk = row[off:off + wrap]
+                    hex_row = " ".join(f"{elem:02X}" for elem in chunk)
+                    f.write(f"Row {i:>{idx_w}} [{off:>{off_w}}]: {hex_row}\n")
+    if debug_dir:
+        os.makedirs(debug_dir, exist_ok=True)
+        write_matrix_log("input_matrix.txt", input_matrix)
 
     if args.datamover_mode == 0: # Copy mode
         output_matrix = input_matrix
@@ -332,20 +342,16 @@ def main():
         # Reshape input_matrix_chw to TENSOR_SIZE_M x TENSOR_SIZE_N
         input_matrix_chw_flat = [elem for row in input_matrix_chw for elem in row]
         input_matrix_chw = [input_matrix_chw_flat[i * TENSOR_SIZE_N:(i + 1) * TENSOR_SIZE_N] for i in range(TENSOR_SIZE_M)]
-        print("\nInput Matrix reshaped to CHW layout:")
-        print(input_matrix_chw)
         transposed_chw = transpose(input_matrix_chw, TENSOR_SIZE_M, TENSOR_SIZE_N, TRANSP_MODE)
-        print("\nTransposed CHW Matrix:")
-        print(transposed_chw)
         output_matrix = cim_layout(transposed_chw, TENSOR_SIZE_N, TENSOR_SIZE_M, args.row_tile_size, args.num_elem_word)
+        if debug_dir:
+            write_matrix_log("input_matrix_chw.txt", input_matrix_chw)
+            write_matrix_log("transposed_chw.txt", transposed_chw)
     else:
         raise ValueError("[GM] datamover_mode must be 0 (copy), 1 (transpose), or 2 (CIM).")
 
-    # Print output matrix
-    print("\nOutput Matrix:")
-    for i, row in enumerate(output_matrix):
-        print(f"Row {i}: {[format(elem, 'X') for elem in row]}")
-    print("\n")
+    if debug_dir:
+        write_matrix_log("output_matrix.txt", output_matrix)
 
     # Compare input and output matrix: equality check
     if ([val for row in output_matrix for val in row] == [val for row in input_matrix for val in row]):

@@ -1,4 +1,4 @@
-"""Load datamover test suites: expand mode, merge HW config + per-test params, auto-name."""
+"""Load datamover test suites. HW_RTL_KEYS and WORKLOAD_KEYS are disjoint."""
 
 import json
 from pathlib import Path
@@ -6,43 +6,47 @@ from typing import List
 
 HW_CONFIGS_FILE = Path(__file__).parent / "hw_configs.json"
 
-MODE_TABLE = {
-    "COPY":       {"DATAMOVER_MODE": 0, "TRANSP_MODE": 0, "CIM_MODE": 0, "ROW_TILE_SIZE": 0},
-    "TRANSP_1":   {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "CIM_MODE": 0, "ROW_TILE_SIZE": 0},
-    "TRANSP_2":   {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "CIM_MODE": 0, "ROW_TILE_SIZE": 0},
-    "TRANSP_4":   {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "CIM_MODE": 0, "ROW_TILE_SIZE": 0},
-    "CIM_FWD":    {"DATAMOVER_MODE": 2, "TRANSP_MODE": 0, "CIM_MODE": 0},
-    "CIM_REV":    {"DATAMOVER_MODE": 2, "TRANSP_MODE": 0, "CIM_MODE": 1},
-    "CIMT_FWD_1": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 1, "CIM_MODE": 0},
-    "CIMT_FWD_2": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 2, "CIM_MODE": 0},
-    "CIMT_FWD_4": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 4, "CIM_MODE": 0},
-    "CIMT_REV_1": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 1, "CIM_MODE": 1},
-    "CIMT_REV_2": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 2, "CIM_MODE": 1},
-    "CIMT_REV_4": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 4, "CIM_MODE": 1},
-    "UNFOLD":     {"DATAMOVER_MODE": 4, "TRANSP_MODE": 0, "CIM_MODE": 0},
-    "FOLD":       {"DATAMOVER_MODE": 5, "TRANSP_MODE": 0, "CIM_MODE": 0},
-}
+HW_RTL_KEYS   = frozenset({"BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MEMORY_SIZE", "MISALIGNED_ACCESSES"})
+WORKLOAD_KEYS = frozenset({"DATAMOVER_MODE", "TRANSP_MODE", "CIM_MODE",
+                           "TENSOR_SIZE_M", "TENSOR_SIZE_N", "NUM_CHANNELS", "ROW_TILE_SIZE"})
+
+WORKLOAD_DEFAULTS = {"TRANSP_MODE": 0, "CIM_MODE": 0, "NUM_CHANNELS": 1, "ROW_TILE_SIZE": 0}
+
+assert HW_RTL_KEYS.isdisjoint(WORKLOAD_KEYS)
+assert WORKLOAD_DEFAULTS.keys() <= WORKLOAD_KEYS
 
 
 def load_hw_configs() -> dict:
     with open(HW_CONFIGS_FILE) as f:
-        return json.load(f)
+        configs = json.load(f)
+    for name, vals in configs.items():
+        if set(vals.keys()) != HW_RTL_KEYS:
+            raise ValueError(f"hw_config '{name}' must have exactly keys {sorted(HW_RTL_KEYS)}, got {sorted(vals.keys())}")
+    return configs
 
 
-def auto_name(mode: str, params: dict) -> str:
-    M = params["TENSOR_SIZE_M"]
-    N = params["TENSOR_SIZE_N"]
-    BW = params["BANDWIDTH"]
-    WW = params["WORD_WIDTH"]
-    base = f"M{M}_N{N}_BW{BW}_W{WW}"
-    if mode == "COPY":
-        return f"COPY_{base}"
-    if mode.startswith("TRANSP_"):
-        suffix = "_MA1" if int(params["MISALIGNED_ACCESSES"]) else ""
-        return f"{mode}_{base}{suffix}"
-    if mode.startswith("CIM"):
-        return f"{mode}_{base}_RT{params['ROW_TILE_SIZE']}"
-    return f"{mode}_{base}"
+def auto_name(p: dict) -> str:
+    dm, tm, cm = p["DATAMOVER_MODE"], p["TRANSP_MODE"], p["CIM_MODE"]
+    base = f"M{p['TENSOR_SIZE_M']}_N{p['TENSOR_SIZE_N']}_BW{p['BANDWIDTH']}_W{p['WORD_WIDTH']}"
+    if dm == 0:
+        prefix = "COPY"
+    elif dm == 1:
+        prefix = f"TRANSP_{tm}"
+        if int(p["MISALIGNED_ACCESSES"]):
+            base += "_MA1"
+    elif dm == 2:
+        prefix = "CIM_FWD" if cm == 0 else "CIM_REV"
+        base += f"_RT{p['ROW_TILE_SIZE']}"
+    elif dm == 3:
+        prefix = f"CIMT_{'FWD' if cm == 0 else 'REV'}_{tm}"
+        base += f"_RT{p['ROW_TILE_SIZE']}"
+    elif dm == 4:
+        prefix = "UNFOLD"
+    elif dm == 5:
+        prefix = "FOLD"
+    else:
+        raise ValueError(f"unknown DATAMOVER_MODE={dm}")
+    return f"{prefix}_{base}"
 
 
 def load_test_suite(json_file: str) -> List[dict]:
@@ -61,18 +65,24 @@ def load_test_suite(json_file: str) -> List[dict]:
         if hw_name not in hw_configs:
             raise ValueError(f"{json_file}: unknown hw_config '{hw_name}'")
 
-        mode = entry.get("mode")
-        if mode is None:
-            raise ValueError(f"{json_file}: each test entry needs a 'mode' field")
-        if mode not in MODE_TABLE:
-            raise ValueError(f"{json_file}: unknown mode '{mode}'. Valid: {sorted(MODE_TABLE)}")
+        params = entry.get("params", {})
+        bad = params.keys() - WORKLOAD_KEYS
+        if bad:
+            raise ValueError(
+                f"{json_file}: test 'params' may only contain {sorted(WORKLOAD_KEYS)}, "
+                f"got disallowed {sorted(bad)}"
+            )
 
-        merged = {**hw_configs[hw_name], **MODE_TABLE[mode], **entry.get("params", {})}
-        name = entry.get("name") or auto_name(mode, merged)
+        merged = {**WORKLOAD_DEFAULTS, **hw_configs[hw_name], **params}
+        missing = WORKLOAD_KEYS - merged.keys()
+        if missing:
+            raise ValueError(f"{json_file}: test missing required workload keys {sorted(missing)}")
+
+        name = entry.get("name") or auto_name(merged)
         if name in seen:
             raise ValueError(f"{json_file}: duplicate test name '{name}'")
         seen.add(name)
-        tests.append({"name": name, "params": merged, "hw_config": hw_name, "mode": mode})
+        tests.append({"name": name, "params": merged, "hw_config": hw_name})
     return tests
 
 
@@ -92,6 +102,6 @@ if __name__ == "__main__":
     tests = load_test_suite(args.json_file)
     if args.list:
         for t in tests:
-            print(f"{t['name']}\t[{t['hw_config']}, mode={t['mode']}]")
+            print(f"{t['name']}\t[{t['hw_config']}]")
     else:
         print(f"{len(tests)} tests in {Path(args.json_file).name}")

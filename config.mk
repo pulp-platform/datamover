@@ -8,9 +8,6 @@
 # Standalone testing setup OUTDATED!
 # ToDo: Implement SW-based testing with a CPU core
 
-# Include configuration presets (optional)
--include config_presets.mk
-
 #######################
 # Datamover HW Config #
 #######################
@@ -67,7 +64,6 @@ endif
 # ADDR and STRIDE are in bytes, LENGTH is in number of memory accesses (bandwidth)
 
 ifeq "$(strip $(DATAMOVER_MODE))" "0"	# Copy mode
-$(info Copy mode enabled)
 STIM_READ_BASE_ADDR ?= $(READ_BASE_ADDR)								# Element-addressed
 STIM_READ_D0_LENGTH ?= $(TOTAL_ACCESSES)                # [Nof accesses with bandwidth BW per D0-transfer ("row")]
 STIM_READ_D0_STRIDE ?= $(BANDWIDTH_ELEMS) 							# [Elements]
@@ -103,7 +99,6 @@ STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)
 STIM_WRITE_DIM_ENABLE ?= "4'b0000"
 
 else ifeq "$(strip $(DATAMOVER_MODE))" "1"	# Transpose mode
-$(info Transpose mode $(TRANSP_MODE) enabled)
 ifneq ($(filter 1 2 4,$(strip $(TRANSP_MODE))), $(strip $(TRANSP_MODE)))
   $(error Invalid TRANSP_MODE $(TRANSP_MODE): must be 1, 2, or 4)
 endif
@@ -143,7 +138,6 @@ STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)
 STIM_WRITE_DIM_ENABLE ?= "4'b0011"
 
 else ifeq "$(strip $(DATAMOVER_MODE))" "2"	# CIM data layout conversion mode
-$(info CIM data layout conversion mode $(CIM_MODE) enabled)
 ifneq ($(filter 0 1, $(strip $(CIM_MODE))), $(strip $(CIM_MODE)))
   $(error "Invalid CIM_MODE $(CIM_MODE): must be 0 or 1")
 endif
@@ -183,7 +177,6 @@ STIM_WRITE_TOT_LENGTH ?= $(STIM_READ_TOT_LENGTH)										# Same total length as
 STIM_WRITE_DIM_ENABLE ?= "4'b0001"
 
 else ifeq "$(strip $(DATAMOVER_MODE))" "3"	# CIM data layout transpose mode
-$(info CIM data layout transpose mode $(CIM_MODE) enabled)
 ifneq ($(filter 0 1, $(strip $(CIM_MODE))), $(strip $(CIM_MODE)))
   $(error "Invalid CIM_MODE $(CIM_MODE): must be 0 or 1")
 endif
@@ -230,48 +223,3 @@ else
 $(error "Invalid DATAMOVER_MODE $(DATAMOVER_MODE): must be 0 (copy), 1 (transpose), 2 (CIM data layout conversion), or 3 (CIM data layout transpose)")
 endif
 
-# Debug: Print computed values (uncomment to see values during make)
-$(info ========================================)
-$(info Hardware Configuration:)
-$(info   BANDWIDTH: $(BANDWIDTH) bits)
-$(info   MISALIGNED_ACCESSES: $(MISALIGNED_ACCESSES))
-$(info   BANDWIDTH_ALIGNED: $(BANDWIDTH_ALIGNED) bits)
-$(info   WORD_WIDTH: $(WORD_WIDTH) bits)
-$(info   ELEM_WIDTH: $(ELEM_WIDTH) bits)
-$(info   BANDWIDTH_ELEMS: $(BANDWIDTH_ELEMS))
-$(info   NUM_ELEM_WORD: $(NUM_ELEM_WORD))
-$(info   DATAMOVER_MODE: $(DATAMOVER_MODE))
-$(info   TRANSP_MODE: $(TRANSP_MODE))
-$(info   CIM_MODE: $(CIM_MODE))
-$(info   ROW_TILE_SIZE: $(ROW_TILE_SIZE) elements)
-$(info )
-$(info Matrix Configuration:)
-$(info   MATRIX_SIZE: $(TENSOR_SIZE_M) x $(TENSOR_SIZE_N))
-$(info   MATRIX SIZE ALIGNED: $(TENSOR_SIZE_M_ALIGNED) x $(TENSOR_SIZE_N_ALIGNED))
-$(info   MEMORY_SIZE: $(MEMORY_SIZE) words)
-$(info   STIM_MEM_SIZE: $(STIM_MEM_SIZE) words)
-$(info )
-$(info Read Configuration:)
-$(info   BASE_ADDR: $(STIM_READ_BASE_ADDR))
-$(info   D0_LENGTH: $(STIM_READ_D0_LENGTH), D0_STRIDE: $(STIM_READ_D0_STRIDE))
-$(info   D1_LENGTH: $(STIM_READ_D1_LENGTH), D1_STRIDE: $(STIM_READ_D1_STRIDE))
-$(info   D2_LENGTH: $(STIM_READ_D2_LENGTH), D2_STRIDE: $(STIM_READ_D2_STRIDE))
-$(info   D3_LENGTH: $(STIM_READ_D3_LENGTH), D3_STRIDE: $(STIM_READ_D3_STRIDE))
-$(info   D4_STRIDE: $(STIM_READ_D4_STRIDE))
-$(info   TOT_LENGTH: $(STIM_READ_TOT_LENGTH))
-$(info   DIM_ENABLE: $(STIM_READ_DIM_ENABLE))
-$(info )
-$(info Write Configuration:)
-$(info   BASE_ADDR: $(STIM_WRITE_BASE_ADDR))
-$(info   D0_LENGTH: $(STIM_WRITE_D0_LENGTH), D0_STRIDE: $(STIM_WRITE_D0_STRIDE))
-$(info   D1_LENGTH: $(STIM_WRITE_D1_LENGTH), D1_STRIDE: $(STIM_WRITE_D1_STRIDE))
-$(info   D2_LENGTH: $(STIM_WRITE_D2_LENGTH), D2_STRIDE: $(STIM_WRITE_D2_STRIDE))
-$(info   D3_LENGTH: $(STIM_WRITE_D3_LENGTH), D3_STRIDE: $(STIM_WRITE_D3_STRIDE))
-$(info   D4_STRIDE: $(STIM_WRITE_D4_STRIDE))
-$(info   TOT_LENGTH: $(STIM_WRITE_TOT_LENGTH))
-$(info   DIM_ENABLE: $(STIM_WRITE_DIM_ENABLE))
-$(info )
-$(info Transpose Configuration:)
-$(info   TRANSP_MODE: $(STIM_TRANSP_MODE))
-# $(info   TRANSP_LEN: $(STIM_TRANSP_LEN))
-$(info ========================================)

@@ -3,6 +3,8 @@ variables:
   PARALLEL: "4"
   TIMEOUT: "300"
   VSIM_FLAGS: "-c"
+  # Skip debug_logs creation for CI
+  NO_DEBUG: "1"
   UV_CACHE_DIR: $CI_BUILDS_DIR/../cache/uv
 
 before_script:
@@ -18,7 +20,7 @@ stages:
 .test-template:
   stage: test
   script:
-    - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} VSIM_FLAGS=${VSIM_FLAGS}
+    - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG} VSIM_FLAGS=${VSIM_FLAGS}
   artifacts:
     when: always
     expire_in: 1 year
