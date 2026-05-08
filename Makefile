@@ -10,13 +10,9 @@ include config.mk
 SHELL = /usr/bin/env bash
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-INSTALL_PREFIX        ?= install
-INSTALL_DIR           = ${ROOT_DIR}/${INSTALL_PREFIX}
-BENDER_INSTALL_DIR    = ${INSTALL_DIR}/bender
-
 VENV_BIN=venv/bin/
 
-BENDER_VERSION = 0.28.1
+BENDER_VERSION = bender-0.31.0
 SIM_PATH   ?= modelsim/vsim
 SYNTH_PATH  = synopsys
 
@@ -344,28 +340,10 @@ stimuli: clean-stimuli validate-config
 	--size_m $(TENSOR_SIZE_M) \
 	--size_n $(TENSOR_SIZE_N) \
 	--num_channels $(NUM_CHANNELS) \
-	--output_dir "$(STIMULI_DIR)"
+	--output_dir "$(STIMULI_DIR)" \
+	$(if $(filter 1,$(NO_DEBUG)),--no-debug,)
 
-# Bender
-bender: check-bender
-	$(BENDER_INSTALL_DIR)/bender update
-	$(BENDER_INSTALL_DIR)/bender vendor init
-
-check-bender:
-	@if [ -x $(BENDER_INSTALL_DIR)/bender ]; then \
-		req="bender $(BENDER_VERSION)"; \
-		current="$$($(BENDER_INSTALL_DIR)/bender --version)"; \
-		if [ "$$(printf '%s\n' "$${req}" "$${current}" | sort -V | head -n1)" != "$${req}" ]; then \
-			rm -rf $(BENDER_INSTALL_DIR); \
-		fi \
-	fi
-	@$(MAKE) -C $(ROOT_DIR) $(BENDER_INSTALL_DIR)/bender
-
-$(BENDER_INSTALL_DIR)/bender:
-	mkdir -p $(BENDER_INSTALL_DIR) && cd $(BENDER_INSTALL_DIR) && \
-	curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh -s -- $(BENDER_VERSION)
-
-.PHONY: all help test-all-presets test-transpose-modes test-transpose-grid test-cim-grid validate-config clean-sim sim-script sim clean-stimuli stimuli bender check-bender run-test run-all-tests clean
+.PHONY: all validate-config clean-sim sim-script sim clean-stimuli stimuli run-test run-all-tests clean
 
 run-test:
 ifndef TEST_JSON
