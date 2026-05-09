@@ -6,7 +6,7 @@ from typing import List
 
 HW_CONFIGS_FILE = Path(__file__).parent / "hw_configs.json"
 
-HW_RTL_KEYS   = frozenset({"BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MEMORY_SIZE", "MISALIGNED_ACCESSES"})
+HW_RTL_KEYS   = frozenset({"BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MISALIGNED_ACCESSES"})
 WORKLOAD_KEYS = frozenset({"DATAMOVER_MODE", "TRANSP_MODE", "CIM_MODE",
                            "TENSOR_SIZE_M", "TENSOR_SIZE_N", "NUM_CHANNELS", "ROW_TILE_SIZE"})
 
