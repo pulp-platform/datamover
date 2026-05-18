@@ -17,6 +17,12 @@ CC_OPTS += -Wextra -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-unused-
 CC_OPTS += -Wno-incompatible-pointer-types -Wno-implicit-fallthrough
 CC_OPTS += -fdata-sections -ffunction-sections -MMD -MP
 
+# Override hw config params
+CC_OPTS += -DDATAMOVER_BANDWIDTH=$(BANDWIDTH)
+CC_OPTS += -DDATAMOVER_WORD_WIDTH=$(WORD_WIDTH)
+CC_OPTS += -DDATAMOVER_ELEM_WIDTH=$(ELEM_WIDTH)
+CC_OPTS += -DDATAMOVER_MISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
+
 LD_OPTS = -march=rv32imc -D__riscv__ -MMD -MP -nostartfiles -Wl,--gc-sections -lgcc
 
 # Build artifacts
