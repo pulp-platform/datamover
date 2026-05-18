@@ -6,19 +6,20 @@
 //          Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
 //          Daniel Keller <dankeller@iis.ee.ethz.ch>
 //          Francesco Conti <f.conti@unibo.it>
+//
 
 #ifndef __HAL_DATAMOVER_H__
 #define __HAL_DATAMOVER_H__
 
 #include <stdint.h>
 
-#include "konark_cluster_raw_addrmap.h"
-
 ///////////
 // Archi //
 ///////////
 
-#define DATAMOVER_BASE_ADDR KONARK_CLUSTER_ADDRMAP_CLUSTER_HWPE_SUBSYSTEM_HWPE_DATAMOVER_BASE_ADDR
+#ifndef DATAMOVER_BASE_ADDR
+#define DATAMOVER_BASE_ADDR 0x10000000  /* matches HWPE region (addr[31:24]==0x10) in standalone TB */
+#endif
 
 /* Architecture */
 
@@ -53,11 +54,10 @@
 #define DATAMOVER_REG_OUT_D1_OFFSET           0x20  // [31:16] out_d1_stride; [15:0] out_d1_len
 #define DATAMOVER_REG_OUT_D2_OFFSET           0x24  // [31:16] out_d2_stride; [15:0] out_d2_len
 #define DATAMOVER_REG_OUT_D3_OFFSET           0x28  // [31:16] out_d3_stride; [15:0] out_d3_len
-#define DATAMOVER_REG_IN_OUT_D4_STRIDE_OFFSET 0x2C  // [31:16] out_d4_stride; [15:0] in_d4_stride (d4_len unnecessary due to tot_len)
+#define DATAMOVER_REG_IN_OUT_D4_STRIDE_OFFSET 0x2C  // [31:16] out_d4_stride; [15:0] in_d4_stride
 #define DATAMOVER_REG_MATRIX_DIM_OFFSET       0x30  // [31:16] tensor_size_n; [15:0] tensor_size_m
-#define DATAMOVER_REG_CHANNELS_OFFSET         0x34  // [31:11] total_elements = num_channels * size_m * size_n (pre-compute to save HW resources); [10:0] num_channels (for unfolding/folding)
-#define DATAMOVER_REG_CTRL_ENGINE_OFFSET      0x38  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
-
+#define DATAMOVER_REG_CHANNELS_OFFSET         0x34  // [31:11] total_elements; [10:0] num_channels
+#define DATAMOVER_REG_CTRL_ENGINE_OFFSET      0x38  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode
 
 ///////////
 // Types //
@@ -69,18 +69,18 @@ typedef enum {
   DATAMOVER_CIM_LAYOUT_TRANSPOSE = 0x3,
   DATAMOVER_UNFOLD = 0x4,
   DATAMOVER_FOLD = 0x5
-} datamover_mode_t;   // Must match datamover_mode_e in datamover_package.sv
+} datamover_mode_t;
 typedef enum {
   DATAMOVER_TRANSP_NONE  = 0x0,
   DATAMOVER_TRANSP_1ELEM = 0x1,
   DATAMOVER_TRANSP_2ELEM = 0x2,
   DATAMOVER_TRANSP_4ELEM = 0x4
-} datamover_transp_mode_t;  // Must match transp_mode_e in datamover_package.sv
+} datamover_transp_mode_t;
 
 typedef enum {
-    DATAMOVER_OK = 0, // Success
-    DATAMOVER_TO,     // Timeout
-    DATAMOVER_ERR     // Generic error
+    DATAMOVER_OK = 0,
+    DATAMOVER_TO,
+    DATAMOVER_ERR
 } datamover_status_t;
 
 /////////////
@@ -88,7 +88,6 @@ typedef enum {
 /////////////
 
 #if VERBOSE
-/* Verbose read/write register */
 #define __HAL_DATAMOVER_REG_WRITE(base, offset, value) do { \
     *(volatile uint32_t *)(base + offset) = value; \
     printf("__HAL_DATAMOVER_REG_WRITE: Addr 0x%08x <= 0x%08x\n", (uint32_t)(base + offset), (uint32_t)(value)); \
@@ -99,12 +98,10 @@ typedef enum {
     read_value; \
   })
 #else
-/* Normal read/write register */
 #define __HAL_DATAMOVER_REG_WRITE(base, offset, value) *(volatile uint32_t *)(base + offset) = value
 #define __HAL_DATAMOVER_REG_READ(base, offset)         *(volatile uint32_t *)(base + offset)
 #endif
 
-// DATAMOVER HWPE register access
 #define DATAMOVER_HWPE_REG_WRITE(offset, value) __HAL_DATAMOVER_REG_WRITE(DATAMOVER_BASE_ADDR, offset, value)
 #define DATAMOVER_HWPE_REG_READ(offset)         __HAL_DATAMOVER_REG_READ(DATAMOVER_BASE_ADDR, offset)
 

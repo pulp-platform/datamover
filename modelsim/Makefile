@@ -1,27 +1,19 @@
-# Copyright 2023 ETH Zurich and University of Bologna.
+# Copyright 2023-2026 ETH Zurich and University of Bologna.
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-.PHONY: lib build
-all: lib build
-
-MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+.PHONY: lib build run all
+all: lib build run
 
 QUESTA_SEPP ?= questa-2023.4
-GUI         ?= 1
-
-buildpath   ?= vsim
+TEST_NAME   ?= default
+buildpath   ?= build_$(TEST_NAME)
 VOPT        ?= $(QUESTA_SEPP) vopt
 VSIM        ?= $(QUESTA_SEPP) vsim
 VLIB        ?= $(QUESTA_SEPP) vlib
 VMAP        ?= $(QUESTA_SEPP) vmap
+VSIM_FLAGS  ?= -gui
 DEBUG       ?= ON
-VSIM_FLAGS  ?=
-ifeq ($(GUI), 1)
-	VSIM_FLAGS += -gui
-else
-	VSIM_FLAGS += -c
-endif
 
 lib:
 	cd $(buildpath) && $(VLIB) work && $(VMAP) work work
@@ -29,5 +21,6 @@ lib:
 build:
 	cd $(buildpath) && $(VSIM) -c -do 'source compile.tcl; quit'
 
-sim_tb_datamover_top_wrap: lib build
-	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source $(MAKEFILE_DIR)/sim_tb_datamover_top_wrap.tcl'
+run:
+	@echo "TEST_NAME = $(TEST_NAME)"
+	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do "source ../run_sim.tcl"

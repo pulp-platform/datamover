@@ -1,8 +1,9 @@
-"""Datamover HWPE Test Runner.
+#!/usr/bin/env python3
+# Copyright (C) 2025-2026 ETH Zurich and University of Bologna
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
 
-Runs JSON-defined tests in parallel via `make sim` with per-test build dirs,
-captures pass/fail from stdout markers, and emits JUnit/JSON/CSV reports.
-"""
+"""Datamover HWPE test runner."""
 
 import argparse
 import errno
@@ -19,11 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from utils.test_loader import load_test_suite
-
-
-PASS_MARKER = "DATAMOVER_TEST_PASSED"
-FAIL_MARKER = "DATAMOVER_TEST_FAILED"
+from utils.gen_workload_header import list_tests as gen_list_tests
 
 
 @dataclass
@@ -34,25 +31,28 @@ class TestResult:
     stdout: str
     stderr: str
     returncode: int
+    hwpe_cycles: Optional[int] = None
 
 
-def build_make_command(test: dict, vsim_flags: str) -> str:
-    name = test["name"]
-    params = test["params"]
-    overrides = " ".join(f"{k}={v}" for k, v in params.items())
-    gui = "0" if "-c" in vsim_flags else "1"
-    build_dir = f"modelsim/build_{name}"
+def parse_metrics(stdout: str) -> dict:
+    metrics = {"hwpe_cycles": None}
+    m = re.findall(r"hwpe_cycles\s*=\s*(\d+)", stdout)
+    if m:
+        metrics["hwpe_cycles"] = int(m[-1])
+    return metrics
+
+
+def build_make_command(test_name: str, json_file: str, vsim_flags: str) -> str:
+    no_debug = os.environ.get("NO_DEBUG", "0")
     return (
-        f"make sim {overrides} "
-        f"SIM_PATH={build_dir}/vsim "
-        f"STIMULI_DIR={build_dir}/stim "
-        f"GUI={gui}"
+        f"riscv make TEST_JSON={json_file} TEST_NAME={test_name} NO_DEBUG={no_debug} "
+        f"VSIM_FLAGS='{vsim_flags}' run-sim-pipeline"
     )
 
 
-def _kill_process_group(process: subprocess.Popen) -> None:
+def _kill_pg(p: subprocess.Popen) -> None:
     try:
-        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        os.killpg(os.getpgid(p.pid), signal.SIGKILL)
     except ProcessLookupError:
         pass
     except OSError as e:
@@ -60,70 +60,69 @@ def _kill_process_group(process: subprocess.Popen) -> None:
             raise
 
 
-def _run_with_pgid(cmd: str, timeout: int):
+def _run(cmd: str, timeout: int):
     start = time.time()
-    process = subprocess.Popen(
+    p = subprocess.Popen(
         cmd, shell=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        preexec_fn=os.setpgrp,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, preexec_fn=os.setpgrp,
     )
     try:
         try:
-            stdout, stderr = process.communicate(timeout=timeout)
-            return process.returncode, stdout, stderr, time.time() - start, False
+            try:
+                os.setpgid(p.pid, p.pid)
+            except OSError as e:
+                if e.errno != errno.EACCES:
+                    raise
+            stdout, stderr = p.communicate(timeout=timeout)
+            return p.returncode, stdout, stderr, time.time() - start, False
         except subprocess.TimeoutExpired:
-            _kill_process_group(process)
-            stdout, stderr = process.communicate()
+            _kill_pg(p)
+            stdout, stderr = p.communicate()
             return 1, stdout, stderr, time.time() - start, True
         except BaseException:
-            _kill_process_group(process)
-            process.communicate()
+            _kill_pg(p)
+            p.communicate()
             raise
     finally:
-        if process.poll() is None:
-            _kill_process_group(process)
-            process.communicate()
+        if p.poll() is None:
+            _kill_pg(p)
+            p.communicate()
 
 
-def run_single_test(test: dict, vsim_flags: str, timeout: int) -> TestResult:
-    name = test["name"]
-    cmd = build_make_command(test, vsim_flags)
-    is_gui = "-gui" in vsim_flags or ("-c" not in vsim_flags and "GUI=0" not in cmd)
-
-    print(f"[RUN ] {name}")
+def run_single(test_name: str, json_file: str, vsim_flags: str, timeout: int) -> TestResult:
+    cmd = build_make_command(test_name, json_file, vsim_flags)
+    is_gui = "-gui" in vsim_flags
+    print(f"[RUN ] {test_name}")
     try:
-        rc, stdout, stderr, elapsed, timed_out = _run_with_pgid(cmd, timeout)
-
+        rc, out, err, elapsed, timed_out = _run(cmd, timeout)
+        m = parse_metrics(out)
         if timed_out:
-            print(f"[\033[1;31mTIME\033[0m] {name} (timeout after {elapsed:.1f}s)")
-            return TestResult(name, False, elapsed, stdout,
-                              ("TIMEOUT\n" + stderr) if stderr else "TIMEOUT", 1)
-
-        passed = rc == 0 and PASS_MARKER in stdout and FAIL_MARKER not in stdout
-
+            print(f"[\033[1;31mTIME\033[0m] {test_name} (timeout after {elapsed:.1f}s)")
+            return TestResult(test_name, False, elapsed, out,
+                              ("TIMEOUT\n" + err) if err else "TIMEOUT", 1, m["hwpe_cycles"])
+        passed = rc == 0 and "==== TEST PASSED ====" in out
         if is_gui and not passed and rc == 0:
-            print(f"[DONE] {name} ({elapsed:.1f}s)")
+            print(f"[DONE] {test_name} ({elapsed:.1f}s)")
         else:
             tag = "\033[1;32m OK \033[0m" if passed else "\033[1;31mFAIL\033[0m"
-            print(f"[{tag}] {name} ({elapsed:.1f}s)")
-
-        return TestResult(name, passed, elapsed, stdout, stderr, rc)
+            print(f"[{tag}] {test_name} ({elapsed:.1f}s)")
+        return TestResult(test_name, passed, elapsed, out, err, rc, m["hwpe_cycles"])
     except KeyboardInterrupt:
-        print(f"[\033[1;31mKILL\033[0m] {name} (interrupted)")
+        print(f"[\033[1;31mKILL\033[0m] {test_name} (interrupted)")
         raise
 
 
-def run_test_wrapper(args):
-    return run_single_test(*args)
+def run_wrapper(args):
+    return run_single(*args)
 
 
-def generate_junit_report(results: List[TestResult], output_file: str):
+def junit_report(results: List[TestResult], path: str) -> None:
     try:
         from junit_xml import TestSuite, TestCase
     except ImportError:
         print("Warning: junit_xml not installed, skipping JUnit report")
         return
-
     cases = []
     for r in results:
         tc = TestCase(name=r.name, classname="datamover_tests",
@@ -131,37 +130,38 @@ def generate_junit_report(results: List[TestResult], output_file: str):
         if not r.passed:
             tc.add_failure_info(r.stderr or "Test failed")
         cases.append(tc)
-
     ts = TestSuite("Datamover HWPE Tests", cases)
-    os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
-    with open(output_file, "w") as f:
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    with open(path, 'w') as f:
         TestSuite.to_file(f, [ts], prettyprint=True)
-    print(f"JUnit report: {output_file}")
+    print(f"JUnit report: {path}")
 
 
-def generate_json_report(results: List[TestResult], output_file: str):
-    report = {
+def json_report(results: List[TestResult], path: str) -> None:
+    payload = {
         "total": len(results),
         "passed": sum(1 for r in results if r.passed),
         "failed": sum(1 for r in results if not r.passed),
         "tests": [
-            {"name": r.name, "passed": r.passed, "time": r.time, "returncode": r.returncode}
+            {"name": r.name, "passed": r.passed, "time": r.time,
+             "returncode": r.returncode, "hwpe_cycles": r.hwpe_cycles}
             for r in results
         ],
     }
-    os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
-    with open(output_file, "w") as f:
-        json.dump(report, f, indent=2)
-    print(f"JSON report: {output_file}")
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump(payload, f, indent=2)
+    print(f"JSON report: {path}")
 
 
-def generate_metrics_csv(results: List[TestResult], output_file: str):
-    os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
-    with open(output_file, "w") as f:
-        f.write("name,passed,time_s,returncode\n")
+def csv_report(results: List[TestResult], path: str) -> None:
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    with open(path, 'w') as f:
+        f.write("name,passed,time_s,hwpe_cycles\n")
         for r in results:
-            f.write(f"{r.name},{int(r.passed)},{r.time:.6f},{r.returncode}\n")
-    print(f"CSV report: {output_file}")
+            f.write(f"{r.name},{int(r.passed)},{r.time:.6f},"
+                    f"{'' if r.hwpe_cycles is None else r.hwpe_cycles}\n")
+    print(f"CSV report: {path}")
 
 
 def report_paths(json_file: str, test: Optional[str], report_dir: str) -> dict:
@@ -174,44 +174,42 @@ def report_paths(json_file: str, test: Optional[str], report_dir: str) -> dict:
     }
 
 
-def discover_suites(pattern: str) -> List[str]:
+def discover_jsons(pattern: str) -> List[str]:
     found = []
     for path in sorted(glob.glob(pattern)):
         try:
             with open(path) as f:
-                data = json.load(f)
+                d = json.load(f)
         except Exception:
             continue
-        if isinstance(data, dict) and "tests" in data:
+        if isinstance(d, dict) and "tests" in d:
             found.append(path)
     return found
 
 
 def run_suite(args, json_file: str) -> int:
-    tests = load_test_suite(json_file)
-    if not tests:
-        print(f"No tests in {json_file}")
+    names = gen_list_tests(json_file)
+    if not names:
+        print(f"No tests found in {json_file}")
         return 1
-
     if args.test:
-        names = [t["name"] for t in tests]
-        tests = [t for t in tests if t["name"] == args.test]
-        if not tests:
+        if args.test not in names:
             print(f"Test '{args.test}' not found in {json_file}")
             print(f"Available: {', '.join(names)}")
             return 1
+        names = [args.test]
 
-    print(f"Running {len(tests)} test(s) from {json_file}\n")
+    print(f"Running {len(names)} test(s) from {json_file}")
+    print()
 
-    parallel = args.parallel if (args.parallel > 1 and len(tests) > 1) else 1
+    work = [(n, json_file, args.vsim_flags, args.timeout) for n in names]
 
-    if parallel > 1:
-        pool_args = [(t, args.vsim_flags, args.timeout) for t in tests]
-        old_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        pool = multiprocessing.Pool(parallel)
-        signal.signal(signal.SIGINT, old_sigint)
+    if args.parallel > 1 and len(names) > 1:
+        old = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        pool = multiprocessing.Pool(args.parallel)
+        signal.signal(signal.SIGINT, old)
         try:
-            results = pool.map(run_test_wrapper, pool_args)
+            results = pool.map(run_wrapper, work)
             pool.close()
             pool.join()
         except KeyboardInterrupt:
@@ -221,16 +219,16 @@ def run_suite(args, json_file: str) -> int:
             return 1
     else:
         try:
-            results = [run_single_test(t, args.vsim_flags, args.timeout) for t in tests]
+            results = [run_single(*w) for w in work]
         except KeyboardInterrupt:
             print("\nTerminating run_test.py")
             return 1
 
     results.sort(key=lambda r: r.name)
-
+    print()
     passed = sum(1 for r in results if r.passed)
     failed = len(results) - passed
-    print(f"\nResults: {passed}/{len(results)} passed")
+    print(f"Results: {passed}/{len(results)} passed")
     if failed:
         print("\nFailed tests:")
         for r in results:
@@ -238,38 +236,37 @@ def run_suite(args, json_file: str) -> int:
                 print(f"  - {r.name}")
 
     if not args.no_report:
-        paths = report_paths(json_file, args.test, args.report_dir)
-        generate_junit_report(results, paths["junit"])
-        generate_json_report(results, paths["json"])
-        generate_metrics_csv(results, paths["csv"])
+        rp = report_paths(json_file, args.test, args.report_dir)
+        junit_report(results, rp["junit"])
+        json_report(results, rp["json"])
+        csv_report(results, rp["csv"])
 
     return 0 if failed == 0 else 1
 
 
 def main():
-    p = argparse.ArgumentParser(description="Datamover HWPE Test Runner")
-    p.add_argument("json_file", nargs="?", help="JSON test suite file")
-    p.add_argument("--discover-glob", type=str, help="Glob to discover JSON suites")
-    p.add_argument("--test", "-t", type=str, help="Run only the named test")
-    p.add_argument("--parallel", "-p", type=int, default=4, help="Parallel processes")
-    p.add_argument("--timeout", type=int, default=600, help="Timeout per test (s)")
-    p.add_argument("--report-dir", default="reports", help="Report directory")
-    p.add_argument("--no-report", action="store_true", help="Disable report generation")
-    p.add_argument("--vsim-flags", default="-c", help="VSIM flags ('-c' headless, '-gui' GUI)")
-
-    args = p.parse_args()
+    parser = argparse.ArgumentParser(description="Datamover HWPE Test Runner")
+    parser.add_argument("json_file", nargs="?", help="JSON test suite file")
+    parser.add_argument("--discover-glob", type=str, help="Run all matching JSON suites")
+    parser.add_argument("--test", "-t", type=str, help="Run a specific test by name")
+    parser.add_argument("--parallel", "-p", type=int, default=8, help="Parallel workers")
+    parser.add_argument("--timeout", type=int, default=3600, help="Per-test timeout (s)")
+    parser.add_argument("--report-dir", default="reports", help="Report directory")
+    parser.add_argument("--no-report", action="store_true", help="Skip report generation")
+    parser.add_argument("--vsim-flags", default="-gui", help="VSIM flags")
+    args = parser.parse_args()
 
     if "-gui" in args.vsim_flags and args.parallel > 1:
         print("GUI mode detected, forcing parallel=1")
         args.parallel = 1
 
     if not args.json_file and not args.discover_glob:
-        p.error("Provide json_file or --discover-glob")
+        parser.error("Provide json_file or --discover-glob")
     if args.json_file and args.discover_glob:
-        p.error("Use either json_file or --discover-glob, not both")
+        parser.error("Use either json_file or --discover-glob, not both")
 
     if args.discover_glob:
-        suites = discover_suites(args.discover_glob)
+        suites = discover_jsons(args.discover_glob)
         if not suites:
             print(f"No test JSON files found (glob: {args.discover_glob})")
             sys.exit(1)

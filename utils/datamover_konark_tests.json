@@ -1,0 +1,2280 @@
+{
+  "hw_config": "default",
+  "tests": [
+    {
+      "name": "5x5_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 5,
+        "SIZE_N": 5,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "8x8_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "16x16_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "19x21_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 19,
+        "SIZE_N": 21,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "56x56_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 56,
+        "SIZE_N": 56,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x64_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "221x199_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 221,
+        "SIZE_N": 199,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "256x256_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 256,
+        "SIZE_N": 256,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "3x3_copy_count",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 3,
+        "SIZE_N": 3,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "7x7_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 7,
+        "SIZE_N": 7,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "8x11_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 8,
+        "SIZE_N": 11,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "11x11_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 11,
+        "SIZE_N": 11,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "17x17_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 17,
+        "SIZE_N": 17,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "17x19_copy_count",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 17,
+        "SIZE_N": 19,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "65x65_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "224x224_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 224,
+        "SIZE_N": 224,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "511x511_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 511,
+        "SIZE_N": 511,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "192x192_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 192,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "2x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "66x128_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 66,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "126x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 126,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "130x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 130,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "200x192_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 200,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x1_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 1,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x2_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 2,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x32_transp1_count",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 32,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "64x56_transp1_count",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 56,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "64x72_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 72,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x144_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 144,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "192x200_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 192,
+        "SIZE_N": 200,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "3x3_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 3,
+        "SIZE_N": 3,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x72_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 72,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "256x288_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 256,
+        "SIZE_N": 288,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "288x256_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 288,
+        "SIZE_N": 256,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x65_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x63_transp1_count",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 63,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "64x33_transp1_count",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 33,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "65x65_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "199x221_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 199,
+        "SIZE_N": 221,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "448x448_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 448,
+        "SIZE_N": 448,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x128_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 128,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "192x192_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 192,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "8x64_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 8,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "8x128_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 8,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x64_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x128_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "72x128_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 72,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "199x192_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 199,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x72_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 72,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x8_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x16_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x56_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 56,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "256x288_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 256,
+        "SIZE_N": 288,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "288x256_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 288,
+        "SIZE_N": 256,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "199x200_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 199,
+        "SIZE_N": 200,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x65_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "8x8_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4x4_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4,
+        "SIZE_N": 4,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x65_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 65,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4x65_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "199x221_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 199,
+        "SIZE_N": 221,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "1x1024_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 1,
+        "SIZE_N": 1024,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "1x2048_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 1,
+        "SIZE_N": 2048,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "256x256_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 256,
+        "SIZE_N": 256,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "221x199_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 221,
+        "SIZE_N": 199,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x64_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x128_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x65_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x127_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 127,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x129_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 129,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x129_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 128,
+        "SIZE_N": 129,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "32x64_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 32,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "32x128_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 32,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "127x129_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 127,
+        "SIZE_N": 129,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "199x221_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 199,
+        "SIZE_N": 221,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "288x256_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 288,
+        "SIZE_N": 256,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "256x288_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 256,
+        "SIZE_N": 288,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "221x199_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 221,
+        "SIZE_N": 199,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "221x199_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 221,
+        "SIZE_N": 199,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x64_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x64_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 128,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x128_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "199x221_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 199,
+        "SIZE_N": 221,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "256x288_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 256,
+        "SIZE_N": 288,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "288x256_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 288,
+        "SIZE_N": 256,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x2x64_unfold4_count",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "64x4x64_unfold4_count",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 4,
+        "SIZE_N": 64,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "64x8x64_unfold4_count",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 8,
+        "SIZE_N": 64,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "64x16x64_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 16,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4x2x64_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 4,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4x2x32_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 4,
+        "SIZE_M": 2,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x2x32_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 2,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "32x32x32_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 32,
+        "SIZE_M": 32,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x16x16_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "63x2x64_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 63,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x2x64_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 128,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "144x16x16_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 144,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x16x16_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 65,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x2x64_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 65,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "72x2x64_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 72,
+        "SIZE_M": 2,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "2x2x128_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 2,
+        "SIZE_M": 2,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "2x128x2_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 2,
+        "SIZE_M": 128,
+        "SIZE_N": 2,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x66x8_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 65,
+        "SIZE_M": 66,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "240x8x8_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 240,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x4x64_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 4,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "2x16x16_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 2,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x16x16_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "2x18x18_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 2,
+        "SIZE_M": 18,
+        "SIZE_N": 18,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "2x64x64_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 2,
+        "SIZE_M": 64,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x16x16_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 65,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x16x16_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 128,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "129x16x16_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 129,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "240x8x8_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 240,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "32x32x32_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 32,
+        "SIZE_M": 32,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x64_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 128,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 128,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x128_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x768_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 768,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x384_copy_count",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 384,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "197x192_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "49x96_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 49,
+        "SIZE_N": 96,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x80_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 80,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "49x48_transp1_count",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 49,
+        "SIZE_N": 48,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "197x128_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x32_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x768_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 768,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x192_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "49x96_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 49,
+        "SIZE_N": 96,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x768_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 768,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x240_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 240,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x64_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "49x48_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 49,
+        "SIZE_N": 48,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x384_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 384,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x384_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 384,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "49x96_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 49,
+        "SIZE_N": 96,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x192_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "96x16x16_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 96,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "120x8x8_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 120,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "96x16x16_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 96,
+        "SIZE_M": 16,
+        "SIZE_N": 16,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "120x8x8_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 120,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x1_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 1,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "1x768_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 1,
+        "SIZE_N": 768,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "1x768_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 1,
+        "SIZE_N": 768,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "196x63_cimr64_count",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 196,
+        "SIZE_N": 63,
+        "COUNT": 1
+      }
+    },
+    {
+      "name": "197x65_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 65,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "768x64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 768,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "197x63_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 197,
+        "SIZE_N": 63,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x8x8_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 65,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x8x8_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 65,
+        "SIZE_M": 8,
+        "SIZE_N": 8,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "1x64_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 1,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "512x512_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 512,
+        "SIZE_N": 512,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "550x550_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 550,
+        "SIZE_N": 550,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "580x580_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 580,
+        "SIZE_N": 580,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "591x591_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 591,
+        "SIZE_N": 591,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "1x4095_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 1,
+        "SIZE_N": 4095,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4095x1_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4095,
+        "SIZE_N": 1,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4095x64_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4095,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4095x85_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4095,
+        "SIZE_N": 85,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4095x86_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4095,
+        "SIZE_N": 86,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "4096x1_copy",
+      "params": {
+        "DATAMOVER_MODE": 0,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 4096,
+        "SIZE_N": 1,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "591x591_transp1",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 591,
+        "SIZE_N": 591,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "591x591_cim64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 591,
+        "SIZE_N": 591,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "591x591_cimr64",
+      "params": {
+        "DATAMOVER_MODE": 2,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 1,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 591,
+        "SIZE_N": 591,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "591x591_cim64_transp1",
+      "params": {
+        "DATAMOVER_MODE": 3,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 591,
+        "SIZE_N": 591,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "127x32x32_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 127,
+        "SIZE_M": 32,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "127x32x32_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 127,
+        "SIZE_M": 32,
+        "SIZE_N": 32,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x64_transp2",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 2,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 64,
+        "SIZE_N": 64,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "192x128_transp2",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 2,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 192,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "128x192_transp4",
+      "params": {
+        "DATAMOVER_MODE": 1,
+        "TRANSP_MODE": 4,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 1,
+        "SIZE_M": 128,
+        "SIZE_N": 192,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "32x4x62_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 32,
+        "SIZE_M": 4,
+        "SIZE_N": 62,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "64x4x128_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "CIM_MODE": 0,
+        "ROW_TILE_SIZE": 64,
+        "SIZE_C": 64,
+        "SIZE_M": 4,
+        "SIZE_N": 128,
+        "COUNT": 0
+      }
+    }
+  ]
+}

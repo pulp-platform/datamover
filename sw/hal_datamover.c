@@ -8,10 +8,13 @@
 //          Francesco Conti <f.conti@unibo.it>
 
 #include <stdint.h>
-#include <stdio.h>
 
-#include "konark/hal_datamover.h"
-#include "konark/hal_hwpe.h"
+#include "hal_datamover.h"
+#include "hal_hwpe.h"
+#if VERBOSE
+#include "tinyprintf.h"
+#define printf tfp_printf
+#endif
 
 /////////////
 // Drivers //
@@ -273,23 +276,24 @@ void datamover_cim_layout_config_leftover_tiles(uint8_t *matrix_in, uint8_t *mat
 datamover_status_t datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   // For row-major to A-layout: row_tile_size = CIM inner dimension [elements] (64)
   // For row-major to B-layout: row_tile_size = CIM outer dimension [elements] (8x #CIM)
-  // NOTE: Only supports row_tile_size = BANDWIDTH_ELEMS
-  // ToDo: Currently BLOCKING for misaligned matrices (waiting for completion of complete tiles before handling leftovers)
+  // NOTE: Only supports row_tile_size = BANDWIDTH_ELEMS for now
   int acq_to = 1000000;
   int job_id = -1;
 
   uint32_t complete_n_tiles = size_n / row_tile_size;  // number of complete tiles in N dimension
 
+  // Handle leftover columns (if any)
   uint32_t leftover_columns = size_n % DATAMOVER_BANDWIDTH_ELEMS;
-  if(leftover_columns != 0) {                   // Misaligned matrix: Handle complete tiles first, then leftover columns
-    if(size_n > DATAMOVER_BANDWIDTH_ELEMS) {    // Handle complete tiles
+  if(leftover_columns != 0) {
+    if(size_n > DATAMOVER_BANDWIDTH_ELEMS) {   // Handle complete tiles
       while ((job_id = datamover_acquire_task()) < 0 && --acq_to) {}
       if (acq_to == 0) {
         return DATAMOVER_TO;
       }
       datamover_cim_layout_config_complete_tiles(matrix_in, matrix_out, size_m, size_n, row_tile_size);
       datamover_trigger_task();
-    }                                           // Handle leftover columns
+    }
+    // Handle leftover columns
     while ((job_id = datamover_acquire_task()) < 0 && --acq_to) {}
     if (acq_to == 0) {
       return DATAMOVER_TO;
@@ -302,7 +306,7 @@ datamover_status_t datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out,
     datamover_cim_layout_config_leftover_tiles(matrix_in, matrix_out, size_m, size_n, row_tile_size);
     datamover_trigger_task();
   }
-  else {                                        // Aligned matrix: Handle complete tiles only
+  else {                                      // Aligned matrix: Handle complete tiles only
       while ((job_id = datamover_acquire_task()) < 0 && --acq_to) {}
       if (acq_to == 0) {
         return DATAMOVER_TO;
@@ -429,7 +433,6 @@ datamover_status_t datamover_cim_layout_transpose_blocking(uint8_t *matrix_in, u
   // Performs transposition of a matrix in CIM layout, with input and output in CIM layout, by internally performing the necessary layout conversions and transposition in row-major layout.
   // DATAMOVER_MODE = 3 is not passed to the HW! It is currently a placeholder for an optimized implementation.
   // IMPORTANT: This function uses the input buffer as temporary storage for the transposed matrix in row-major layout. THE ORIGINAL CONTENT OF THE INPUT BUFFER WILL BE OVERWRITTEN!
-  // ToDo: Implement non-blocking version
   datamover_status_t status;
   if (size_n <= row_tile_size && size_m <= row_tile_size) {
     // If the matrix has only one tile in N and M dimensions, no need to perform 3 separate operations, because CIM layout is the same as row-major layout

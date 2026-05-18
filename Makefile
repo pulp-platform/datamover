@@ -1,175 +1,111 @@
-# Copyright 2023 ETH Zurich and University of Bologna.
+# Copyright 2025-2026 ETH Zurich and University of Bologna.
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
-
-# Standalone testing setup OUTDATED!
-# ToDo: Implement SW-based testing with a CPU core
-
-include config.mk
 
 SHELL = /usr/bin/env bash
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-VENV_BIN=venv/bin/
-
-BENDER_VERSION = bender-0.31.0
-SIM_PATH   ?= modelsim/vsim
-SYNTH_PATH  = synopsys
-
-BENDER_TARGETS = -t rtl -t test -t datamover_test
-
-GUI    ?= 0
-target ?= sim_tb_datamover_top_wrap
+BENDER_VERSION  = bender-0.31.0
+MODELSIM_DIR        ?= $(ROOT_DIR)/modelsim
+MODELSIM_BUILD_DIR  ?= $(MODELSIM_DIR)/build_$(TEST_NAME)
 
 VLOG_FLAGS += -svinputport=compat
-VLOG_FLAGS += -timescale 1ns/1ps
+VLOG_FLAGS += -timescale 1ns/1fs
+VLOG_FLAGS += +nosparse
 
-STIMULI_DIR ?= ${ROOT_DIR}/verif/python/generated
+VLOG_DEFS  += -t rtl -t datamover_standalone
 
-STIMULI_FILE_PATH ?= ${STIMULI_DIR}/initial_memory.txt
-GOLDEN_FILE_PATH ?= ${STIMULI_DIR}/updated_memory.txt
-TESTBENCH_DEFINES  ?= -DSTIMULI_PATH=\\\"$(abspath ${STIMULI_FILE_PATH})\\\"
-TESTBENCH_DEFINES  += -DGOLDEN_PATH=\\\"$(abspath ${GOLDEN_FILE_PATH})\\\"
+BANDWIDTH           ?= 512
+WORD_WIDTH          ?= 64
+ELEM_WIDTH          ?= 8
+MISALIGNED_ACCESSES ?= 0
 
-# Propagate paramters to testbench
-TESTBENCH_DEFINES += -DSTIM_READ_BASE_ADDR=${STIM_READ_BASE_ADDR}
-TESTBENCH_DEFINES += -DSTIM_READ_D0_STRIDE=${STIM_READ_D0_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_READ_D0_LENGTH=${STIM_READ_D0_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_READ_D1_STRIDE=${STIM_READ_D1_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_READ_D1_LENGTH=${STIM_READ_D1_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_READ_D2_STRIDE=${STIM_READ_D2_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_READ_D2_LENGTH=${STIM_READ_D2_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_READ_D3_STRIDE=${STIM_READ_D3_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_READ_D3_LENGTH=${STIM_READ_D3_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_READ_D4_STRIDE=${STIM_READ_D4_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_READ_TOT_LENGTH=${STIM_READ_TOT_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_READ_DIM_ENABLE=${STIM_READ_DIM_ENABLE}
+-include $(MODELSIM_BUILD_DIR)/test_config.mk
 
-TESTBENCH_DEFINES += -DSTIM_WRITE_BASE_ADDR=${STIM_WRITE_BASE_ADDR}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D0_STRIDE=${STIM_WRITE_D0_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D0_LENGTH=${STIM_WRITE_D0_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D1_STRIDE=${STIM_WRITE_D1_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D1_LENGTH=${STIM_WRITE_D1_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D2_STRIDE=${STIM_WRITE_D2_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D2_LENGTH=${STIM_WRITE_D2_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D3_STRIDE=${STIM_WRITE_D3_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D3_LENGTH=${STIM_WRITE_D3_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_WRITE_D4_STRIDE=${STIM_WRITE_D4_STRIDE}
-TESTBENCH_DEFINES += -DSTIM_WRITE_TOT_LENGTH=${STIM_WRITE_TOT_LENGTH}
-TESTBENCH_DEFINES += -DSTIM_WRITE_DIM_ENABLE=${STIM_WRITE_DIM_ENABLE}
+SIM_DEFINES  = -DBANDWIDTH=$(BANDWIDTH)
+SIM_DEFINES += -DWORD_WIDTH=$(WORD_WIDTH)
+SIM_DEFINES += -DELEM_WIDTH=$(ELEM_WIDTH)
+SIM_DEFINES += -DMISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
+SIM_DEFINES += -DTEST_NAME=$(TEST_NAME)
 
-TESTBENCH_DEFINES += -DSTIM_MEM_SIZE=${STIM_MEM_SIZE}
+VLOG_DEFS  += $(SIM_DEFINES)
 
-TESTBENCH_DEFINES += -DSTIM_TRANSP_MODE=${STIM_TRANSP_MODE}
-# TESTBENCH_DEFINES += -DSTIM_TRANSP_LEN=${STIM_TRANSP_LEN}
+include sw/sw.mk
 
-TESTBENCH_DEFINES += -DSTIM_TENSOR_SIZE_M=${STIM_TENSOR_SIZE_M}
-TESTBENCH_DEFINES += -DSTIM_TENSOR_SIZE_N=${STIM_TENSOR_SIZE_N}
+.PHONY: validate-pipeline-inputs
+validate-pipeline-inputs:
+ifndef TEST_JSON
+	$(error TEST_JSON is required)
+endif
+ifndef TEST_NAME
+	$(error TEST_NAME is required)
+endif
+	@test -f "$(TEST_JSON)" || (echo "ERROR: TEST_JSON file not found: $(TEST_JSON)" >&2; exit 1)
 
-TESTBENCH_DEFINES += -DSTIM_NUM_CHANNELS=${STIM_NUM_CHANNELS}
-TESTBENCH_DEFINES += -DSTIM_TOTAL_ELEMENTS=${STIM_TOTAL_ELEMENTS}
+ifeq ($(NO_GUI),1)
+    override VSIM_FLAGS := -c
+endif
+VSIM_FLAGS ?= -gui
 
-TESTBENCH_DEFINES += -DBANDWIDTH=${BANDWIDTH}
-TESTBENCH_DEFINES += -DNUM_ELEM_WORD=${NUM_ELEM_WORD}
-TESTBENCH_DEFINES += -DELEM_WIDTH=${ELEM_WIDTH}
-TESTBENCH_DEFINES += -DMISALIGNED_ACCESSES=${MISALIGNED_ACCESSES}
+modelsim-sim-script:
+	mkdir -p $(MODELSIM_BUILD_DIR)
+	@rm -f $(MODELSIM_BUILD_DIR)/compile.tcl
+	$(BENDER_VERSION) script vsim --vlog-arg="$(VLOG_FLAGS)" $(VLOG_DEFS) >> $(MODELSIM_BUILD_DIR)/compile.tcl
 
+build-sim:
+	cd $(MODELSIM_DIR) && \
+	$(MAKE) VSIM_FLAGS=$(VSIM_FLAGS) TEST_NAME=$(TEST_NAME) lib build
 
-# .PHONY: clean-sim sim-script sim synopsys-script
-all: sim
-
-# Validate current configuration
-validate-config:
-	@echo "Validating current configuration..."
-	@python3 verif/python/validate_config.py \
-		--bandwidth $(BANDWIDTH) \
-		--word_width $(WORD_WIDTH) \
-		--elem_width $(ELEM_WIDTH) \
-		--memory_size $(MEMORY_SIZE) \
-		--datamover_mode $(DATAMOVER_MODE) \
-		--transp_mode $(TRANSP_MODE) \
-		--cim_mode $(CIM_MODE) \
-		--row_tile_size $(ROW_TILE_SIZE) \
-		--size_m $(TENSOR_SIZE_M) \
-		--size_n $(TENSOR_SIZE_N) \
-		--num_channels $(NUM_CHANNELS)
+run-sim:
+	cd $(MODELSIM_DIR) && \
+	$(MAKE) TEST_NAME=$(TEST_NAME) VSIM_FLAGS="$(VSIM_FLAGS)" run
 
 clean-sim:
-	rm -rf $(SIM_PATH)/work
-	rm -rf $(SIM_PATH)/compile.tcl
-	rm -rf $(SIM_PATH)/wlft*
-	rm -rf $(SIM_PATH)/transcript
-	rm -rf $(SIM_PATH)/modelsim.ini
-	rm -rf $(SIM_PATH)/vsim.wlf
+	rm -rf $(MODELSIM_BUILD_DIR)
 
-sim-script: clean-sim
-	mkdir -p $(SIM_PATH)
-	$(BENDER_VERSION) script vsim $(BENDER_TARGETS) $(TESTBENCH_DEFINES) --vlog-arg="$(VLOG_FLAGS)" >> $(SIM_PATH)/compile.tcl
+clean-all-sim:
+	rm -rf $(MODELSIM_DIR)/build_*
 
-sim: stimuli sim-script validate-config
-	cd modelsim && \
-	GUI=$(GUI) $(MAKE) $(target) buildpath=$(ROOT_DIR)/$(SIM_PATH)
+.PHONY: run-sim-generate run-sim-execute run-sim-pipeline
+run-sim-generate:
+	@$(MAKE) validate-pipeline-inputs TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)"
+	$(MAKE) TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)" clean-sim sw-gen
 
-clean-stimuli:
-	rm -rf $(STIMULI_DIR)
+run-sim-execute:
+ifndef TEST_NAME
+	$(error TEST_NAME is required)
+endif
+	@test -f "$(MODELSIM_BUILD_DIR)/test_config.mk" || \
+	    (echo "ERROR: missing $(MODELSIM_BUILD_DIR)/test_config.mk; run run-sim-generate first" >&2; exit 1)
+	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" modelsim-sim-script build-sim sw-compile run-sim
 
-NO_DEBUG ?= 0
-export NO_DEBUG
+run-sim-pipeline:
+	$(MAKE) TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)" run-sim-generate
+	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" run-sim-execute
 
-stimuli: clean-stimuli validate-config
-	python -m verif.python.generate_stimuli \
-	--mem_size $(STIM_MEM_SIZE) \
-	--read_base_addr $(STIM_READ_BASE_ADDR) \
-	--write_base_addr $(STIM_WRITE_BASE_ADDR) \
-	--bandwidth_bits $(BANDWIDTH) \
-	--num_elem_word $(NUM_ELEM_WORD) \
-	--elem_width $(ELEM_WIDTH) \
-	--datamover_mode $(DATAMOVER_MODE) \
-	--transp_mode $(STIM_TRANSP_MODE) \
-	--cim_mode $(CIM_MODE) \
-	--row_tile_size $(ROW_TILE_SIZE) \
-	--size_m $(TENSOR_SIZE_M) \
-	--size_n $(TENSOR_SIZE_N) \
-	--num_channels $(NUM_CHANNELS) \
-	--output_dir "$(STIMULI_DIR)" \
-	$(if $(filter 1,$(NO_DEBUG)),--no-debug,)
-
-.PHONY: all validate-config clean-sim sim-script sim clean-stimuli stimuli run-test run-all-tests clean
-
+.PHONY: run-test run-all-tests
 run-test:
 ifndef TEST_JSON
-	$(error TEST_JSON is required. Usage: make run-test TEST_JSON=utils/datamover_transpose_tests.json)
+	$(error TEST_JSON is required)
 endif
-	@python -u -m utils.run_test $(TEST_JSON) \
-		$(if $(TEST),--test=$(TEST),) \
-		$(if $(PARALLEL),--parallel=$(PARALLEL),) \
-		$(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
-		$(if $(VSIM_FLAGS),--vsim-flags="$(VSIM_FLAGS)",); \
-	rc=$$?; \
-	if [ $$rc -eq 0 ]; then \
-		printf '\033[1;32m==== ALL TESTS PASSED ====\033[0m\n'; \
-	else \
-		printf '\033[1;31m==== SOME TESTS FAILED ====\033[0m\n'; \
-	fi; \
-	exit $$rc
+	python -u -m utils.run_test $(TEST_JSON) \
+	    $(if $(TEST),--test=$(TEST),) \
+	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
+	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
+	    $(if $(VSIM_FLAGS),--vsim-flags="$(VSIM_FLAGS)",)
 
 TEST_JSON_GLOB ?= utils/datamover_*_tests.json
 ALL_TESTS_VSIM_FLAGS ?= -c
 run-all-tests:
-	@python -u -m utils.run_test --discover-glob="$(TEST_JSON_GLOB)" \
-		$(if $(PARALLEL),--parallel=$(PARALLEL),) \
-		$(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
-		--vsim-flags="$(ALL_TESTS_VSIM_FLAGS)"; \
-	rc=$$?; \
-	if [ $$rc -eq 0 ]; then \
-		printf '\033[1;32m==== ALL TESTS PASSED ====\033[0m\n'; \
-	else \
-		printf '\033[1;31m==== SOME TESTS FAILED ====\033[0m\n'; \
-	fi; \
-	exit $$rc
+	python -u -m utils.run_test --discover-glob="$(TEST_JSON_GLOB)" \
+	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
+	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
+	    --vsim-flags="$(ALL_TESTS_VSIM_FLAGS)"
 
-clean:
-	rm -rf modelsim/build_*
-	rm -rf modelsim/vsim
+.PHONY: clean clean-all
+clean: clean-all-sim
 	rm -rf reports/
 	rm -rf utils/__pycache__ verif/python/__pycache__
+
+clean-all: clean
+	rm -rf .bender

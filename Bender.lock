@@ -23,8 +23,8 @@ packages:
     dependencies:
     - common_cells
   common_cells:
-    revision: 9afda9abb565971649c2aa0985639c096f351171
-    version: 1.38.0
+    revision: 9ca8a7655f741e7dd5736669a20a301325194c28
+    version: 1.39.0
     source:
       Git: https://github.com/pulp-platform/common_cells.git
     dependencies:
@@ -37,7 +37,7 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   hci:
-    revision: 9844a893c34612ac66697e8dcd60214296f2634c
+    revision: e7a0ebd219efd819bb5bc91ea1b24fdcfcfde6c6
     version: null
     source:
       Git: https://github.com/pulp-platform/hci.git
@@ -49,7 +49,7 @@ packages:
     - redundancy_cells
     - register_interface
   hwpe-ctrl:
-    revision: 4977b6cf42b96f3fefd1973281d5c4b8259c50d5
+    revision: a5966201aeeb988d607accdc55da933a53c6a56e
     version: null
     source:
       Git: https://github.com/pulp-platform/hwpe-ctrl.git
@@ -60,6 +60,13 @@ packages:
     version: null
     source:
       Git: https://github.com/pulp-platform/hwpe-stream.git
+    dependencies:
+    - tech_cells_generic
+  ibex:
+    revision: b18f7ef178ed07f5085051f96042c670a919fd5c
+    version: null
+    source:
+      Git: https://github.com/pulp-platform/ibex.git
     dependencies:
     - tech_cells_generic
   l2_tcdm_hybrid_interco:
@@ -87,6 +94,13 @@ packages:
     - apb
     - axi
     - common_cells
+  scm:
+    revision: 1976c7efb4979271eee2abe262fde0f9a20e2557
+    version: 1.2.1
+    source:
+      Git: https://github.com/pulp-platform/scm.git
+    dependencies:
+    - tech_cells_generic
   tech_cells_generic:
     revision: 7968dd6e6180df2c644636bc6d2908a49f2190cf
     version: 0.2.13
