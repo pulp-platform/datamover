@@ -4,8 +4,10 @@ modelsim/build_*
 reports/
 .venv/
 .uv-cache/
+.vscode/
 test/BUILD
 **.log
 **.txt
 **__pycache**
 install
+temp
