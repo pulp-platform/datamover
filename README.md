@@ -1,125 +1,92 @@
-# Project Build and Simulation Guide
+<p align="left">
+  <img src="logo.png" width="300" alt="Ratha Logo">
+</p>
 
-This readme provides instructions on how to set up and run the standalone simulation using `make` commands.
+[![License HW](https://img.shields.io/badge/License%20HW-SHL--0.51-green)](https://solderpad.org/licenses/SHL-0.51/)
+[![License SW](https://img.shields.io/badge/License%20SW-Apache--2.0-orange)](https://www.apache.org/licenses/LICENSE-2.0)
+[![CI status](https://github.com/pulp-platform/datamover/actions/workflows/gitlab-ci.yml/badge.svg?branch=lkesting/konark)](https://github.com/pulp-platform/datamover/actions/workflows/gitlab-ci.yml?query=branch%3Alkesting%2Fkonark)
 
-## On the parametrization
+**Ratha** (formerly Datamover) is a parameterizable HWPE that operates on tensors stored in TCDM, reading from one region and writing back the transformed result to another. Supported transformations are element-wise transpose, mapping a tensor to 'CIM layout', a blocked layout with 64 elements consumed by the Surya accelerator, and unfold/fold for MobileViT-style convolutions. This repository contains the SystemVerilog RTL, a Python golden model, and a RISC-V core driven testbench with JSON-defined test suites.
 
-Configure the hardware and testbench parameters in `config.mk`.
+## 🚀 Quick Start
 
-### Hardware parameter
-`BANDWIDTH` = total bandwidth of the HWPE towards TCDM, expressed in bits
-`NUM_ELEM_WORD` = number of elements (e.g., bytes) in a single word of a memory bank
-`ELEM_WIDTH` = width of an element, expressed in bits (e.g., 8 for bytes)
-
-**Constraints**
-- `NUM_ELEM_WORD * ELEM_WIDTH` is the width of a memory bank word. `BANDWIDTH` must be divisible by such word width, as `BANDWIDTH / (NUM_ELEM_WORD * ELEM_WIDTH)` is the number of banks accessed in parallel by the HWPE in one memory access.
-- `NUM_ELEM_WORD` must be a power of two due to memory addressing. Currently, the configurations `NUM_ELEM_WORD` = 2,4 support the datamover's transposition mode (1 elem, 2 elems, 4 elems). `NUM_ELEM_WORD` = 1 and `NUM_ELEM_WORD` > 4 is not supported.
-
-### Testbench parameters - OUTDATED
-
-The following parameters are used to generate the testbench stimuli and to configure the datamover registers.
-
-`STIM_*_BASE_ADDR` = start address of the read/write access bursts (element-addressed)
-`STIM_*_LENGTH` = number of read/write accesses for the d0/d1 dimensions and in total (it is not an address offset!)
-`STIM_*_STRIDE` = stride between element across dimensions d0/d1 (element-addressed, e.g., stride d1 would be the distance in an element-addressed offset between A[row=0][col=0] and A[row=1][col=0])
-`STIM_*_D2/D3_LENGTH` = optional higher-dimension lengths when using multi-dimensional tiling (0 means unused)
-`STIM_*_D2/D3_STRIDE` = stride for the higher dimensions (element-addressed)
-`STIM_*_D4_STRIDE` = optional fourth-dimension stride (element-addressed)
-`STIM_MEM_SIZE` = number of words of the testbench memory
-`STIM_*_DIM_ENABLE` = 4-bit mask enabling address generation dimensions (d0..d3)
-`STIM_TRANSP_MODE` = transposition mode to configure for the datamover (`3'b000` = none, `3'b001` = 1 elem, `3'b010` = 2 elem, `3'b100` = 4 elem)
-`STIM_TRANSP_LEN` = transposition length (if set to 0: transp_len = BANDWIDTH_ALIGNED / ELEM_WIDTH)
-
-For the complete list of the datamover configuration registers, cf. `datamover_package.sv`.
-
-The parameters `STIM_*_BASE_ADDR` and `STIM_*_STRIDE`, exactly like memory addresses, are element-addressed. In a classical configuration of `NUM_ELEM_WORD` and `ELEM_WIDTH` (i.e., 32-bit words made of 4 8-bit bytes each), they are byte-addressed and their least significant 2 bits are dedicated to the byte offset. In general, however, the least `$clog2(NUM_ELEM_WORD)` bits of these addresses are dedicated to the offset for the elements in a word.
-This impacts the generation of the stimuli in `verif/python/generate_stimuli.py` and the memory addressing in the hardware (i.e., the `testbench_memory` employed in this simulation or the memory sub-system of a real system where the datamover is integrated).
-
-Note: `STIM_*_D0_STRIDE` is a element-addressed offset. This means that subsequent accesses advance of `STIM_*_D0_STRIDE << $clog2(NUM_ELEM_WORD)` in memory, independently on `BANDWIDTH`. `BANDWIDTH` only indicates the accessed number of subsequent words, given the base word of that access. Therefore, depending on the configuration of the stride, subsequent accesses of `BANDWIDTH` bits can also access overlapping words.
-
-**Constraints**
-- Currently, only `STIM_TRANSP_MODE` = `000` (i.e., no transposition) is supported by `verif/python/generate_stimuli.py`; it is not possible, therefore, to test the transpose functionality of the datamover in this standalone testbench
-
-## Available Make Commands
-
-### 1. To clone the dependencies, run:
-```sh
-make bender
+```bash
+uv sync --python 3.11
+source .venv/bin/activate
+bender-0.31.0 checkout
+make run-all-tests
 ```
 
-### 2. Generate Stimuli and Golden Files
-To generate the stimuli and golden reference using a Python script, run:
-```sh
-make stimuli
+`make run-all-tests` auto-loads the `riscv` env wrapper; single-test invocations must be prefixed with `riscv` manually.
+
+## Repository Structure
+
+- `rtl/` — `datamover_top{_wrap}.sv`, `datamover_engine.sv`, `datamover_streamer.sv`, `datamover_package.sv`
+- `verif/` — Ibex-driven testbench (`verif/tb/`) and Python golden model (`verif/python/datamover_golden_model.py`)
+- `sw/` — C HAL and bare-metal driver (`hal_datamover.{c,h}`, `tb_datamover.c`)
+- `utils/` — JSON test suites, `hw_configs.json`, `gen_workload_header.py`, `run_test.py`
+- `modelsim/` — simulation infrastructure; per-test builds land in `build_<TEST_NAME>/`
+
+## Hardware Parameters
+
+Set via `config.mk` defaults or per-test via `utils/hw_configs.json`:
+
+| Parameter             | Meaning |
+|-----------------------|---------|
+| `BANDWIDTH`           | Total HWPE↔TCDM port width (bits) |
+| `WORD_WIDTH`          | Memory-bank word width (bits) |
+| `ELEM_WIDTH`          | Element width (bits) |
+| `MISALIGNED_ACCESSES` | Non-power-of-two strobed accesses (RTL path currently disabled) |
+
+**Constraints**: `BANDWIDTH` must divide by `WORD_WIDTH`; `WORD_WIDTH/ELEM_WIDTH` must be a power of two. Transpose only supports `NUM_ELEM_WORD ∈ {2, 4}`; granularity is selected at runtime via `TRANSP_MODE`.
+
+## Operating Modes
+
+| `DATAMOVER_MODE` | Description |
+|------------------|-------------|
+| 0 | **Copy** — straight-through |
+| 1 | **Transpose** — granularity via `TRANSP_MODE` (1/2/4 elements) |
+| 2 | **CIM fwd/rev** — blocked layout (blocks of 64), `CIM_MODE` selects direction, `ROW_TILE_SIZE` controls geometry |
+| 3 | **CIMT fwd/rev** |
+| 4 | **Unfold** (MobileViT) |
+| 5 | **Fold** (MobileViT) |
+
+For register layout, see [datamover_package.sv](rtl/datamover_package.sv).
+
+## Running Tests
+
+```bash
+# Single test (note: riscv prefix required)
+riscv make run-sim-pipeline TEST_JSON=utils/datamover_smoke_tests.json TEST_NAME=COPY_8x8 NO_GUI=1
+
+# A whole suite
+make run-test TEST_JSON=utils/datamover_cim_tests.json PARALLEL=8
+
+# A single test by name
+make run-test TEST_JSON=utils/datamover_cim_tests.json TEST=<TEST_NAME> NO_GUI=1
+
+# All enabled suites
+make run-all-tests PARALLEL=8
 ```
 
-### 3. Create Compilation Script
-To create a compilation script for compiling the hardware, run:
-```sh
-make sim-script
-```
+JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `utils/datamover_*_tests.json`; HW configs in `utils/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`) and an optional per-test `hw_config`; the name is auto-generated when omitted.
 
-### 4. Simulate the Design
-To simulate the RTL, execute:
-```sh
-make sim
-```
-By default QuestaSim GUI is active. You can simulate the RTL in CLI mode with `GUI=0 make sim`.
+## Cleanup
 
-## Testing and Validation - OUTDATED
-
-The datamover HWPE provides several test targets for comprehensive validation:
-
-### Configuration Testing
-```sh
-# Test all configuration presets
-make test-all-presets
-
-# Test all transpose modes
-make test-transpose-modes
-
-# Test configuration parameter combinations (grid testing)
-make test-transpose-grid
-make test-cim-grid
-
-# Show available configurations
-make help
-```
-
-### Configuration Presets
-The system includes predefined test configurations:
-- `small-matrix`: 4×4 matrix (quick testing)
-- `medium-matrix`: 64×64 matrix (moderate testing)
-- `large-matrix`: 448×448 matrix (stress testing)
-- `transpose-test`: 32×32 matrix (transpose focus)
-- `rect-wide`: 64×256 matrix (4-element transpose)
-- `rect-tall`: 256×64 matrix (2-element transpose)
-- `rect-narrow`: 16×128 matrix (1-element transpose)
-- `rect-elongated`: 128×32 matrix (2-element transpose)
-- `copy-small`: 4×4 matrix (copy mode testing)
-- `copy-medium`: 64×64 matrix (copy mode testing)
-- `cim-small`: 32×128 matrix (CIM mode, 32 inner_dim, 128-bit bandwidth)
-- `cim-medium`: 64×256 matrix (CIM mode, 64 inner_dim, 256-bit bandwidth)
-- `cim-large`: 128×256 matrix (CIM mode, 64 inner_dim, 512-bit bandwidth)
-- `custom`: User-defined (config.mk default)
-
-For detailed configuration documentation, see `CONFIG_USAGE.md`.
-
-## Test Results
-If the tests pass successfully, you should see the following message displayed at the end:
-```
-PASSED!!!!
+```bash
+make clean        # build artifacts + reports
+make clean-all    # also remove .bender
 ```
 
 ## Contributors
+
 - Francesco Conti, University of Bologna (*f.conti@unibo.it*)
 - Arpan Suravi Prasad, ETH Zurich (*prasadar@iis.ee.ethz.ch*)
 - Sergio Mazzola, ETH Zurich (*smazzola@iis.ee.ethz.ch*)
 - Cyrill Durrer, ETH Zurich (*cdurrer@iis.ee.ethz.ch*)
+- Lionnus Kesting, ETH Zurich (*lkesting@iis.ee.ethz.ch*)
 
 ## License
-This repository makes use of two licenses:
-- for all *software*: Apache License Version 2.0
-- for all *hardware*: Solderpad Hardware License Version 0.51
 
-For further information have a look at the license files: `LICENSE.hw`, `LICENSE.sw`
+- *Software*: Apache License Version 2.0 (`LICENSE.sw`)
+- *Hardware*: Solderpad Hardware License Version 0.51 (`LICENSE.hw`)
