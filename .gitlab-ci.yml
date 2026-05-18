@@ -46,3 +46,9 @@ test:cim:
   variables:
     TEST_JSON: utils/datamover_cim_tests.json
     SUITE_NAME: datamover_cim_tests
+
+test:konark_ci:
+  extends: .test-template
+  variables:
+    TEST_JSON: utils/datamover_konark_ci_tests.json
+    SUITE_NAME: datamover_konark_ci_tests
