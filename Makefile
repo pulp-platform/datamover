@@ -102,6 +102,37 @@ run-all-tests:
 	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
 	    --vsim-flags="$(ALL_TESTS_VSIM_FLAGS)"
 
+# ============================================================================
+# Backend
+# ============================================================================
+DESIGN ?= datamover_top_wrap
+export DESIGN
+
+NONFREE_REMOTE ?= git@iis-git.ee.ethz.ch:lkesting/surya-cim-nonfree.git
+NONFREE_COMMIT ?= lkesting/datamover
+NONFREE_DIR     = $(ROOT_DIR)/nonfree
+
+.PHONY: nonfree clean-nonfree
+nonfree:
+	@if [ -d $(NONFREE_DIR)/.git ]; then \
+		echo "ERROR: $(NONFREE_DIR) is already initialized. Run 'make clean-nonfree' first if you really want to reset it."; \
+		exit 1; \
+	fi
+	mkdir -p $(NONFREE_DIR) && \
+	cd $(NONFREE_DIR) && \
+	git init && \
+	git remote add origin $(NONFREE_REMOTE) && \
+	git fetch origin && \
+	git checkout $(NONFREE_COMMIT) -f
+
+clean-nonfree:
+	@echo "This will DELETE the entire nonfree directory: $(NONFREE_DIR)"
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || (echo "Aborted."; exit 1)
+	rm -rf $(NONFREE_DIR)
+
+-include $(NONFREE_DIR)/Makefile
+# ============================================================================
+
 .PHONY: clean clean-all
 clean: clean-all-sim
 	rm -rf reports/
@@ -109,3 +140,4 @@ clean: clean-all-sim
 
 clean-all: clean
 	rm -rf .bender
+	@echo "NOTE: nonfree directory is not removed. Use 'make clean-nonfree' to remove it."

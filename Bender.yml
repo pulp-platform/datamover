@@ -7,6 +7,7 @@ package:
     - "Lionnus Kesting <lkesting@iis.ee.ethz.ch>"
 
 dependencies:
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.39.0 }
   hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 40ab0fe1433dc080a49aa1926ce09df9ab3f5fb5 } # branch: prasadar/multi-precision
   hci:         { git: "https://github.com/pulp-platform/hci.git", rev: e7a0ebd219efd819bb5bc91ea1b24fdcfcfde6c6 } # branch: prasadar/multi-precision
   hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", rev: 4977b6cf42b96f3fefd1973281d5c4b8259c50d5 } # version: 2.0
@@ -26,3 +27,8 @@ sources:
     files:
       - verif/tb/tb_dummy_memory.sv
       - verif/tb/tb_datamover.sv
+
+  # GF12 tech cells
+  - target: gf12
+    files:
+      - nonfree/gf12/sourcecode/tc_clk.sv

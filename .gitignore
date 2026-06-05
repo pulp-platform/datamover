@@ -11,3 +11,7 @@ test/BUILD
 **__pycache**
 install
 temp
+
+# Backend
+nonfree/
+backend/
