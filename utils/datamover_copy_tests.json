@@ -1,6 +1,20 @@
 {
   "tests": [
     {"hw_config": "bw32_w32",  "params": {"DATAMOVER_MODE": 0, "SIZE_M": 4,  "SIZE_N": 4}},
-    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}}
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+
+    {"hw_config": "bw64_w32",  "params": {"DATAMOVER_MODE": 0, "SIZE_M": 32, "SIZE_N": 32}},
+    {"hw_config": "bw64_w64",  "params": {"DATAMOVER_MODE": 0, "SIZE_M": 32, "SIZE_N": 32}},
+    {"hw_config": "bw128_w64", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+    {"hw_config": "bw256_w64", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+    {"hw_config": "bw512_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+    {"hw_config": "bw512_w64", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 10, "SIZE_N": 10}},
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 7,  "SIZE_N": 9}},
+    {"hw_config": "bw512_w64", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 13, "SIZE_N": 13}},
+    {"hw_config": "bw64_w64",  "params": {"DATAMOVER_MODE": 0, "SIZE_M": 5,  "SIZE_N": 5}},
+    {"hw_config": "bw512_w32", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 1,  "SIZE_N": 8}}
   ]
 }

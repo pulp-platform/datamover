@@ -12,6 +12,32 @@
     {"hw_config": "bw256_w64", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 32, "SIZE_M": 128, "SIZE_N": 256}},
     {"hw_config": "bw256_w64", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
     {"hw_config": "bw512_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
-    {"hw_config": "bw512_w64", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}}
+    {"hw_config": "bw512_w64", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
+
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw128_w64", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw256_w64", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw512_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
+    {"hw_config": "bw512_w64", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 128, "SIZE_N": 256}},
+
+    {"hw_config": "bw64_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 8,  "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 8,  "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 64, "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w64", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 128}},
+    {"hw_config": "bw64_w64", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 128}},
+
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 32}},
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 32}},
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 32}},
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 32}},
+
+    {"hw_config": "bw256_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 32, "SIZE_M": 64, "SIZE_N": 80}},
+    {"hw_config": "bw128_w32", "params": {"DATAMOVER_MODE": 2, "ROW_TILE_SIZE": 16, "SIZE_M": 64, "SIZE_N": 40}}
   ]
 }

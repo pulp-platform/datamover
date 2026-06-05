@@ -231,22 +231,39 @@ datamover_status_t datamover_transpose_blocking(uint8_t *matrix_in, uint8_t *mat
 void datamover_cim_layout_config_complete_tiles(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) { // Configure datamover for complete tiles in N dimension
   uint32_t m_tiles = size_m % DATAMOVER_BANDWIDTH_ELEMS ? (size_m / DATAMOVER_BANDWIDTH_ELEMS) + 1 : (size_m / DATAMOVER_BANDWIDTH_ELEMS);  // number of tiles in M dimension (rounded up)
   uint32_t complete_n_tiles = size_n / row_tile_size;  // number of complete tiles in N dimension
+  uint32_t beats_per_row    = row_tile_size / DATAMOVER_BANDWIDTH_ELEMS;  // number of BW-beats spanned by one row tile (R >= 1)
 
   datamover_in_set((uint32_t)matrix_in);
   datamover_out_set((uint32_t)matrix_out);
-  datamover_tot_len_set(m_tiles * complete_n_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-  datamover_in_d0_set(DATAMOVER_BANDWIDTH_ELEMS, row_tile_size / DATAMOVER_BANDWIDTH_ELEMS);
+  // tot_len counts BW-beats: beats_per_row * m_rows * complete_n_tiles = m_tiles * complete_n_tiles * row_tile_size
+  datamover_tot_len_set(m_tiles * complete_n_tiles * row_tile_size);
+  // Read (row-major): d0 = beats within a row tile, d1 = rows, d2 = tiles (outer, bounded by tot_len)
+  datamover_in_d0_set(DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
   datamover_in_d1_set(size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   datamover_in_d2_set(row_tile_size, 0);
   datamover_in_d3_set(0, 0);
-  datamover_out_d0_set(DATAMOVER_BANDWIDTH_ELEMS, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-  datamover_out_d1_set(row_tile_size * size_m, complete_n_tiles);
-  datamover_out_d2_set(0, 0);
-  datamover_out_d3_set(0, 0);
-  datamover_in_out_d4_stride_set(0, 0);
-  datamover_matrix_dim_set(complete_n_tiles * DATAMOVER_BANDWIDTH_ELEMS, size_m);
-  datamover_channels_set(complete_n_tiles * DATAMOVER_BANDWIDTH_ELEMS * size_m, 1);
-  datamover_ctrl_engine_set(DATAMOVER_CIM_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
+  if (beats_per_row > 1) {
+    // Write (CIM layout): row tile spans multiple BW-beats, so we need the full
+    // 3D pattern d0 = beats, d1 = rows (stride row_tile_size), d2 = tiles (outer).
+    datamover_out_d0_set(DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
+    datamover_out_d1_set(row_tile_size, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
+    datamover_out_d2_set(row_tile_size * size_m, complete_n_tiles);
+    datamover_out_d3_set(0, 0);
+    datamover_in_out_d4_stride_set(0, 0);
+    datamover_matrix_dim_set(complete_n_tiles * row_tile_size, size_m);
+    datamover_channels_set(complete_n_tiles * row_tile_size * size_m, 1);
+    datamover_ctrl_engine_set(DATAMOVER_CIM_LAYOUT, 0x3, 0x3, DATAMOVER_TRANSP_NONE);
+  } else {
+    // Write (CIM layout): one row tile == one BW-beat, 2D pattern d0 = rows, d1 = tiles (outer).
+    datamover_out_d0_set(DATAMOVER_BANDWIDTH_ELEMS, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
+    datamover_out_d1_set(row_tile_size * size_m, complete_n_tiles);
+    datamover_out_d2_set(0, 0);
+    datamover_out_d3_set(0, 0);
+    datamover_in_out_d4_stride_set(0, 0);
+    datamover_matrix_dim_set(complete_n_tiles * row_tile_size, size_m);
+    datamover_channels_set(complete_n_tiles * row_tile_size * size_m, 1);
+    datamover_ctrl_engine_set(DATAMOVER_CIM_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
+  }
 }
 
 void datamover_cim_layout_config_leftover_tiles(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) { // Configure datamover for leftover tiles in N dimension
@@ -276,7 +293,9 @@ void datamover_cim_layout_config_leftover_tiles(uint8_t *matrix_in, uint8_t *mat
 datamover_status_t datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   // For row-major to A-layout: row_tile_size = CIM inner dimension [elements] (64)
   // For row-major to B-layout: row_tile_size = CIM outer dimension [elements] (8x #CIM)
-  // NOTE: Only supports row_tile_size = BANDWIDTH_ELEMS for now
+  // NOTE: row_tile_size must be a multiple of BANDWIDTH_ELEMS (a row tile spans
+  //       row_tile_size/BANDWIDTH_ELEMS BW-beats); the leftover-column path still
+  //       assumes row_tile_size == BANDWIDTH_ELEMS.
   int acq_to = 1000000;
   int job_id = -1;
 
@@ -332,22 +351,38 @@ datamover_status_t datamover_cim_layout_blocking(uint8_t *matrix_in, uint8_t *ma
 void datamover_cim_layout_reverse_config_complete_tiles(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) { // Configure datamover for complete tiles in N dimension
   uint32_t complete_n_tiles = size_n / row_tile_size;  // number of complete tiles in N dimension
   uint32_t cim_layout_m_tiles = (size_m * complete_n_tiles) % DATAMOVER_BANDWIDTH_ELEMS ? ((size_m * complete_n_tiles) / DATAMOVER_BANDWIDTH_ELEMS) + 1 : (size_m * complete_n_tiles) / DATAMOVER_BANDWIDTH_ELEMS;  // number of tiles in M dimension (rounded up)
+  uint32_t beats_per_row = row_tile_size / DATAMOVER_BANDWIDTH_ELEMS;  // number of BW-beats spanned by one row tile (R >= 1)
 
   datamover_in_set((uint32_t)matrix_in);
   datamover_out_set((uint32_t)matrix_out);
-  datamover_tot_len_set(cim_layout_m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-  datamover_in_d0_set(DATAMOVER_BANDWIDTH_ELEMS, size_m * complete_n_tiles);
+  // The CIM-layout input is read linearly (contiguously) in tile/row/beat order.
+  datamover_tot_len_set(cim_layout_m_tiles * row_tile_size);   // = cim_layout_m_tiles * BANDWIDTH_ELEMS * beats_per_row
+  datamover_in_d0_set(DATAMOVER_BANDWIDTH_ELEMS, size_m * complete_n_tiles * beats_per_row);
   datamover_in_d1_set(0, 0);
   datamover_in_d2_set(0, 0);
   datamover_in_d3_set(0, 0);
-  datamover_out_d0_set(size_n, size_m);
-  datamover_out_d1_set(DATAMOVER_BANDWIDTH_ELEMS, complete_n_tiles);
-  datamover_out_d2_set(0, 0);
-  datamover_out_d3_set(0, 0);
-  datamover_in_out_d4_stride_set(0, 0);
-  datamover_matrix_dim_set(DATAMOVER_BANDWIDTH_ELEMS, size_m * complete_n_tiles);    // Representing CIM layout instead of original dimensions
-  datamover_channels_set(DATAMOVER_BANDWIDTH_ELEMS * size_m * complete_n_tiles, 1);
-  datamover_ctrl_engine_set(DATAMOVER_CIM_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
+  if (beats_per_row > 1) {
+    // Write (row-major): a row tile spans multiple BW-beats, so scatter each beat
+    // back to its row-major position: d0 = beats, d1 = rows (stride size_n), d2 = tiles.
+    datamover_out_d0_set(DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
+    datamover_out_d1_set(size_n, size_m);
+    datamover_out_d2_set(row_tile_size, complete_n_tiles);
+    datamover_out_d3_set(0, 0);
+    datamover_in_out_d4_stride_set(0, 0);
+    datamover_matrix_dim_set(row_tile_size, size_m * complete_n_tiles);
+    datamover_channels_set(row_tile_size * size_m * complete_n_tiles, 1);
+    datamover_ctrl_engine_set(DATAMOVER_CIM_LAYOUT, 0x3, 0x0, DATAMOVER_TRANSP_NONE);
+  } else {
+    // Write (row-major): one row tile == one BW-beat, 2D pattern d0 = rows, d1 = tiles.
+    datamover_out_d0_set(size_n, size_m);
+    datamover_out_d1_set(DATAMOVER_BANDWIDTH_ELEMS, complete_n_tiles);
+    datamover_out_d2_set(0, 0);
+    datamover_out_d3_set(0, 0);
+    datamover_in_out_d4_stride_set(0, 0);
+    datamover_matrix_dim_set(row_tile_size, size_m * complete_n_tiles);    // (BANDWIDTH_ELEMS, M') for beats_per_row == 1
+    datamover_channels_set(row_tile_size * size_m * complete_n_tiles, 1);
+    datamover_ctrl_engine_set(DATAMOVER_CIM_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
+  }
 }
 
 void datamover_cim_layout_reverse_config_leftover_tiles(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) { // Configure datamover for leftover tiles in N dimension
@@ -377,7 +412,9 @@ void datamover_cim_layout_reverse_config_leftover_tiles(uint8_t *matrix_in, uint
 datamover_status_t datamover_cim_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   // For A-layout to row-major: row_tile_size = CIM inner dimension [elements] (64)
   // For B-layout to row-major: row_tile_size = CIM outer dimension [elements] (8x #CIM)
-  // NOTE: Only supports row_tile_size = BANDWIDTH_ELEMS for now
+  // NOTE: row_tile_size must be a multiple of BANDWIDTH_ELEMS (a row tile spans
+  //       row_tile_size/BANDWIDTH_ELEMS BW-beats); the leftover-column path still
+  //       assumes row_tile_size == BANDWIDTH_ELEMS.
   int acq_to = 1000000;
   int job_id = -1;
 
