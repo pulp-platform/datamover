@@ -1,4 +1,4 @@
-// Copyright 2025 ETH Zurich and University of Bologna.
+// Copyright 2025-2026 ETH Zurich and University of Bologna.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -6,12 +6,16 @@
 //          Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
 //          Daniel Keller <dankeller@iis.ee.ethz.ch>
 //          Francesco Conti <f.conti@unibo.it>
+//          Lionnus Kesting <lkesting@iis.ee.ethz.ch>
 //
 
 #ifndef __HAL_DATAMOVER_H__
 #define __HAL_DATAMOVER_H__
 
 #include <stdint.h>
+#include <stddef.h>
+
+#include "datamover_regif.h"  // SystemRDL-generated register interface (datamover_regif_t)
 
 ///////////
 // Archi //
@@ -20,6 +24,8 @@
 #ifndef DATAMOVER_BASE_ADDR
 #define DATAMOVER_BASE_ADDR 0x10000000  /* matches HWPE region (addr[31:24]==0x10) in standalone TB */
 #endif
+
+#define DATAMOVER_REGS ((volatile datamover_regif_t *)DATAMOVER_BASE_ADDR)
 
 /* Architecture */
 
@@ -43,29 +49,6 @@
 #endif
 #define DATAMOVER_BANDWIDTH_ELEMS (DATAMOVER_BANDWIDTH_ALIGNED / DATAMOVER_ELEM_WIDTH)
 #define DATAMOVER_WORD_ELEMS      (DATAMOVER_WORD_WIDTH / DATAMOVER_ELEM_WIDTH)
-
-/* Registers */
-// To access a register add: DATAMOVER_BASE_ADDR + context offset + register offset
-
-#define DATAMOVER_REGISTER_OFFSET    0x40  // Alias of DATAMOVER_REGISTER_CXT0_OFFS
-#define DATAMOVER_REGISTER_CXT0_OFFS 0x80  // Regfile context 0
-#define DATAMOVER_REGISTER_CXT1_OFFS 0x120 // Regfile context 1
-
-#define DATAMOVER_REG_IN_PTR_OFFSET           0x00  // Input pointer
-#define DATAMOVER_REG_OUT_PTR_OFFSET          0x04  // Output pointer
-#define DATAMOVER_REG_TOT_LEN_OFFSET          0x08  // Total length in number of accesses (BW)
-#define DATAMOVER_REG_IN_D0_OFFSET            0x0C  // [31:16] in_d0_stride; [15:0] in_d0_len
-#define DATAMOVER_REG_IN_D1_OFFSET            0x10  // [31:16] in_d1_stride; [15:0] in_d1_len
-#define DATAMOVER_REG_IN_D2_OFFSET            0x14  // [31:16] in_d2_stride; [15:0] in_d2_len
-#define DATAMOVER_REG_IN_D3_OFFSET            0x18  // [31:16] in_d3_stride; [15:0] in_d3_len
-#define DATAMOVER_REG_OUT_D0_OFFSET           0x1C  // [31:16] out_d0_stride; [15:0] out_d0_len
-#define DATAMOVER_REG_OUT_D1_OFFSET           0x20  // [31:16] out_d1_stride; [15:0] out_d1_len
-#define DATAMOVER_REG_OUT_D2_OFFSET           0x24  // [31:16] out_d2_stride; [15:0] out_d2_len
-#define DATAMOVER_REG_OUT_D3_OFFSET           0x28  // [31:16] out_d3_stride; [15:0] out_d3_len
-#define DATAMOVER_REG_IN_OUT_D4_STRIDE_OFFSET 0x2C  // [31:16] out_d4_stride; [15:0] in_d4_stride
-#define DATAMOVER_REG_MATRIX_DIM_OFFSET       0x30  // [31:16] tensor_size_n; [15:0] tensor_size_m
-#define DATAMOVER_REG_CHANNELS_OFFSET         0x34  // [31:11] total_elements; [10:0] num_channels
-#define DATAMOVER_REG_CTRL_ENGINE_OFFSET      0x38  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode
 
 ///////////
 // Types //
@@ -95,35 +78,45 @@ typedef enum {
 // Defines //
 /////////////
 
+// Write a job-dependent register field (logs the field name when VERBOSE).
 #if VERBOSE
-#define __HAL_DATAMOVER_REG_WRITE(base, offset, value) do { \
-    *(volatile uint32_t *)(base + offset) = value; \
-    printf("__HAL_DATAMOVER_REG_WRITE: Addr 0x%08x <= 0x%08x\n", (uint32_t)(base + offset), (uint32_t)(value)); \
+#define DATAMOVER_JOB_REG_WRITE(field, value) do { \
+    DATAMOVER_REGS->hwpe_job_dep.field = (value); \
+    printf("__HAL_DATAMOVER_REG_WRITE: %s <= 0x%08x\n", #field, (uint32_t)(value)); \
   } while(0)
-#define __HAL_DATAMOVER_REG_READ(base, offset) ({ \
-    uint32_t read_value = *(volatile uint32_t *)(base + offset); \
-    printf("__HAL_DATAMOVER_REG_READ: Addr 0x%08x => 0x%08x\n", (uint32_t)(base + offset), (uint32_t)(read_value)); \
-    read_value; \
-  })
 #else
-#define __HAL_DATAMOVER_REG_WRITE(base, offset, value) *(volatile uint32_t *)(base + offset) = value
-#define __HAL_DATAMOVER_REG_READ(base, offset)         *(volatile uint32_t *)(base + offset)
+#define DATAMOVER_JOB_REG_WRITE(field, value) (DATAMOVER_REGS->hwpe_job_dep.field = (value))
 #endif
 
-#define DATAMOVER_HWPE_REG_WRITE(offset, value) __HAL_DATAMOVER_REG_WRITE(DATAMOVER_BASE_ADDR, offset, value)
-#define DATAMOVER_HWPE_REG_READ(offset)         __HAL_DATAMOVER_REG_READ(DATAMOVER_BASE_ADDR, offset)
+/////////////////////////////
+// Mandatory HWPE controls //
+/////////////////////////////
+
+static inline int datamover_acquire_task(void) {
+  return (int)DATAMOVER_REGS->hwpe_ctrl.acquire;
+}
+
+static inline void datamover_trigger_task(void) {
+  DATAMOVER_REGS->hwpe_ctrl.commit_trigger = 0;
+}
+
+static inline uint32_t datamover_get_status(void) {
+  return DATAMOVER_REGS->hwpe_ctrl.status;
+}
+
+static inline void datamover_soft_clear(void) {
+  DATAMOVER_REGS->hwpe_ctrl.soft_clear = 0;
+}
+
+static inline uint32_t datamover_running_job(void) {
+  return DATAMOVER_REGS->hwpe_ctrl.running_job;
+}
 
 ////////////////
 // Prototypes //
 ////////////////
 
-// Drivers
-int datamover_acquire_task(void);
-void datamover_trigger_task(void);
-uint32_t datamover_finished(void);
-uint32_t datamover_get_status(void);
-void datamover_soft_clear(void);
-
+// Job-dependent register drivers
 void datamover_in_set(uint32_t value);
 void datamover_out_set(uint32_t value);
 void datamover_tot_len_set(uint32_t value);

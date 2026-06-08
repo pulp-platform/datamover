@@ -12,6 +12,10 @@ test/BUILD
 install
 temp
 
+# Generated PeakRDL HTML docs (regenerate with scripts/gen_regif.sh).
+# The generated SystemVerilog/C-header (rtl/ctrl/regif/*.sv, *.h) are committed.
+rtl/ctrl/regif/html/
+
 # Backend
 nonfree/
 backend/

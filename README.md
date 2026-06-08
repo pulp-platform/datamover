@@ -22,6 +22,8 @@ make run-all-tests
 ## Repository Structure
 
 - `rtl/` — `datamover_top{_wrap}.sv`, `datamover_engine.sv`, `datamover_streamer.sv`, `datamover_package.sv`
+- `rtl/ctrl/` — SystemRDL register map (`datamover_regif.rdl`), control wrapper around `hwpe_ctrl_target` + regif + job FSM (`datamover_ctrl.sv`), and the generated register file (`regif/`)
+- `scripts/` — register-interface generation from the RDL (`gen_regif.sh`)
 - `verif/` — Ibex-driven testbench (`verif/tb/`) and Python golden model (`verif/python/datamover_golden_model.py`)
 - `sw/` — C HAL and bare-metal driver (`hal_datamover.{c,h}`, `tb_datamover.c`)
 - `utils/` — JSON test suites, `hw_configs.json`, `gen_workload_header.py`, `run_test.py`

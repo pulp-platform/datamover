@@ -45,40 +45,7 @@ package datamover_package;
     logic [10:0]                      num_channels;   // number of channels (for unfolding/folding)
   } ctrl_engine_t;
 
-  parameter int unsigned HWPE_REGISTER_OFFS           = 32'h00; // Standard HWPE register offset
-  // General hwpe register offsets
-  parameter int unsigned DATAMOVER_COMMIT_AND_TRIGGER = 32'h00;  // Trigger commit
-  parameter int unsigned DATAMOVER_ACQUIRE            = 32'h04;  // Acquire command
-  parameter int unsigned DATAMOVER_FINISHED           = 32'h08;  // Finished signal
-  parameter int unsigned DATAMOVER_STATUS             = 32'h0C;  // Status register
-  parameter int unsigned DATAMOVER_RUNNING_JOB        = 32'h10;  // Running job ID
-  parameter int unsigned DATAMOVER_SOFT_CLEAR         = 32'h14;  // Soft clear
-  parameter int unsigned DATAMOVER_SWSYNC             = 32'h18;  // Software synchronization
-  parameter int unsigned DATAMOVER_URISCY_IMEM        = 32'h1C;  // uRISCy instruction memory
-
-  // Job configuration register offsets
-  parameter int unsigned DATAMOVER_REGISTER_OFFS       = 32'h40;  // Register base offset
-  parameter int unsigned DATAMOVER_REGISTER_CXT0_OFFS  = 32'h80;  // Context 0 offset
-  parameter int unsigned DATAMOVER_REGISTER_CXT1_OFFS  = 32'h120; // Context 1 offset
-
-  // Job-specific registers (packed into 32-bit words to speed up configuration and save memory)
-  parameter int unsigned DATAMOVER_REG_IN_PTR           = 32'h00;  // Input pointer
-  parameter int unsigned DATAMOVER_REG_OUT_PTR          = 32'h04;  // Output pointer
-  parameter int unsigned DATAMOVER_REG_TOT_LEN          = 32'h08;  // Total length in number of accesses (BW)
-  parameter int unsigned DATAMOVER_REG_IN_D0            = 32'h0C;  // [31:16] in_d0_stride; [15:0] in_d0_len
-  parameter int unsigned DATAMOVER_REG_IN_D1            = 32'h10;  // [31:16] in_d1_stride; [15:0] in_d1_len
-  parameter int unsigned DATAMOVER_REG_IN_D2            = 32'h14;  // [31:16] in_d2_stride; [15:0] in_d2_len
-  parameter int unsigned DATAMOVER_REG_IN_D3            = 32'h18;  // [31:16] in_d3_stride; [15:0] in_d3_len
-  parameter int unsigned DATAMOVER_REG_OUT_D0           = 32'h1C;  // [31:16] out_d0_stride; [15:0] out_d0_len
-  parameter int unsigned DATAMOVER_REG_OUT_D1           = 32'h20;  // [31:16] out_d1_stride; [15:0] out_d1_len
-  parameter int unsigned DATAMOVER_REG_OUT_D2           = 32'h24;  // [31:16] out_d2_stride; [15:0] out_d2_len
-  parameter int unsigned DATAMOVER_REG_OUT_D3           = 32'h28;  // [31:16] out_d3_stride; [15:0] out_d3_len
-  parameter int unsigned DATAMOVER_REG_IN_OUT_D4_STRIDE = 32'h2C;  // [31:16] out_d4_stride; [15:0] in_d4_stride (d4_len unnecessary due to tot_len)
-  parameter int unsigned DATAMOVER_REG_MATRIX_DIM        = 32'h30;  // [31:16] tensor_size_n; [15:0] tensor_size_m
-  parameter int unsigned DATAMOVER_REG_CHANNELS          = 32'h34;  // [31:11] total_elements = num_channels * size_m * size_n (pre-compute to save HW resources); [10:0] num_channels (for unfolding/folding)
-  parameter int unsigned DATAMOVER_REG_CTRL_ENGINE       = 32'h38;  // [15:12] write_dim_en; [11:8] read_dim_en; [7:3] datamover_mode; [2:0] transp_mode (LSB: 000=none, 001=1 elem, 010=2 elem, 100=4 elem)
-
-  // Note: increase N_IO_REGS in datamover_top.sv when adding new registers here!
-
+  // Datamover job FSM states
+  typedef enum logic [1:0] { DM_IDLE, DM_STARTING, DM_WORKING, DM_FINISHED } datamover_state_e;
 
 endpackage

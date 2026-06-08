@@ -10,18 +10,22 @@ dependencies:
   common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.39.0 }
   hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 40ab0fe1433dc080a49aa1926ce09df9ab3f5fb5 } # branch: prasadar/multi-precision
   hci:         { git: "https://github.com/pulp-platform/hci.git", rev: e7a0ebd219efd819bb5bc91ea1b24fdcfcfde6c6 } # branch: prasadar/multi-precision
-  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", rev: 4977b6cf42b96f3fefd1973281d5c4b8259c50d5 } # version: 2.0
+  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 3.0.0 } # SystemRDL-based hwpe_ctrl_target flow
   ibex:        { git: "https://github.com/pulp-platform/ibex.git", rev: "pulpissimo-v6.1.2", target: datamover_standalone } # RISC-V core for testbench
 
 sources:
   # Level 0
   - rtl/datamover_package.sv
+  - rtl/ctrl/regif/datamover_regif_pkg.sv  # SystemRDL-generated register file package
   # Level 1
+  - rtl/ctrl/regif/datamover_regif.sv      # SystemRDL-generated register file
   - rtl/datamover_engine.sv
   - rtl/datamover_streamer.sv
   # Level 2
-  - rtl/datamover_top.sv
+  - rtl/ctrl/datamover_ctrl.sv             # hwpe_ctrl_target + regif + job FSM
   # Level 3
+  - rtl/datamover_top.sv
+  # Level 4
   - rtl/datamover_top_wrap.sv
   - target: datamover_standalone
     files:

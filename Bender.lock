@@ -49,11 +49,12 @@ packages:
     - redundancy_cells
     - register_interface
   hwpe-ctrl:
-    revision: 4977b6cf42b96f3fefd1973281d5c4b8259c50d5
-    version: null
+    revision: ce04de5fc48df0d536cae32301ccd83d93c05430
+    version: 3.0.0
     source:
       Git: https://github.com/pulp-platform/hwpe-ctrl.git
     dependencies:
+    - common_cells
     - tech_cells_generic
   hwpe-stream:
     revision: 40ab0fe1433dc080a49aa1926ce09df9ab3f5fb5

@@ -52,6 +52,8 @@ module datamover_top_wrap
   input  logic test_mode_i,
   // events
   output logic [N_CORES-1:0][REGFILE_N_EVT-1:0] evt_o,
+  // busy status
+  output logic                                    busy_o,
   // tcdm master ports
   output logic [NUM_WORDS-1:0]                    tcdm_req,
   input  logic [NUM_WORDS-1:0]                    tcdm_gnt,
@@ -163,6 +165,7 @@ module datamover_top_wrap
     .rst_ni      ( rst_ni ),
     .test_mode_i ( test_mode_i ),
     .evt_o       ( evt_o ),
+    .busy_o      ( busy_o ),
     .tcdm        ( tcdm.initiator ),
     .periph      ( periph )
   );

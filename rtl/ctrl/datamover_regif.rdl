@@ -1,0 +1,220 @@
+/*
+ * datamover_regif.rdl
+ *
+ * Copyright (C) 2025-2026 ETH Zurich, University of Bologna
+ * Copyright and related rights are licensed under the Solderpad Hardware
+ * License, Version 0.51 (the "License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
+ * or agreed to in writing, software, hardware and materials distributed under
+ * this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+addrmap datamover_regif {
+    name = "Datamover register interface";
+    desc = "Control register map for the datamover HWPE: mandatory HWPE control/status registers plus the datamover job-dependent configuration registers.";
+
+    // ----- Mandatory HWPE control registers -----
+    reg hwpe_commit_trigger {
+        field {
+            name = "reserved";
+            desc = "Reserved.";
+            hw = r;
+            sw = r;
+        } r0[31:2] = 0;
+        field {
+            name = "commit_trigger";
+            desc = "Write 0 to commit job & start execution, unlock controller; write `0x1` to commit job without starting execution; write `0x2` to trigger the current job queue without committing.";
+            hw = r;
+            sw = w;
+            swacc = true;
+        } commit_trigger[1:0] = 0;
+    };
+    reg hwpe_acquire {
+        field {
+            name = "acquire";
+            desc = "On read starts a job offload, locks controller. Returns job ID.";
+            hw = w;
+            sw = r;
+            swacc = true;
+        } acquire[31:0] = 0;
+    };
+    reg hwpe_reserved {
+        field {
+            name = "reserved";
+            desc = "Reserved.";
+            hw = r;
+            sw = r;
+        } reserved[31:0] = 0;
+    };
+    reg hwpe_status {
+        field {
+            name = "status";
+            desc = "Status of currently running job.";
+            hw = w;
+            sw = r;
+        } status0[31:0] = 0;
+    };
+    reg hwpe_running_job {
+        field {
+            name = "reserved";
+            desc = "Reserved.";
+            hw = r;
+            sw = r;
+        } r0[31:8] = 0;
+        field {
+            name = "running_job";
+            desc = "Returns ID of currently running job if any job is running; otherwise, of the last job that has been run.";
+            hw = w;
+            sw = r;
+        } running_job[7:0] = 0;
+    };
+    reg hwpe_soft_clear {
+        field {
+            name = "reserved";
+            desc = "Reserved.";
+            hw = r;
+            sw = r;
+        } r0[31:2] = 0;
+        field {
+            name = "soft_clear";
+            desc = "Write `0x0` to clear the full status of the accelerator (including the register file); write `0x1` to clear the accelerator state but keep the register file; write `0x2` to clear only the register file.";
+            hw = r;
+            sw = w;
+            swacc = true;
+        } soft_clear[1:0] = 0;
+    };
+
+    regfile hwpe_ctrl_mandatory {
+        hwpe_commit_trigger commit_trigger @ 0x00;
+        hwpe_acquire        acquire        @ 0x04;
+        hwpe_reserved       reserved0      @ 0x08;
+        hwpe_status         status         @ 0x0c;
+        hwpe_running_job    running_job    @ 0x10;
+        hwpe_soft_clear     soft_clear     @ 0x14;
+        hwpe_reserved       reserved1      @ 0x18;
+        hwpe_reserved       reserved2      @ 0x1c;
+    };
+
+    // ----- Datamover job-dependent registers -----
+
+    reg dm_value32 {
+        field {
+            desc = "32-bit value (pointer or total length).";
+            hw = r;
+            sw = rw;
+        } value[31:0] = 0;
+    };
+
+    reg dm_stride_len {
+        field {
+            desc = "Stride in elements.";
+            hw = r;
+            sw = rw;
+        } stride[31:16] = 0;
+        field {
+            desc = "Length in iterations.";
+            hw = r;
+            sw = rw;
+        } length[15:0] = 0;
+    };
+
+    reg dm_d4_stride {
+        field {
+            desc = "Sink (output) d4 stride in elements.";
+            hw = r;
+            sw = rw;
+        } out_stride[31:16] = 0;
+        field {
+            desc = "Source (input) d4 stride in elements.";
+            hw = r;
+            sw = rw;
+        } in_stride[15:0] = 0;
+    };
+
+    reg dm_matrix_dim {
+        field {
+            desc = "Tensor size N.";
+            hw = r;
+            sw = rw;
+        } tensor_size_n[31:16] = 0;
+        field {
+            desc = "Tensor size M.";
+            hw = r;
+            sw = rw;
+        } tensor_size_m[15:0] = 0;
+    };
+
+    reg dm_channels {
+        field {
+            desc = "num_channels * size_m * size_n.";
+            hw = r;
+            sw = rw;
+        } total_elements[31:11] = 0;
+        field {
+            desc = "Number of channels.";
+            hw = r;
+            sw = rw;
+        } num_channels[10:0] = 0;
+    };
+
+    reg dm_ctrl_engine {
+        field {
+            desc = "Reserved.";
+            hw = r;
+            sw = rw;
+        } reserved[31:16] = 0;
+        field {
+            desc = "Sink enabled dims, one-hot (d0 always on).";
+            hw = r;
+            sw = rw;
+        } write_dim_en[15:12] = 0;
+        field {
+            desc = "Source enabled dims, one-hot (d0 always on).";
+            hw = r;
+            sw = rw;
+        } read_dim_en[11:8] = 0;
+        field {
+            desc = "0=copy, 1=transpose, 2=CIM layout, 3=CIM transpose, 4=unfold, 5=fold.";
+            hw = r;
+            sw = rw;
+        } datamover_mode[7:3] = 0;
+        field {
+            desc = "000=none, 001=1 elem, 010=2 elem, 100=4 elem.";
+            hw = r;
+            sw = rw;
+        } transp_mode[2:0] = 0;
+    };
+
+    // No job-independent registers in the datamover.
+    regfile hwpe_ctrl_job_indep {
+        hwpe_reserved reserved;
+    };
+
+    // Job-dependent regfile
+    regfile hwpe_ctrl_job_dep {
+        dm_value32     in_ptr            @ 0x00;  // idx 0
+        dm_value32     out_ptr           @ 0x04;  // idx 1
+        dm_value32     tot_len           @ 0x08;  // idx 2
+        dm_stride_len  in_d0             @ 0x0c;  // idx 3
+        dm_stride_len  in_d1             @ 0x10;  // idx 4
+        dm_stride_len  in_d2             @ 0x14;  // idx 5
+        dm_stride_len  in_d3             @ 0x18;  // idx 6
+        dm_stride_len  out_d0            @ 0x1c;  // idx 7
+        dm_stride_len  out_d1            @ 0x20;  // idx 8
+        dm_stride_len  out_d2            @ 0x24;  // idx 9
+        dm_stride_len  out_d3            @ 0x28;  // idx 10
+        dm_d4_stride   in_out_d4_stride  @ 0x2c;  // idx 11
+        dm_matrix_dim  matrix_dim        @ 0x30;  // idx 12
+        dm_channels    channels          @ 0x34;  // idx 13
+        dm_ctrl_engine ctrl_engine       @ 0x38;  // idx 14
+    };
+
+    // Top-level address map: mandatory ctrl regs at 0x00, job-indep at 0x20,
+    // job-dependent regs at 0x40 (matches the previous DATAMOVER_REGISTER_OFFS).
+    hwpe_ctrl_mandatory hwpe_ctrl      @ 0x00;
+    hwpe_ctrl_job_indep hwpe_job_indep @ 0x20;
+    hwpe_ctrl_job_dep   hwpe_job_dep   @ 0x40;
+};

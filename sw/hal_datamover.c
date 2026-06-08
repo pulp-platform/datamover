@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 #include "hal_datamover.h"
-#include "hal_hwpe.h"
 #if VERBOSE
 #include "tinyprintf.h"
 #define printf tfp_printf
@@ -20,89 +19,65 @@
 // Drivers //
 /////////////
 
-/* HWPE mandatory registers */
-
-int datamover_acquire_task(void) {
-  return hwpe_task_queue_acquire_task(DATAMOVER_BASE_ADDR);
-}
-
-void datamover_trigger_task(void) {
-  hwpe_task_queue_release_and_run(DATAMOVER_BASE_ADDR);
-}
-
-uint32_t datamover_finished(void) {
-  return hwpe_finished(DATAMOVER_BASE_ADDR);
-}
-
-uint32_t datamover_get_status(void) {
-  return hwpe_task_queue_status(DATAMOVER_BASE_ADDR);
-}
-
-void datamover_soft_clear(void) {
-  hwpe_soft_clear(DATAMOVER_BASE_ADDR);
-}
-
-/* Datamover-specific registers */
-//TODO(smazzola): For now only usage of context 0 is supported
 
 void datamover_in_set(uint32_t value) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_IN_PTR_OFFSET, value);
+  DATAMOVER_JOB_REG_WRITE(in_ptr, value);
 }
 
 void datamover_out_set(uint32_t value) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_OUT_PTR_OFFSET, value);
+  DATAMOVER_JOB_REG_WRITE(out_ptr, value);
 }
 
 void datamover_tot_len_set(uint32_t value) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_TOT_LEN_OFFSET, value);
+  DATAMOVER_JOB_REG_WRITE(tot_len, value);
 }
 
 void datamover_in_d0_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_IN_D0_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(in_d0, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_in_d1_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_IN_D1_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(in_d1, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_in_d2_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_IN_D2_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(in_d2, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_in_d3_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_IN_D3_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(in_d3, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_out_d0_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_OUT_D0_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(out_d0, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_out_d1_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_OUT_D1_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(out_d1, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_out_d2_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_OUT_D2_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(out_d2, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_out_d3_set(uint32_t stride, uint32_t len) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_OUT_D3_OFFSET, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(out_d3, ((stride & 0xFFFF) << 16) | (len & 0xFFFF));
 }
 
 void datamover_in_out_d4_stride_set(uint32_t out_stride, uint32_t in_stride) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_IN_OUT_D4_STRIDE_OFFSET, ((out_stride & 0xFFFF) << 16) | (in_stride & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(in_out_d4_stride, ((out_stride & 0xFFFF) << 16) | (in_stride & 0xFFFF));
 }
 
 void datamover_matrix_dim_set(uint32_t tensor_size_n, uint32_t tensor_size_m) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_MATRIX_DIM_OFFSET, ((tensor_size_n & 0xFFFF) << 16) | (tensor_size_m & 0xFFFF));
+  DATAMOVER_JOB_REG_WRITE(matrix_dim, ((tensor_size_n & 0xFFFF) << 16) | (tensor_size_m & 0xFFFF));
 }
 
 void datamover_channels_set(uint32_t total_elements, uint32_t num_channels) {
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_CHANNELS_OFFSET, ((total_elements & 0x1FFFFF) << 11) | (num_channels & 0x7FF));
+  DATAMOVER_JOB_REG_WRITE(channels, ((total_elements & 0x1FFFFF) << 11) | (num_channels & 0x7FF));
 }
 
 void datamover_ctrl_engine_set(datamover_mode_t datamover_mode, uint32_t write_dim_en, uint32_t read_dim_en, datamover_transp_mode_t transp_mode) { // dim_en: bit-mask (bit0=d1, bit1=d2, bit2=d3, bit3=d4)
-  DATAMOVER_HWPE_REG_WRITE(DATAMOVER_REGISTER_OFFSET + DATAMOVER_REG_CTRL_ENGINE_OFFSET, ((write_dim_en & 0xF) << 12) | ((read_dim_en & 0xF) << 8) | ((datamover_mode & 0x1F) << 3) | (transp_mode & 0x7));
+  DATAMOVER_JOB_REG_WRITE(ctrl_engine, ((write_dim_en & 0xF) << 12) | ((read_dim_en & 0xF) << 8) | ((datamover_mode & 0x1F) << 3) | (transp_mode & 0x7));
 }
 
 /////////

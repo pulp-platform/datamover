@@ -23,6 +23,10 @@ CC_OPTS += -DDATAMOVER_WORD_WIDTH=$(WORD_WIDTH)
 CC_OPTS += -DDATAMOVER_ELEM_WIDTH=$(ELEM_WIDTH)
 CC_OPTS += -DDATAMOVER_MISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
 
+# SystemRDL-generated register interface header (datamover_regif.h)
+REGIF_DIR ?= $(ROOT_DIR)/rtl/ctrl/regif
+CC_OPTS   += -I$(REGIF_DIR)
+
 LD_OPTS = -march=rv32imc -D__riscv__ -MMD -MP -nostartfiles -Wl,--gc-sections -lgcc
 
 # Build artifacts
@@ -52,7 +56,7 @@ $(SW_HEADER): utils/gen_workload_header.py verif/python/datamover_golden_model.p
 $(SW_CRT): sw/crt0.S | $(SW_BUILD_DIR)
 	$(RISCV_CC) $(CC_OPTS) -c sw/crt0.S -o $(SW_CRT)
 
-$(SW_HAL_OBJ): sw/hal_datamover.c sw/hal_datamover.h sw/hal_hwpe.h | $(SW_BUILD_DIR)
+$(SW_HAL_OBJ): sw/hal_datamover.c sw/hal_datamover.h $(REGIF_DIR)/datamover_regif.h | $(SW_BUILD_DIR)
 	$(RISCV_CC) $(CC_OPTS) -Isw -c sw/hal_datamover.c -o $(SW_HAL_OBJ)
 
 $(SW_OBJ): sw/tb_datamover.c sw/hal_datamover.h sw/tinyprintf.h $(SW_HEADER) | $(SW_BUILD_DIR)
