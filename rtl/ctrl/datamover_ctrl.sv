@@ -153,8 +153,8 @@ module datamover_ctrl
   `FFARN(start, job_trigger, 1'b0, clk_i, rst_ni)
 
   // Busy while a job is committed (in the FIFO) or the FSM is running.
-  assign busy       = job_dep_regs_valid | (state_q != DM_IDLE);
-  assign job_status = busy ? 32'h1 : 32'h0;
+  assign busy_o     = job_dep_regs_valid | (state_q != DM_IDLE);
+  assign job_status = busy_o ? 32'h1 : 32'h0;
 
   // Completion event, one cycle after the job is done.
   always_ff @(posedge clk_i or negedge rst_ni) begin
