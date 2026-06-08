@@ -23,10 +23,6 @@ CC_OPTS += -DDATAMOVER_WORD_WIDTH=$(WORD_WIDTH)
 CC_OPTS += -DDATAMOVER_ELEM_WIDTH=$(ELEM_WIDTH)
 CC_OPTS += -DDATAMOVER_MISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
 
-# SystemRDL-generated register interface header (datamover_regif.h)
-REGIF_DIR ?= $(ROOT_DIR)/rtl/ctrl/regif
-CC_OPTS   += -I$(REGIF_DIR)
-
 LD_OPTS = -march=rv32imc -D__riscv__ -MMD -MP -nostartfiles -Wl,--gc-sections -lgcc
 
 # Build artifacts
@@ -66,7 +62,7 @@ $(SW_HEADER): datamover_model/workloads/cli.py datamover_model/golden_model/tran
 $(SW_CRT): sw/crt0.S | $(SW_BUILD_DIR)
 	$(RISCV_CC) $(CC_OPTS) -c sw/crt0.S -o $(SW_CRT)
 
-$(SW_OBJ): sw/tb_datamover.c sw/datamover_hal.h sw/datamover_config.h sw/tinyprintf.h $(REGIF_DIR)/datamover_regif.h $(SW_HEADER) | $(SW_BUILD_DIR)
+$(SW_OBJ): sw/tb_datamover.c sw/datamover_hal.h sw/datamover_config.h sw/datamover_regif.h sw/tinyprintf.h $(SW_HEADER) | $(SW_BUILD_DIR)
 	$(RISCV_CC) $(CC_OPTS) -I$(SW_BUILD_DIR) -Isw -c sw/tb_datamover.c -o $(SW_OBJ)
 
 # Step 3: link
