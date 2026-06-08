@@ -15,7 +15,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "hal_datamover.h"
+#define DATAMOVER_BASE_ADDR 0x10000000  /* HWPE region (addr[31:24]==0x10) in standalone TB */
+#include "datamover_hal.h"
 #include "tinyprintf.h"
 #include "datamover_workload.h"
 
@@ -45,25 +46,12 @@ static void tb_putc(void *p, char c) {
 }
 
 /* Output buffers, sized at compile time per task. Aligned to 8 bytes so the
- * datamover's word-width accesses are aligned. */
+ * datamover's word-width accesses are aligned. In a chain, task i reads the
+ * output buffer of an earlier task (TASK<i>_IN_PTR resolves to it). */
 #define DM_TASK_OUT_BUF(i) \
   static uint8_t task##i##_out[TASK##i##_OUT_SIZE] __attribute__((aligned(8)));
 DATAMOVER_TASKS(DM_TASK_OUT_BUF)
 #undef DM_TASK_OUT_BUF
-
-typedef struct {
-  uint8_t  *in_ptr;
-  uint8_t  *out_ptr;
-  uint8_t  *gold_ptr;
-  uint32_t  out_size;
-  uint32_t  mode;
-  uint32_t  transp_mode;
-  uint32_t  cim_mode;
-  uint32_t  row_tile_size;
-  uint32_t  size_c;
-  uint32_t  size_m;
-  uint32_t  size_n;
-} dm_task_t;
 
 #define DM_TASK_INIT(i)                                  \
   {                                                      \
@@ -80,72 +68,15 @@ typedef struct {
     .size_n        = TASK##i##_SIZE_N,                   \
   },
 
-static const dm_task_t dm_tasks[NUM_TASKS] = {
+static const datamover_task_config_t dm_tasks[NUM_TASKS] = {
   DATAMOVER_TASKS(DM_TASK_INIT)
 };
 #undef DM_TASK_INIT
 
-static datamover_transp_mode_t resolve_transp_mode(uint32_t t) {
-  switch (t) {
-    case 1: return DATAMOVER_TRANSP_1ELEM;
-    case 2: return DATAMOVER_TRANSP_2ELEM;
-    case 4: return DATAMOVER_TRANSP_4ELEM;
-    default: return DATAMOVER_TRANSP_NONE;
-  }
-}
-
-static int run_task(const dm_task_t *t, int idx) {
-  const uint64_t timeout = 5000000;
-  datamover_status_t st = DATAMOVER_OK;
-  datamover_transp_mode_t tm = resolve_transp_mode(t->transp_mode);
-
-  /* Pre-fill the output buffer with a sentinel so any unwritten bytes show up
-   * in the verify pass instead of accidentally matching golden. */
-  for (uint32_t i = 0; i < t->out_size; i++) t->out_ptr[i] = 0xA5;
-
-  switch (t->mode) {
-    case 0:
-      tfp_printf("[RISCV] Task %d: COPY %ux%u\n", idx, t->size_m, t->size_n);
-      st = datamover_copy_blocking(t->in_ptr, t->out_ptr, t->size_m, t->size_n, timeout);
-      break;
-    case 1:
-      tfp_printf("[RISCV] Task %d: TRANSPOSE %ux%u (t=%u)\n", idx, t->size_m, t->size_n, t->transp_mode);
-      st = datamover_transpose_blocking(t->in_ptr, t->out_ptr, t->size_m, t->size_n, tm, timeout);
-      break;
-    case 2:
-      if (t->cim_mode == 0) {
-        tfp_printf("[RISCV] Task %d: CIM_LAYOUT_FWD %ux%u rt=%u\n", idx, t->size_m, t->size_n, t->row_tile_size);
-        st = datamover_cim_layout_blocking(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->row_tile_size, timeout);
-      } else {
-        tfp_printf("[RISCV] Task %d: CIM_LAYOUT_REV %ux%u rt=%u\n", idx, t->size_m, t->size_n, t->row_tile_size);
-        st = datamover_cim_layout_reverse_blocking(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->row_tile_size, timeout);
-      }
-      break;
-    case 3:
-      tfp_printf("[RISCV] Task %d: CIM_LAYOUT_TRANSPOSE %ux%u rt=%u t=%u\n",
-                 idx, t->size_m, t->size_n, t->row_tile_size, t->transp_mode);
-      st = datamover_cim_layout_transpose_blocking(t->in_ptr, t->out_ptr, t->size_m, t->size_n,
-                                                   t->row_tile_size, tm, timeout);
-      break;
-    case 4:
-      tfp_printf("[RISCV] Task %d: UNFOLD C=%u %ux%u\n", idx, t->size_c, t->size_m, t->size_n);
-      st = datamover_unfold_blocking(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, timeout);
-      break;
-    case 5:
-      tfp_printf("[RISCV] Task %d: FOLD C=%u %ux%u\n", idx, t->size_c, t->size_m, t->size_n);
-      st = datamover_fold_blocking(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, timeout);
-      break;
-    default:
-      tfp_printf("[RISCV] Task %d: ERROR unknown mode %u\n", idx, t->mode);
-      return 1;
-  }
-
-  if (st != DATAMOVER_OK) {
-    tfp_printf("[RISCV] Task %d: HAL returned status %d\n", idx, (int)st);
-    return 1;
-  }
-  return 0;
-}
+/* Per-task verify flag: 1 to check against the golden, 0 for chain intermediates. */
+#define DM_TASK_VERIFY(i) TASK##i##_VERIFY,
+static const int dm_task_verify[NUM_TASKS] = { DATAMOVER_TASKS(DM_TASK_VERIFY) };
+#undef DM_TASK_VERIFY
 
 int main(void) {
   init_printf(NULL, tb_putc);
@@ -155,16 +86,29 @@ int main(void) {
   datamover_soft_clear();
   for (volatile int kk = 0; kk < 10; kk++);
 
+  /* Pre-fill output buffers with a sentinel so unwritten bytes show up in the
+   * verify pass instead of accidentally matching golden. */
+  for (int i = 0; i < NUM_TASKS; i++) {
+    const datamover_task_config_t *t = &dm_tasks[i];
+    for (uint32_t b = 0; b < t->out_size; b++) t->out_ptr[b] = 0xA5;
+  }
+
+  /* Trigger all jobs back-to-back. The 2-deep job queue lets each be programmed
+   * while the previous one runs; acquire spins when the queue is full. */
   int hal_errors = 0;
   for (int i = 0; i < NUM_TASKS; i++) {
-    hal_errors += run_task(&dm_tasks[i], i);
+    if (datamover_run(&dm_tasks[i]) != DATAMOVER_OK) hal_errors++;
   }
+
+  /* Wait for the datamover to drain, then (idle) read metrics and verify. */
+  datamover_wait();
 
   uint32_t hwpe_cycles = *(volatile uint32_t *)TB_MBOX_CYCLES_ADDR;
 
   int total_errors = 0;
   for (int i = 0; i < NUM_TASKS; i++) {
-    const dm_task_t *t = &dm_tasks[i];
+    if (!dm_task_verify[i]) continue;
+    const datamover_task_config_t *t = &dm_tasks[i];
     *(volatile uint32_t *)TB_MBOX_VERIFY_PTR_ADDR  = (uint32_t)t->out_ptr;
     *(volatile uint32_t *)TB_MBOX_VERIFY_GOLD_ADDR = (uint32_t)t->gold_ptr;
     *(volatile uint32_t *)TB_MBOX_VERIFY_SIZE_ADDR = t->out_size;

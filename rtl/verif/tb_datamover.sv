@@ -29,13 +29,17 @@ module tb_datamover;
   `define ELEM_WIDTH 8
 `endif
 `ifndef MISALIGNED_ACCESSES
-  `define MISALIGNED_ACCESSES 0
+  `define MISALIGNED_ACCESSES 1
+`endif
+`ifndef PROB_STALL
+  `define PROB_STALL 0.0
 `endif
 
   localparam int unsigned BANDWIDTH           = `BANDWIDTH;
   localparam int unsigned WORD_WIDTH          = `WORD_WIDTH;
   localparam int unsigned ELEM_WIDTH          = `ELEM_WIDTH;
   localparam int unsigned MISALIGNED_ACCESSES = `MISALIGNED_ACCESSES;
+  localparam real         PROB_STALL          = `PROB_STALL;
   localparam int unsigned NUM_ELEM_WORD       = WORD_WIDTH / ELEM_WIDTH;
   localparam int unsigned NUM_WORDS           = BANDWIDTH / WORD_WIDTH;
 
@@ -260,6 +264,7 @@ module tb_datamover;
     .rst_ni         ( rst_ni          ),
     .test_mode_i    ( 1'b0            ),
     .evt_o          ( evt_unused      ),
+    .busy_o         (                 ),
     .tcdm_req       ( dm_tcdm_req     ),
     .tcdm_gnt       ( dm_tcdm_gnt     ),
     .tcdm_add       ( dm_tcdm_add     ),
@@ -287,7 +292,7 @@ module tb_datamover;
     .ELEMENT_WIDTH     ( ELEM_WIDTH      ),
     .MEMORY_SIZE       ( MEMORY_SIZE     ),
     .BASE_ADDR         ( TCDM_DATA_BASE  ),
-    .PROB_STALL        ( 0.0             ),
+    .PROB_STALL        ( PROB_STALL      ),
     .TCP               ( TCP             ),
     .TA                ( TA              ),
     .TT                ( TT              )
@@ -295,7 +300,7 @@ module tb_datamover;
     .clk_i       ( clk_i ),
     .randomize_i ( 1'b0  ),
     .enable_i    ( 1'b1  ),
-    .stallable_i ( 1'b0  ),
+    .stallable_i ( 1'b1  ),
     .tcdm        ( tcdm  )
   );
 

@@ -1,0 +1,16 @@
+{
+  "hw_config": "bw128_w32",
+  "tests": [
+    {"name": "CHAIN_copy_T_T", "chain": [
+      {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64},
+      {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "SIZE_M": 64, "SIZE_N": 64},
+      {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "SIZE_M": 64, "SIZE_N": 64}
+    ]},
+    {"name": "CHAIN_T_cim_cimr_T", "chain": [
+      {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "SIZE_M": 64, "SIZE_N": 64},
+      {"DATAMOVER_MODE": 2, "CIM_MODE": 0, "ROW_TILE_SIZE": 64, "SIZE_M": 64, "SIZE_N": 64},
+      {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 64, "SIZE_N": 64},
+      {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "SIZE_M": 64, "SIZE_N": 64}
+    ]}
+  ]
+}

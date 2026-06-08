@@ -32,23 +32,35 @@ stages:
 test:transpose:
   extends: .test-template
   variables:
-    TEST_JSON: utils/datamover_transpose_tests.json
-    SUITE_NAME: datamover_transpose_tests
+    TEST_JSON: tests/transpose.json
+    SUITE_NAME: transpose
 
 test:copy:
   extends: .test-template
   variables:
-    TEST_JSON: utils/datamover_copy_tests.json
-    SUITE_NAME: datamover_copy_tests
+    TEST_JSON: tests/copy.json
+    SUITE_NAME: copy
 
 test:cim:
   extends: .test-template
   variables:
-    TEST_JSON: utils/datamover_cim_tests.json
-    SUITE_NAME: datamover_cim_tests
+    TEST_JSON: tests/cim.json
+    SUITE_NAME: cim
 
 test:konark_ci:
   extends: .test-template
   variables:
-    TEST_JSON: utils/datamover_konark_ci_tests.json
-    SUITE_NAME: datamover_konark_ci_tests
+    TEST_JSON: tests/konark_ci.json
+    SUITE_NAME: konark_ci
+
+test:chained:
+  extends: .test-template
+  variables:
+    TEST_JSON: tests/chained.json
+    SUITE_NAME: chained
+
+test:stallability:
+  extends: .test-template
+  variables:
+    TEST_JSON: tests/stallability.json
+    SUITE_NAME: stallability

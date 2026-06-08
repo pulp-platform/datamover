@@ -23,15 +23,18 @@ make run-all-tests
 
 - `rtl/` — `datamover_top{_wrap}.sv`, `datamover_engine.sv`, `datamover_streamer.sv`, `datamover_package.sv`
 - `rtl/ctrl/` — SystemRDL register map (`datamover_regif.rdl`), control wrapper around `hwpe_ctrl_target` + regif + job FSM (`datamover_ctrl.sv`), and the generated register file (`regif/`)
+- `rtl/verif/` — Ibex-driven SystemVerilog testbench (`tb_datamover.sv`, `tb_dummy_memory.sv`)
 - `scripts/` — register-interface generation from the RDL (`gen_regif.sh`)
-- `verif/` — Ibex-driven testbench (`verif/tb/`) and Python golden model (`verif/python/datamover_golden_model.py`)
-- `sw/` — C HAL and bare-metal driver (`hal_datamover.{c,h}`, `tb_datamover.c`)
-- `utils/` — JSON test suites, `hw_configs.json`, `gen_workload_header.py`, `run_test.py`
-- `modelsim/` — simulation infrastructure; per-test builds land in `build_<TEST_NAME>/`
+- `sw/` — Software for the testbench and the HAL(`datamover_config.h`, `datamover_hal.h`, `tb_datamover.c`)
+- `datamover_model/` — Python package: `golden_model/` (transforms), `headers/` (C header emit), `workloads/` (suite parsing + `cli`), `testing/` (`runner`, `validate`, reports)
+- `configs/` — `hw_configs.json`
+- `tests/` — JSON test suites
+- `mk/config.mk` — HW config, workload defaults
+- `modelsim/` — simulation infra; RTL is compiled once per HW tag into `builds/<BUILD_TAG>/` and shared by every test, while per-test stimuli live in `tests/<TEST_NAME>/`
 
 ## Hardware Parameters
 
-Set via `config.mk` defaults or per-test via `utils/hw_configs.json`:
+Set via `config.mk` defaults or per-test via `configs/hw_configs.json`:
 
 | Parameter             | Meaning |
 |-----------------------|---------|
@@ -59,19 +62,36 @@ For register layout, see [datamover_package.sv](rtl/datamover_package.sv).
 
 ```bash
 # Single test (note: riscv prefix required)
-riscv make run-sim-pipeline TEST_JSON=utils/datamover_smoke_tests.json TEST_NAME=COPY_8x8 NO_GUI=1
+riscv make run-sim-pipeline TEST_JSON=tests/copy.json TEST_NAME=COPY_8x8 NO_GUI=1
 
 # A whole suite
-make run-test TEST_JSON=utils/datamover_cim_tests.json PARALLEL=8
+make run-test TEST_JSON=tests/cim.json PARALLEL=8
 
 # A single test by name
-make run-test TEST_JSON=utils/datamover_cim_tests.json TEST=<TEST_NAME> NO_GUI=1
+make run-test TEST_JSON=tests/cim.json TEST=<TEST_NAME> NO_GUI=1
 
 # All enabled suites
 make run-all-tests PARALLEL=8
 ```
 
-JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `utils/datamover_*_tests.json`; HW configs in `utils/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`) and an optional per-test `hw_config`; the name is auto-generated when omitted.
+### Quick tests (no JSON)
+
+Run a single transform directly from the command line; HW comes from `HW_CONFIG`
+(a profile in `configs/hw_configs.json`, default `default`). Defined in `mk/config.mk`:
+
+```bash
+riscv make test-copy SIZE_M=64 SIZE_N=64 NO_GUI=1
+riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2 HW_CONFIG=bw128_w32
+riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
+riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
+riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
+riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
+riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
+```
+
+`TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `NO_GUI=1` for headless.
+
+JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`) and an optional per-test `hw_config`; the name is auto-generated when omitted.
 
 ## Cleanup
 

@@ -17,7 +17,7 @@
 SEARCH_DIR(.)
 __DYNAMIC  =  0;
 
-/* Must match sw/s19tomem.py and verif/tb/tb_datamover_riscv.sv MEMORY_SIZE.
+/* Must match sw/s19tomem.py and rtl/verif/tb_datamover.sv MEMORY_SIZE.
  * Konark workloads need ~1 MB (largest CSV test ~340 KB × 3 buffers). */
 MEMORY
 {

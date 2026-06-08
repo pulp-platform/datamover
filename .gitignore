@@ -1,6 +1,8 @@
 .bender
 modelsim/vsim
 modelsim/build_*
+modelsim/builds/
+modelsim/tests/
 reports/
 .venv/
 .uv-cache/

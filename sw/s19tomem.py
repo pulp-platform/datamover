@@ -21,7 +21,7 @@ import sys
 # Instructions start at 0x1c00_0000
 # Data starts at 0x1c01_0000
 # Stack starts at 0x1c18_8000 (just above dataram)
-# Must match sw/link.ld and verif/tb/tb_datamover_riscv.sv MEMORY_SIZE
+# Must match sw/link.ld and rtl/verif/tb_datamover.sv MEMORY_SIZE
 MEM_START  = 0x1c000000
 INSTR_SIZE = 0x10000               # 64KB instruction memory
 INSTR_END  = MEM_START + INSTR_SIZE

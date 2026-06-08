@@ -2,25 +2,34 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-.PHONY: lib build run all
-all: lib build run
+.PHONY: lib build run
 
 QUESTA_SEPP ?= questa-2023.4
 TEST_NAME   ?= default
-buildpath   ?= build_$(TEST_NAME)
+BUILDPATH   ?= builds/default
+TESTPATH    ?= tests/$(TEST_NAME)
 VOPT        ?= $(QUESTA_SEPP) vopt
 VSIM        ?= $(QUESTA_SEPP) vsim
 VLIB        ?= $(QUESTA_SEPP) vlib
 VMAP        ?= $(QUESTA_SEPP) vmap
 VSIM_FLAGS  ?= -gui
-DEBUG       ?= ON
+TOP_MODULE  ?= tb_datamover
 
+# Compile RTL once into BUILDPATH/work and vopt the top (shared by every test).
 lib:
-	cd $(buildpath) && $(VLIB) work && $(VMAP) work work
+	cd $(BUILDPATH) && $(VLIB) work && $(VMAP) work "$$(pwd)/work"
 
 build:
-	cd $(buildpath) && $(VSIM) -c -do 'source compile.tcl; quit'
+	cd $(BUILDPATH) && $(VSIM) -c -do 'source compile.tcl; quit'
+	cd $(BUILDPATH) && $(VOPT) +acc=r +nosparse -o vopt_$(TOP_MODULE) -work work $(TOP_MODULE)
 
+# Run a test in its own dir, mapping work to the shared build. The tb reads
+# ./stim_instr.txt / ./stim_data.txt from this cwd.
 run:
-	@echo "TEST_NAME = $(TEST_NAME)"
-	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do "source ../run_sim.tcl"
+	@echo "TEST_NAME = $(TEST_NAME)  (build: $(BUILDPATH))"
+	@ABS_BUILD=$$(readlink -f $(BUILDPATH)) && \
+		mkdir -p $(TESTPATH) && \
+		cd $(TESTPATH) && \
+		$(VMAP) -c >/dev/null && \
+		$(VMAP) work "$$ABS_BUILD/work" >/dev/null && \
+		$(VSIM) $(VSIM_FLAGS) -do "set TOP_MODULE {$(TOP_MODULE)}; source ../../run_sim.tcl"

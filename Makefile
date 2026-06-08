@@ -7,7 +7,6 @@ ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 BENDER_VERSION  = bender-0.31.0
 MODELSIM_DIR        ?= $(ROOT_DIR)/modelsim
-MODELSIM_BUILD_DIR  ?= $(MODELSIM_DIR)/build_$(TEST_NAME)
 
 VLOG_FLAGS += -svinputport=compat
 VLOG_FLAGS += -timescale 1ns/1fs
@@ -15,20 +14,9 @@ VLOG_FLAGS += +nosparse
 
 VLOG_DEFS  += -t rtl -t datamover_standalone
 
-BANDWIDTH           ?= 512
-WORD_WIDTH          ?= 64
-ELEM_WIDTH          ?= 8
-MISALIGNED_ACCESSES ?= 0
-
--include $(MODELSIM_BUILD_DIR)/test_config.mk
-
-SIM_DEFINES  = -DBANDWIDTH=$(BANDWIDTH)
-SIM_DEFINES += -DWORD_WIDTH=$(WORD_WIDTH)
-SIM_DEFINES += -DELEM_WIDTH=$(ELEM_WIDTH)
-SIM_DEFINES += -DMISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
-SIM_DEFINES += -DTEST_NAME=$(TEST_NAME)
-
-VLOG_DEFS  += $(SIM_DEFINES)
+# HW config + workload defaults + auto TEST_NAME + build-once machinery
+# (build-sim / run-sim / BUILD_TAG / SIM_DEFINES live here).
+include mk/config.mk
 
 include sw/sw.mk
 
@@ -47,24 +35,13 @@ ifeq ($(NO_GUI),1)
 endif
 VSIM_FLAGS ?= -gui
 
-modelsim-sim-script:
-	mkdir -p $(MODELSIM_BUILD_DIR)
-	@rm -f $(MODELSIM_BUILD_DIR)/compile.tcl
-	$(BENDER_VERSION) script vsim --vlog-arg="$(VLOG_FLAGS)" $(VLOG_DEFS) >> $(MODELSIM_BUILD_DIR)/compile.tcl
-
-build-sim:
-	cd $(MODELSIM_DIR) && \
-	$(MAKE) VSIM_FLAGS=$(VSIM_FLAGS) TEST_NAME=$(TEST_NAME) lib build
-
-run-sim:
-	cd $(MODELSIM_DIR) && \
-	$(MAKE) TEST_NAME=$(TEST_NAME) VSIM_FLAGS="$(VSIM_FLAGS)" run
+# build-sim / force-build-sim / run-sim live in mk/config.mk (build-once per BUILD_TAG).
 
 clean-sim:
-	rm -rf $(MODELSIM_BUILD_DIR)
+	rm -rf $(MODELSIM_TEST_DIR)
 
 clean-all-sim:
-	rm -rf $(MODELSIM_DIR)/build_*
+	rm -rf $(MODELSIM_DIR)/builds $(MODELSIM_DIR)/tests
 
 .PHONY: run-sim-generate run-sim-execute run-sim-pipeline
 run-sim-generate:
@@ -75,32 +52,73 @@ run-sim-execute:
 ifndef TEST_NAME
 	$(error TEST_NAME is required)
 endif
-	@test -f "$(MODELSIM_BUILD_DIR)/test_config.mk" || \
-	    (echo "ERROR: missing $(MODELSIM_BUILD_DIR)/test_config.mk; run run-sim-generate first" >&2; exit 1)
-	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" modelsim-sim-script build-sim sw-compile run-sim
+	@test -f "$(MODELSIM_TEST_DIR)/test_config.mk" || \
+	    (echo "ERROR: missing $(MODELSIM_TEST_DIR)/test_config.mk; run run-sim-generate first" >&2; exit 1)
+	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" build-sim sw-compile run-sim
 
 run-sim-pipeline:
 	$(MAKE) TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)" run-sim-generate
 	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" run-sim-execute
 
 .PHONY: run-test run-all-tests
+# Select a single test with TEST=<name> (or TEST_NAME=<name>, same thing).
+RUN_TEST := $(or $(TEST),$(TEST_NAME))
+# GUI (the default) runs the single test directly via run-sim-pipeline so the
+# Questa window opens; headless (NO_GUI=1 -> VSIM_FLAGS=-c) goes through the runner.
 run-test:
 ifndef TEST_JSON
 	$(error TEST_JSON is required)
 endif
-	python -u -m utils.run_test $(TEST_JSON) \
-	    $(if $(TEST),--test=$(TEST),) \
+ifeq ($(VSIM_FLAGS),-gui)
+	@test -n "$(RUN_TEST)" || { echo "ERROR: GUI mode needs a single test: pass TEST_NAME=<name> (or NO_GUI=1 for headless)" >&2; exit 1; }
+	$(MAKE) run-sim-pipeline TEST_JSON="$(TEST_JSON)" TEST_NAME="$(RUN_TEST)" VSIM_FLAGS=-gui
+else
+	python -u -m datamover_model.testing.runner $(TEST_JSON) \
+	    $(if $(RUN_TEST),--test=$(RUN_TEST),) \
+	    $(if $(ONLY),--only="$(ONLY)",) \
+	    $(if $(SKIP),--skip="$(SKIP)",) \
 	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
 	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
-	    $(if $(VSIM_FLAGS),--vsim-flags="$(VSIM_FLAGS)",)
+	    --vsim-flags="$(VSIM_FLAGS)"
+endif
 
-TEST_JSON_GLOB ?= utils/datamover_*_tests.json
+TEST_JSON_GLOB ?= tests/*.json
 ALL_TESTS_VSIM_FLAGS ?= -c
 run-all-tests:
-	python -u -m utils.run_test --discover-glob="$(TEST_JSON_GLOB)" \
+	python -u -m datamover_model.testing.runner --discover-glob="$(TEST_JSON_GLOB)" \
+	    $(if $(ONLY),--only="$(ONLY)",) \
+	    $(if $(SKIP),--skip="$(SKIP)",) \
 	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
 	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
 	    --vsim-flags="$(ALL_TESTS_VSIM_FLAGS)"
+
+# ============================================================================
+# Quick test targets (CLI mode, no JSON). HW from HW_CONFIG (configs/hw_configs.json).
+# Usage:
+#   riscv make test-copy SIZE_M=64 SIZE_N=64 NO_GUI=1
+#   riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2
+#   riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
+#   riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
+#   riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
+#   riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
+#   riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
+#   add HW_CONFIG=bw128_w32, COUNT=1, NO_GUI=1 as needed
+# ============================================================================
+.PHONY: test-copy test-transpose test-cim-layout test-cim-layout-reverse \
+        test-cim-layout-transpose test-unfold test-fold _quick-test
+
+test-copy:                 ; @$(MAKE) DATAMOVER_MODE=0 _quick-test
+test-transpose:            ; @$(MAKE) DATAMOVER_MODE=1 _quick-test
+test-cim-layout:           ; @$(MAKE) DATAMOVER_MODE=2 CIM_MODE=0 _quick-test
+test-cim-layout-reverse:   ; @$(MAKE) DATAMOVER_MODE=2 CIM_MODE=1 _quick-test
+test-cim-layout-transpose: ; @$(MAKE) DATAMOVER_MODE=3 _quick-test
+test-unfold:               ; @$(MAKE) DATAMOVER_MODE=4 _quick-test
+test-fold:                 ; @$(MAKE) DATAMOVER_MODE=5 _quick-test
+
+_quick-test:
+	@echo "Test: $(TEST_NAME)  [HW_CONFIG=$(HW_CONFIG): BW=$(BANDWIDTH) WW=$(WORD_WIDTH) EW=$(ELEM_WIDTH) MA=$(MISALIGNED_ACCESSES)]"
+	$(MAKE) TEST_NAME="$(TEST_NAME)" clean-sim sw-gen
+	$(MAKE) TEST_NAME="$(TEST_NAME)" run-sim-execute
 
 # ============================================================================
 # Backend
@@ -136,7 +154,7 @@ clean-nonfree:
 .PHONY: clean clean-all
 clean: clean-all-sim
 	rm -rf reports/
-	rm -rf utils/__pycache__ verif/python/__pycache__
+	find datamover_model -name __pycache__ -type d -exec rm -rf {} +
 
 clean-all: clean
 	rm -rf .bender

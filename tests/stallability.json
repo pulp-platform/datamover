@@ -1,0 +1,13 @@
+{
+  "hw_config": "bw128_w32",
+  "make_args": "STALL=0.05",
+  "tests": [
+    {"params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},
+    {"params": {"DATAMOVER_MODE": 0, "SIZE_M": 32, "SIZE_N": 128}},
+    {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "SIZE_M": 64, "SIZE_N": 64}},
+    {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "SIZE_M": 64, "SIZE_N": 128}},
+    {"params": {"DATAMOVER_MODE": 2, "CIM_MODE": 0, "ROW_TILE_SIZE": 64, "SIZE_M": 64, "SIZE_N": 128}},
+    {"params": {"DATAMOVER_MODE": 2, "CIM_MODE": 1, "ROW_TILE_SIZE": 64, "SIZE_M": 64, "SIZE_N": 128}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 64, "SIZE_M": 16, "SIZE_N": 16}}
+  ]
+}

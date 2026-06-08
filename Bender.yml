@@ -29,8 +29,8 @@ sources:
   - rtl/datamover_top_wrap.sv
   - target: datamover_standalone
     files:
-      - verif/tb/tb_dummy_memory.sv
-      - verif/tb/tb_datamover.sv
+      - rtl/verif/tb_dummy_memory.sv
+      - rtl/verif/tb_datamover.sv
 
   # GF12 tech cells
   - target: gf12
