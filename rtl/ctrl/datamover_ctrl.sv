@@ -77,6 +77,7 @@ module datamover_ctrl
   logic                                                      job_dep_regs_valid;
   datamover_regif_pkg::datamover_regif__hwpe_ctrl_job_dep__out_t   job_dep_regs;
 
+  logic             start;
   ctrl_streamer_t   streamer_ctrl_cfg;
   ctrl_engine_t     engine_ctrl;
   datamover_state_e state_d, state_q;
@@ -147,13 +148,11 @@ module datamover_ctrl
   // Soft clear only resets the datapath (the FSM is re-armed per job).
   assign clear_o = target_clear;
 
-  // job_trigger is a one-cycle pulse on commit; the FSM instead starts the head
-  // job whenever it is idle and a committed job is present (job_dep_regs_valid),
-  // so a job committed while another runs is not missed.
-  // verilator lint_off UNUSEDSIGNAL
-  logic unused_job_trigger;
-  assign unused_job_trigger = job_trigger;
-  // verilator lint_on UNUSEDSIGNAL
+  // Start a job on its commit pulse, or -- one cycle after a job completes --
+  // start the next committed job already waiting in the FIFO. The latter lets a
+  // job programmed while another runs begin as soon as the engine frees, which
+  // is the point of the NB_CONTEXT job queue. (cf. neureka_ctrl)
+  assign start = job_trigger | (job_done_q & job_dep_regs_valid);
 
   // Busy while a job is committed (in the FIFO) or the FSM is running.
   assign busy_o     = job_dep_regs_valid | (state_q != DM_IDLE);
@@ -186,7 +185,7 @@ module datamover_ctrl
   always_comb begin : fsm_ns_comb
     state_d = state_q;
     if (state_q == DM_IDLE) begin
-      if (job_dep_regs_valid)
+      if (start)
         state_d = DM_STARTING;
     end
     else if (state_q == DM_STARTING) begin
