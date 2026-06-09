@@ -62,13 +62,13 @@ For register layout, see [datamover_package.sv](rtl/datamover_package.sv).
 
 ```bash
 # Single test (note: riscv prefix required)
-riscv make run-sim-pipeline TEST_JSON=tests/copy.json TEST_NAME=COPY_8x8 NO_GUI=1
+riscv make run-sim-pipeline TEST_JSON=tests/copy.json TEST_NAME=COPY_8x8 GUI=0
 
 # A whole suite
 make run-test TEST_JSON=tests/cim.json PARALLEL=8
 
-# A single test by name
-make run-test TEST_JSON=tests/cim.json TEST=<TEST_NAME> NO_GUI=1
+# A single test by name (headless by default; add GUI=1 to open in Questa)
+make run-test TEST_JSON=tests/cim.json TEST=<TEST_NAME>
 
 # All enabled suites
 make run-all-tests PARALLEL=8
@@ -80,7 +80,7 @@ Run a single transform directly from the command line; HW comes from `HW_CONFIG`
 (a profile in `configs/hw_configs.json`, default `default`). Defined in `mk/config.mk`:
 
 ```bash
-riscv make test-copy SIZE_M=64 SIZE_N=64 NO_GUI=1
+riscv make test-copy SIZE_M=64 SIZE_N=64 GUI=0
 riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2 HW_CONFIG=bw128_w32
 riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
 riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
@@ -89,7 +89,7 @@ riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
 riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
 ```
 
-`TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `NO_GUI=1` for headless.
+`TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `GUI=0` for headless.
 
 JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`) and an optional per-test `hw_config`; the name is auto-generated when omitted.
 

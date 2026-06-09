@@ -30,11 +30,6 @@ ifndef TEST_NAME
 endif
 	@test -f "$(TEST_JSON)" || (echo "ERROR: TEST_JSON file not found: $(TEST_JSON)" >&2; exit 1)
 
-ifeq ($(NO_GUI),1)
-    override VSIM_FLAGS := -c
-endif
-VSIM_FLAGS ?= -gui
-
 # build-sim / force-build-sim / run-sim live in mk/config.mk (build-once per BUILD_TAG).
 
 clean-sim:
@@ -60,47 +55,53 @@ run-sim-pipeline:
 	$(MAKE) TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)" run-sim-generate
 	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" run-sim-execute
 
-.PHONY: run-test run-all-tests
-# GUI (the default) runs the single test directly via run-sim-pipeline so the
-# Questa window opens; headless (NO_GUI=1 -> VSIM_FLAGS=-c) goes through the runner.
-run-test:
-ifndef TEST_JSON
-	$(error TEST_JSON is required)
-endif
-ifeq ($(VSIM_FLAGS),-gui)
-	@test -n "$(strip $(TEST))" || { echo "ERROR: GUI mode needs a single test: pass TEST=<name> (or NO_GUI=1 for headless)" >&2; exit 1; }
-	$(MAKE) run-sim-pipeline TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST)" VSIM_FLAGS=-gui
+# ============================================================================
+# JSON-based test runner targets
+# ============================================================================
+
+# GUI=1 -> -gui else -c; test-* default GUI, suites default headless
+STANDALONE_VSIM_FLAGS := $(if $(filter 0,$(GUI)),-c,-gui)
+SUITE_VSIM_FLAGS      := $(if $(filter 1,$(GUI)),$(if $(strip $(TEST)),-gui,-c),-c)
+
+# JSON-based test runner.
+# Usage:
+#   make tests                                          # all suites in tests/*.json (headless)
+#   make tests TEST_JSON=tests/cim.json                 # one suite (headless)
+#   make tests TEST_JSON=tests/cim.json TEST=NAME GUI=1 # one test, in the GUI
+#   make tests ONLY='COPY_*' SKIP='*BROKEN*'            # filter across all suites
+#   make tests PARALLEL=8 TIMEOUT=600
+TEST_JSON_GLOB ?= tests/*.json
+PARALLEL ?= 8
+VSIM_FLAGS ?= $(STANDALONE_VSIM_FLAGS)
+
+.PHONY: tests run-test run-all-tests
+tests:
+ifeq ($(SUITE_VSIM_FLAGS),-gui)
+	@$(MAKE) run-sim-pipeline TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST)" VSIM_FLAGS=-gui
 else
-	python -u -m datamover_model.testing.runner $(TEST_JSON) \
-	    $(if $(TEST),--test=$(TEST),) \
-	    $(if $(ONLY),--only="$(ONLY)",) \
-	    $(if $(SKIP),--skip="$(SKIP)",) \
-	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
-	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
-	    --vsim-flags="$(VSIM_FLAGS)"
+	@python -u -m datamover_model.testing.runner \
+		$(if $(TEST_JSON),$(TEST_JSON),--discover-glob="$(TEST_JSON_GLOB)") \
+		$(if $(TEST),--test=$(TEST),) \
+		$(if $(ONLY),--only="$(ONLY)",) \
+		$(if $(SKIP),--skip="$(SKIP)",) \
+		--parallel=$(PARALLEL) \
+		$(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
+		--vsim-flags="$(SUITE_VSIM_FLAGS)"
 endif
 
-TEST_JSON_GLOB ?= tests/*.json
-ALL_TESTS_VSIM_FLAGS ?= -c
-run-all-tests:
-	python -u -m datamover_model.testing.runner --discover-glob="$(TEST_JSON_GLOB)" \
-	    $(if $(ONLY),--only="$(ONLY)",) \
-	    $(if $(SKIP),--skip="$(SKIP)",) \
-	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
-	    $(if $(TIMEOUT),--timeout=$(TIMEOUT),) \
-	    --vsim-flags="$(ALL_TESTS_VSIM_FLAGS)"
+run-test run-all-tests: tests
 
 # ============================================================================
 # Quick test targets (CLI mode, no JSON). HW from HW_CONFIG (configs/hw_configs.json).
 # Usage:
-#   riscv make test-copy SIZE_M=64 SIZE_N=64 NO_GUI=1
+#   riscv make test-copy SIZE_M=64 SIZE_N=64 GUI=0
 #   riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2
 #   riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
 #   riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
 #   riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
 #   riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
 #   riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
-#   add HW_CONFIG=bw128_w32, COUNT=1, NO_GUI=1 as needed
+#   add HW_CONFIG=bw128_w32, COUNT=1, GUI=0 as needed
 # ============================================================================
 .PHONY: test-copy test-transpose test-cim-layout test-cim-layout-reverse \
         test-cim-layout-transpose test-unfold test-fold _quick-test
