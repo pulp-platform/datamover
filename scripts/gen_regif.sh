@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate the datamover register interface (SystemVerilog + C header + HTML doc)
+# Generate the register interface (SystemVerilog + C header + HTML doc)
 # from the SystemRDL description with PeakRDL.
 #
 # Requires `peakrdl` on PATH. Run this script through `uv run scripts/gen_regif.sh`.
@@ -19,6 +19,7 @@ peakrdl regblock  "${RDL_FILE}" -o "${OUT_DIR}/"                  --cpuif obi-fl
 peakrdl html      "${RDL_FILE}" -o "${OUT_DIR}/html/"
 peakrdl c-header  "${RDL_FILE}" -o "${C_HEADER}"
 
+sed -i 's/ __attribute__ ((__packed__))//g' "${C_HEADER}"
 # PeakRDL emits unpacked structs; the hwpe_ctrl_target FIFOes the job-dependent
 # struct, which requires a packed type. Convert all generated typedefs to packed.
 sed -i 's/typedef[[:space:]]\+struct\b/typedef struct packed/g' "${OUT_DIR}/datamover_regif_pkg.sv"

@@ -127,7 +127,7 @@ static inline uint32_t dm_ctrl_engine(datamover_mode_t mode, uint32_t write_dim_
 // Register-image builders
 //==========================================================================
 
-static inline void datamover_build_copy(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_copy(datamover_cfg_t *cfg, const void *in, const void *out,
                                         uint32_t size_m, uint32_t size_n) {
   uint32_t total_accesses = (size_m * size_n) / DATAMOVER_BANDWIDTH_ELEMS;
   if ((size_m * size_n) % DATAMOVER_BANDWIDTH_ELEMS != 0) total_accesses += 1;
@@ -149,7 +149,7 @@ static inline void datamover_build_copy(datamover_cfg_t *cfg, const void *in, co
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_COPY, 0, 0, DATAMOVER_TRANSP_NONE);
 }
 
-static inline void datamover_build_transpose(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_transpose(datamover_cfg_t *cfg, const void *in, const void *out,
                                              uint32_t size_m, uint32_t size_n, datamover_transp_mode_t transp_mode) {
   uint32_t t = (uint32_t)transp_mode;
   uint32_t m_tiles = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
@@ -173,7 +173,7 @@ static inline void datamover_build_transpose(datamover_cfg_t *cfg, const void *i
 }
 
 // CIM-layout forward (row-major -> CIM), complete tiles in the N dimension.
-static inline void datamover_build_cim_complete(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_cim_complete(datamover_cfg_t *cfg, const void *in, const void *out,
                                                 uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   uint32_t m_tiles          = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
   uint32_t complete_n_tiles = size_n / row_tile_size;
@@ -205,7 +205,7 @@ static inline void datamover_build_cim_complete(datamover_cfg_t *cfg, const void
 }
 
 // CIM-layout forward, leftover columns (assumes row_tile_size == BANDWIDTH_ELEMS).
-static inline void datamover_build_cim_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_cim_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
                                                 uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   uint32_t m_tiles          = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
   uint32_t complete_n_tiles = size_n / row_tile_size;
@@ -231,7 +231,7 @@ static inline void datamover_build_cim_leftover(datamover_cfg_t *cfg, const void
 }
 
 // CIM-layout reverse (CIM -> row-major), complete tiles in the N dimension.
-static inline void datamover_build_cim_rev_complete(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_cim_rev_complete(datamover_cfg_t *cfg, const void *in, const void *out,
                                                     uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   uint32_t complete_n_tiles   = size_n / row_tile_size;
   uint32_t cim_layout_m_tiles = dm_ceil_div(size_m * complete_n_tiles, DATAMOVER_BANDWIDTH_ELEMS);
@@ -263,7 +263,7 @@ static inline void datamover_build_cim_rev_complete(datamover_cfg_t *cfg, const 
 }
 
 // CIM-layout reverse, leftover columns (assumes row_tile_size == BANDWIDTH_ELEMS).
-static inline void datamover_build_cim_rev_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_cim_rev_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
                                                     uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
   uint32_t m_tiles          = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
   uint32_t complete_n_tiles = size_n / row_tile_size;
@@ -289,7 +289,7 @@ static inline void datamover_build_cim_rev_leftover(datamover_cfg_t *cfg, const 
 }
 
 // Tensor (C,H,W) -> unfolded (P, N=(H*W)/P, C); H=size_m, W=size_n.
-static inline void datamover_build_unfold(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_unfold(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w) {
   const uint32_t P = DATAMOVER_UNFOLD_PATCH;
   const uint32_t side_P = DATAMOVER_UNFOLD_PATCH_SIDE;
@@ -314,7 +314,7 @@ static inline void datamover_build_unfold(datamover_cfg_t *cfg, const void *in, 
 }
 
 // Unfolded (P,N,C) -> folded (C,H,W); H=size_m, W=size_n of the folded output.
-static inline void datamover_build_fold(datamover_cfg_t *cfg, const void *in, const void *out,
+static inline __attribute__((always_inline)) void datamover_build_fold(datamover_cfg_t *cfg, const void *in, const void *out,
                                         uint32_t size_c, uint32_t size_h, uint32_t size_w) {
   const uint32_t P = DATAMOVER_UNFOLD_PATCH;
   const uint32_t side_P = DATAMOVER_UNFOLD_PATCH_SIDE;

@@ -25,7 +25,7 @@ make run-all-tests
 - `rtl/ctrl/` — SystemRDL register map (`datamover_regif.rdl`), control wrapper around `hwpe_ctrl_target` + regif + job FSM (`datamover_ctrl.sv`), and the generated register file (`regif/`)
 - `rtl/verif/` — Ibex-driven SystemVerilog testbench (`tb_datamover.sv`, `tb_dummy_memory.sv`)
 - `scripts/` — register-interface generation from the RDL (`gen_regif.sh`)
-- `sw/` — Software for the testbench and the HAL(`datamover_config.h`, `datamover_hal.h`, `tb_datamover.c`)
+- `sw/` — Software for the testbench and the HAL (`datamover_config.h`, `datamover_hal.h`, generated `datamover_regif.h`, `tb_datamover.c`)
 - `datamover_model/` — Python package: `golden_model/` (transforms), `headers/` (C header emit), `workloads/` (suite parsing + `cli`), `testing/` (`runner`, `validate`, reports)
 - `configs/` — `hw_configs.json`
 - `tests/` — JSON test suites

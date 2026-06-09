@@ -49,7 +49,7 @@ static inline void datamover_wait(void) { while (datamover_status() != 0) {} }
 // Program
 //==========================================================================
 
-static inline void datamover_program(const datamover_cfg_t *cfg) {
+static inline __attribute__((always_inline)) void datamover_program(const datamover_cfg_t *cfg) {
   volatile datamover_cfg_t *r = &DATAMOVER_REGS->hwpe_job_dep;
   r->in_ptr           = cfg->in_ptr;
   r->out_ptr          = cfg->out_ptr;
@@ -69,7 +69,7 @@ static inline void datamover_program(const datamover_cfg_t *cfg) {
 }
 
 // Acquire a free slot, program the built image, and trigger the job.
-static inline void datamover_launch(const datamover_cfg_t *cfg) {
+static inline __attribute__((always_inline)) void datamover_launch(const datamover_cfg_t *cfg) {
   datamover_acquire_wait();
   datamover_program(cfg);
   datamover_trigger();
@@ -79,20 +79,20 @@ static inline void datamover_launch(const datamover_cfg_t *cfg) {
 // Operations
 //==========================================================================
 
-static inline void datamover_copy(uint8_t *src, uint8_t *dst, uint32_t size_m, uint32_t size_n) {
+static inline __attribute__((always_inline)) void datamover_copy(uint8_t *src, uint8_t *dst, uint32_t size_m, uint32_t size_n) {
   datamover_cfg_t cfg;
   datamover_build_copy(&cfg, src, dst, size_m, size_n);
   datamover_launch(&cfg);
 }
 
-static inline void datamover_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                        uint32_t size_n, datamover_transp_mode_t transp_mode) {
   datamover_cfg_t cfg;
   datamover_build_transpose(&cfg, matrix_in, matrix_out, size_m, size_n, transp_mode);
   datamover_launch(&cfg);
 }
 
-static inline void datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                         uint32_t size_n, uint32_t row_tile_size) {
   // row_tile_size = CIM inner dim (A-layout) or outer dim (B-layout). Must be a
   // multiple of BANDWIDTH_ELEMS; the leftover-column path assumes == BANDWIDTH_ELEMS.
@@ -109,7 +109,7 @@ static inline void datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out,
   }
 }
 
-static inline void datamover_cim_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_cim_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                                 uint32_t size_n, uint32_t row_tile_size) {
   datamover_cfg_t cfg;
   uint32_t leftover_columns = size_n % DATAMOVER_BANDWIDTH_ELEMS;
@@ -124,14 +124,14 @@ static inline void datamover_cim_layout_reverse(uint8_t *matrix_in, uint8_t *mat
   }
 }
 
-static inline void datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
+static inline __attribute__((always_inline)) void datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
                                     uint32_t size_c, uint32_t size_h, uint32_t size_w) {
   datamover_cfg_t cfg;
   datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
   datamover_launch(&cfg);
 }
 
-static inline void datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
+static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
                                   uint32_t size_c, uint32_t size_h, uint32_t size_w) {
   datamover_cfg_t cfg;
   datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
@@ -142,7 +142,7 @@ static inline void datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
 // Each phase reads the buffer the previous one wrote; the engine runs committed
 // jobs in order, so the phases stay correctly sequenced without explicit waits.
 // IMPORTANT: the input buffer is used as scratch and is overwritten.
-static inline void datamover_cim_layout_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_cim_layout_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                                   uint32_t size_n, uint32_t row_tile_size,
                                                   datamover_transp_mode_t transp_mode) {
   if (size_n <= row_tile_size && size_m <= row_tile_size) {
@@ -159,7 +159,7 @@ static inline void datamover_cim_layout_transpose(uint8_t *matrix_in, uint8_t *m
 // Run
 //==========================================================================
 
-static inline datamover_status_t datamover_run(const datamover_task_config_t *t) {
+static inline __attribute__((always_inline)) datamover_status_t datamover_run(const datamover_task_config_t *t) {
   switch (t->mode) {
     case DATAMOVER_COPY:
       datamover_copy(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
