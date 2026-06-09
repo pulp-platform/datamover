@@ -61,8 +61,6 @@ run-sim-pipeline:
 	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" run-sim-execute
 
 .PHONY: run-test run-all-tests
-# Select a single test with TEST=<name> (or TEST_NAME=<name>, same thing).
-RUN_TEST := $(or $(TEST),$(TEST_NAME))
 # GUI (the default) runs the single test directly via run-sim-pipeline so the
 # Questa window opens; headless (NO_GUI=1 -> VSIM_FLAGS=-c) goes through the runner.
 run-test:
@@ -70,11 +68,11 @@ ifndef TEST_JSON
 	$(error TEST_JSON is required)
 endif
 ifeq ($(VSIM_FLAGS),-gui)
-	@test -n "$(RUN_TEST)" || { echo "ERROR: GUI mode needs a single test: pass TEST_NAME=<name> (or NO_GUI=1 for headless)" >&2; exit 1; }
-	$(MAKE) run-sim-pipeline TEST_JSON="$(TEST_JSON)" TEST_NAME="$(RUN_TEST)" VSIM_FLAGS=-gui
+	@test -n "$(strip $(TEST))" || { echo "ERROR: GUI mode needs a single test: pass TEST=<name> (or NO_GUI=1 for headless)" >&2; exit 1; }
+	$(MAKE) run-sim-pipeline TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST)" VSIM_FLAGS=-gui
 else
 	python -u -m datamover_model.testing.runner $(TEST_JSON) \
-	    $(if $(RUN_TEST),--test=$(RUN_TEST),) \
+	    $(if $(TEST),--test=$(TEST),) \
 	    $(if $(ONLY),--only="$(ONLY)",) \
 	    $(if $(SKIP),--skip="$(SKIP)",) \
 	    $(if $(PARALLEL),--parallel=$(PARALLEL),) \
