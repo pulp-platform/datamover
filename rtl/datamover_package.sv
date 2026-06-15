@@ -33,7 +33,7 @@ package datamover_package;
   parameter int unsigned MAX_BANDWIDTH = 512; // support maximum 512bits of bandwidth
 
   typedef enum logic[1:0] { TRANSP_NONE, TRANSP_1ELEM, TRANSP_2ELEM, TRANSP_4ELEM } transp_mode_e;
-  typedef enum logic[4:0] { DATAMOVER_COPY, DATAMOVER_TRANSPOSE, DATAMOVER_CIM_CONVERSION, DATAMOVER_CIM_TRANSPOSE, DATAMOVER_UNFOLD, DATAMOVER_FOLD } datamover_mode_e;
+  typedef enum logic[4:0] { DATAMOVER_COPY, DATAMOVER_TRANSPOSE, DATAMOVER_CIM_CONVERSION, DATAMOVER_CIM_TRANSPOSE, DATAMOVER_UNFOLD, DATAMOVER_FOLD, DATAMOVER_IM2COL } datamover_mode_e;
   typedef struct packed {
     transp_mode_e                     transp_mode;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;

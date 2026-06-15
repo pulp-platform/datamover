@@ -28,6 +28,9 @@ PARAM_KEYS = (
     "SIZE_M",
     "SIZE_N",
     "COUNT",
+    "KERNEL_SIZE",
+    "CONV_STRIDE",
+    "CONV_PAD",
 )
 
 

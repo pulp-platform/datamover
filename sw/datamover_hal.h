@@ -138,6 +138,14 @@ static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix
   datamover_launch(&cfg);
 }
 
+static inline __attribute__((always_inline)) void datamover_im2col(uint8_t *tensor_in, uint8_t *matrix_out,
+                                    uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                    uint32_t kernel_size, uint32_t conv_stride) {
+  datamover_cfg_t cfg;
+  datamover_build_im2col(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_size, conv_stride);
+  datamover_launch(&cfg);
+}
+
 // Transpose a CIM-layout matrix via row-major: reverse -> transpose -> forward.
 // Each phase reads the buffer the previous one wrote; the engine runs committed
 // jobs in order, so the phases stay correctly sequenced without explicit waits.
@@ -182,6 +190,10 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
       return DATAMOVER_OK;
     case DATAMOVER_FOLD:
       datamover_fold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n);
+      return DATAMOVER_OK;
+    case DATAMOVER_IM2COL:
+      datamover_im2col(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n,
+                       t->kernel_size, t->conv_stride);
       return DATAMOVER_OK;
     default:
       return DATAMOVER_ERR;

@@ -15,6 +15,7 @@ from datamover_model.golden_model.transforms import (
     cim_layout_reverse,
     cim_layout_transpose,
     fold,
+    im2col,
     unfold,
 )
 
@@ -68,6 +69,8 @@ def golden_for(params: dict, in_tensor: np.ndarray):
         # Fold consumes an unfolded tensor; synthesize it so the golden round-trips.
         unfolded = unfold(in_tensor, PATCH_SIZE)
         return unfolded, fold(unfolded, PATCH_SIZE, c, m, n)
+    if mode == 6:
+        return in_tensor, im2col(in_tensor, params["KERNEL_SIZE"], params["CONV_STRIDE"], params["CONV_PAD"])
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 

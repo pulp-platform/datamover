@@ -165,9 +165,12 @@ module datamover_engine
                        ((y_elem_cnt_q >> NB_ELEM_LOG2) >= (ctrl_i.tensor_size_m >> NB_ELEM_LOG2));
   assign last_n_tile = (n_tile_cnt_q >= (ctrl_i.tensor_size_n >> NB_ELEM_LOG2));
 
-  logic [NB_ELEMENTS-1:0] strb_copy, strb_transpose_unfold, strb_cim_fold;
+  logic [NB_ELEMENTS-1:0] strb_copy, strb_transpose_unfold, strb_cim_fold, strb_im2col;
 
   assign strb_copy = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((STRB_ONE << remaining_elems) - 1) : '1;
+
+  // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS)
+  assign strb_im2col = (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
   assign strb_transpose_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
                                  (last_y_tile && leftover_rows != 0)                                          ? ((STRB_ONE << leftover_rows) - 1) :
@@ -181,6 +184,7 @@ module datamover_engine
 
   assign data_out_prefifo.strb = (ctrl_i.total_elements == 0)                                ? '1 :
                                  (ctrl_i.datamover_mode == DATAMOVER_COPY)                   ? strb_copy :             // Copy mode
+                                 (ctrl_i.datamover_mode == DATAMOVER_IM2COL)                 ? strb_im2col :           // Im2col mode
                                  (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE ||                                      // Transpose mode
                                   ctrl_i.datamover_mode == DATAMOVER_UNFOLD)                 ? strb_transpose_unfold : // Unfold mode
                                  (ctrl_i.datamover_mode == DATAMOVER_CIM_CONVERSION ||                                 // CIM layout conversion mode
@@ -194,7 +198,7 @@ module datamover_engine
   // Write counter
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
   assign cnt_d = cnt_en ? ((cnt_q < (ctrl_i.transp_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
-  assign execution_done = (ctrl_i.datamover_mode == DATAMOVER_COPY) ? (total_accesses_copy_mode != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses_copy_mode - 1) :
+  assign execution_done = ((ctrl_i.datamover_mode == DATAMOVER_COPY) || (ctrl_i.datamover_mode == DATAMOVER_IM2COL)) ? (total_accesses_copy_mode != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses_copy_mode - 1) :
                                                    (total_accesses != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses - 1);
 
   assign tot_cnt_incr = cnt_en & (data_out_prefifo.valid & data_out_prefifo.ready);

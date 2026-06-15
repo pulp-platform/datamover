@@ -56,7 +56,8 @@ typedef enum {
   DATAMOVER_CIM_LAYOUT           = 0x2,
   DATAMOVER_CIM_LAYOUT_TRANSPOSE = 0x3,
   DATAMOVER_UNFOLD               = 0x4,
-  DATAMOVER_FOLD                 = 0x5
+  DATAMOVER_FOLD                 = 0x5,
+  DATAMOVER_IM2COL               = 0x6
 } datamover_mode_t;
 
 typedef enum {
@@ -86,6 +87,8 @@ typedef struct {
   uint32_t                size_c;
   uint32_t                size_m;
   uint32_t                size_n;
+  uint32_t                kernel_size;
+  uint32_t                conv_stride;
 } datamover_task_config_t;
 
 //==========================================================================
@@ -336,6 +339,57 @@ static inline __attribute__((always_inline)) void datamover_build_fold(datamover
   cfg->matrix_dim       = dm_matrix_dim(size_w, size_h);
   cfg->channels         = dm_channels(size_c * size_h * size_w, size_c);
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_FOLD, 0x3, 0xF, DATAMOVER_TRANSP_1ELEM);
+}
+
+// Tensor (C,H,W) -> im2col matrix (K*K*C, H_out*W_out); row = ci*K*K+kh*K+kw, col = oh*W_out+ow.
+// Stride 1 only; pre-pad the input for non-zero conv padding. H=size_h, W=size_w.
+static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
+                                          uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                          uint32_t kernel_size, uint32_t conv_stride) {
+  const uint32_t K = kernel_size;
+  const uint32_t S = conv_stride;
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t h_out = (size_h - K) / S + 1;
+  uint32_t w_out = (size_w - K) / S + 1;
+  uint32_t row_bytes = h_out * w_out;
+
+  cfg->in_ptr     = (uint32_t)(uintptr_t)in;
+  cfg->out_ptr    = (uint32_t)(uintptr_t)out;
+  cfg->matrix_dim = dm_matrix_dim(w_out, h_out);
+
+  if (w_out < BWE) {
+    // Sub-BW strip path: one BW-wide read per (oh, kw, kh, ci); the engine strobe
+    // writes only the low w_out bytes. total_elements set so tot_accesses == tot_len.
+    uint32_t tot_len      = h_out * K * K * size_c;
+    cfg->tot_len          = tot_len;
+    cfg->in_d0            = dm_stride_len(S * size_w, h_out);
+    cfg->in_d1            = dm_stride_len(1, K);
+    cfg->in_d2            = dm_stride_len(size_w, K);
+    cfg->in_d3            = dm_stride_len(size_h * size_w, size_c);
+    cfg->out_d0           = dm_stride_len(w_out, h_out);
+    cfg->out_d1           = dm_stride_len(row_bytes, K);
+    cfg->out_d2           = dm_stride_len(K * row_bytes, K);
+    cfg->out_d3           = dm_stride_len(K * K * row_bytes, size_c);
+    cfg->in_out_d4_stride = dm_d4_stride(0, 0);
+    cfg->channels         = dm_channels(tot_len * BWE, size_c);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE);
+  } else {
+    // BW-aligned path (w_out a multiple of BWE): AGU walks (ow_tile, oh, kw, kh, ci).
+    uint32_t w_tiles      = w_out / BWE;
+    uint32_t tot_len      = w_tiles * h_out * K * K * size_c;
+    cfg->tot_len          = tot_len;
+    cfg->in_d0            = dm_stride_len(BWE, w_tiles);
+    cfg->in_d1            = dm_stride_len(S * size_w, h_out);
+    cfg->in_d2            = dm_stride_len(1, K);
+    cfg->in_d3            = dm_stride_len(size_w, K);
+    cfg->out_d0           = dm_stride_len(BWE, w_tiles);
+    cfg->out_d1           = dm_stride_len(w_out, h_out);
+    cfg->out_d2           = dm_stride_len(row_bytes, K);
+    cfg->out_d3           = dm_stride_len(K * row_bytes, K);
+    cfg->in_out_d4_stride = dm_d4_stride(K * K * row_bytes, size_h * size_w);
+    cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE);
+  }
 }
 
 #endif // __DATAMOVER_CONFIG_H__

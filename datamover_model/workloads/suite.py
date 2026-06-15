@@ -20,6 +20,9 @@ PARAM_DEFAULTS = {
     "SIZE_M": 1,
     "SIZE_N": 1,
     "COUNT": 0,
+    "KERNEL_SIZE": 1,
+    "CONV_STRIDE": 1,
+    "CONV_PAD": 0,
 }
 
 
@@ -62,8 +65,8 @@ def normalize_params(raw: dict) -> dict:
         if k not in PARAM_DEFAULTS:
             raise ValueError(f"Unknown param '{k}' (allowed: {list(PARAM_DEFAULTS)})")
         out[k] = int(v)
-    if out["DATAMOVER_MODE"] not in range(6):
-        raise ValueError(f"DATAMOVER_MODE must be in 0..5, got {out['DATAMOVER_MODE']}")
+    if out["DATAMOVER_MODE"] not in range(7):
+        raise ValueError(f"DATAMOVER_MODE must be in 0..6, got {out['DATAMOVER_MODE']}")
     if out["TRANSP_MODE"] not in (0, 1, 2, 4):
         raise ValueError(f"TRANSP_MODE must be in {{0,1,2,4}}, got {out['TRANSP_MODE']}")
     if out["CIM_MODE"] not in (0, 1):
@@ -91,8 +94,12 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
         base = f"CIMTR{params['TRANSP_MODE']}_{m}x{n}_RT{params['ROW_TILE_SIZE']}"
     elif mode == 4:
         base = f"UNFOLD_C{c}_{m}x{n}"
-    else:
+    elif mode == 5:
         base = f"FOLD_C{c}_{m}x{n}"
+    else:
+        base = f"IM2COL_C{c}_{m}x{n}_K{params['KERNEL_SIZE']}_S{params['CONV_STRIDE']}"
+        if params["CONV_PAD"] > 0:
+            base += f"_P{params['CONV_PAD']}"
     if c > 1 and mode in (0, 1, 2, 3):
         base += f"_C{c}"
     if hw_tag:
