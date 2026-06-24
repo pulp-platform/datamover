@@ -152,6 +152,7 @@ module datamover_regif #(
             logic matrix_dim;
             logic channels;
             logic ctrl_engine;
+            logic out_tot_len;
         } hwpe_job_dep;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -191,6 +192,7 @@ module datamover_regif #(
         decoded_reg_strb.hwpe_job_dep.matrix_dim = cpuif_req_masked & (cpuif_addr == 32'h70);
         decoded_reg_strb.hwpe_job_dep.channels = cpuif_req_masked & (cpuif_addr == 32'h74);
         decoded_reg_strb.hwpe_job_dep.ctrl_engine = cpuif_req_masked & (cpuif_addr == 32'h78);
+        decoded_reg_strb.hwpe_job_dep.out_tot_len = cpuif_req_masked & (cpuif_addr == 32'h7c);
         decoded_err = '0;
     end
 
@@ -370,6 +372,12 @@ module datamover_regif #(
                     logic load_next;
                 } reserved;
             } ctrl_engine;
+            struct {
+                struct {
+                    logic [31:0] next;
+                    logic load_next;
+                } value;
+            } out_tot_len;
         } hwpe_job_dep;
     } field_combo_t;
     field_combo_t field_combo;
@@ -508,6 +516,11 @@ module datamover_regif #(
                     logic [15:0] value;
                 } reserved;
             } ctrl_engine;
+            struct {
+                struct {
+                    logic [31:0] value;
+                } value;
+            } out_tot_len;
         } hwpe_job_dep;
     } field_storage_t;
     field_storage_t field_storage;
@@ -1258,6 +1271,29 @@ module datamover_regif #(
         end
     end
     assign hwif_out.hwpe_job_dep.ctrl_engine.reserved.value = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
+    // Field: datamover_regif.hwpe_job_dep.out_tot_len.value
+    always_comb begin
+        automatic logic [31:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_tot_len.value.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_tot_len && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_tot_len.value.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_tot_len.value.next = next_c;
+        field_combo.hwpe_job_dep.out_tot_len.value.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_tot_len.value.value <= 32'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_tot_len.value.load_next) begin
+                field_storage.hwpe_job_dep.out_tot_len.value.value <= field_combo.hwpe_job_dep.out_tot_len.value.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_tot_len.value.value = field_storage.hwpe_job_dep.out_tot_len.value.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1366,6 +1402,9 @@ module datamover_regif #(
             readback_data_var[11:8] = field_storage.hwpe_job_dep.ctrl_engine.read_dim_en.value;
             readback_data_var[15:12] = field_storage.hwpe_job_dep.ctrl_engine.write_dim_en.value;
             readback_data_var[31:16] = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
+        end
+        if(rd_mux_addr == 32'h7c) begin
+            readback_data_var[31:0] = field_storage.hwpe_job_dep.out_tot_len.value.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

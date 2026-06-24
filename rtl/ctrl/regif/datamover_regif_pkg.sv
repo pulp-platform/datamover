@@ -5,7 +5,7 @@ package datamover_regif_pkg;
 
     localparam DATAMOVER_REGIF_DATA_WIDTH = 32;
     localparam DATAMOVER_REGIF_MIN_ADDR_WIDTH = 32;
-    localparam DATAMOVER_REGIF_SIZE = 'h7c;
+    localparam DATAMOVER_REGIF_SIZE = 'h80;
 
     typedef struct packed {
         logic [31:0] next;
@@ -196,6 +196,14 @@ package datamover_regif_pkg;
     } datamover_regif__dm_ctrl_engine__out_t;
 
     typedef struct packed {
+        logic [31:0] value;
+    } datamover_regif__dm_out_tot_len__value__out_t;
+
+    typedef struct packed {
+        datamover_regif__dm_out_tot_len__value__out_t value;
+    } datamover_regif__dm_out_tot_len__out_t;
+
+    typedef struct packed {
         datamover_regif__dm_value32__out_t in_ptr;
         datamover_regif__dm_value32__out_t out_ptr;
         datamover_regif__dm_value32__out_t tot_len;
@@ -211,6 +219,7 @@ package datamover_regif_pkg;
         datamover_regif__dm_matrix_dim__out_t matrix_dim;
         datamover_regif__dm_channels__out_t channels;
         datamover_regif__dm_ctrl_engine__out_t ctrl_engine;
+        datamover_regif__dm_out_tot_len__out_t out_tot_len;
     } datamover_regif__hwpe_ctrl_job_dep__out_t;
 
     typedef struct packed {

@@ -59,7 +59,7 @@ extern "C" {
 #define DATAMOVER_REGIF__HWPE_SOFT_CLEAR__R0_reset 0x0
 
 // regfile - datamover_regif::hwpe_ctrl_mandatory
-typedef struct __attribute__ ((__packed__)) {
+typedef struct {
     uint32_t commit_trigger;
     uint32_t acquire;
     uint32_t reserved0;
@@ -71,7 +71,7 @@ typedef struct __attribute__ ((__packed__)) {
 } datamover_regif__hwpe_ctrl_mandatory_t;
 
 // regfile - datamover_regif::hwpe_ctrl_job_indep
-typedef struct __attribute__ ((__packed__)) {
+typedef struct {
     uint32_t reserved;
 } datamover_regif__hwpe_ctrl_job_indep_t;
 
@@ -143,8 +143,14 @@ typedef struct __attribute__ ((__packed__)) {
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bw 16
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_reset 0x0
 
+// reg - datamover_regif::dm_out_tot_len
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bm 0xffffffff
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bp 0
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bw 32
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_reset 0x0
+
 // regfile - datamover_regif::hwpe_ctrl_job_dep
-typedef struct __attribute__ ((__packed__)) {
+typedef struct {
     uint32_t in_ptr;
     uint32_t out_ptr;
     uint32_t tot_len;
@@ -160,10 +166,11 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t matrix_dim;
     uint32_t channels;
     uint32_t ctrl_engine;
+    uint32_t out_tot_len;
 } datamover_regif__hwpe_ctrl_job_dep_t;
 
 // addrmap - datamover_regif
-typedef struct __attribute__ ((__packed__)) {
+typedef struct {
     datamover_regif__hwpe_ctrl_mandatory_t hwpe_ctrl;
     datamover_regif__hwpe_ctrl_job_indep_t hwpe_job_indep;
     uint8_t RESERVED_24_3f[0x1c];
@@ -171,7 +178,7 @@ typedef struct __attribute__ ((__packed__)) {
 } datamover_regif_t;
 
 
-static_assert(sizeof(datamover_regif_t) == 0x7c, "Packing error");
+static_assert(sizeof(datamover_regif_t) == 0x80, "Packing error");
 
 #ifdef __cplusplus
 }

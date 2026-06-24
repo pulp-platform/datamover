@@ -54,6 +54,8 @@ static inline __attribute__((always_inline)) void datamover_program(const datamo
   r->in_ptr           = cfg->in_ptr;
   r->out_ptr          = cfg->out_ptr;
   r->tot_len          = cfg->tot_len;
+  // Sink beat count defaults to the source count; only transpose splits them (partial tiles).
+  r->out_tot_len      = cfg->out_tot_len ? cfg->out_tot_len : cfg->tot_len;
   r->in_d0            = cfg->in_d0;
   r->in_d1            = cfg->in_d1;
   r->in_d2            = cfg->in_d2;
@@ -80,23 +82,31 @@ static inline __attribute__((always_inline)) void datamover_launch(const datamov
 //==========================================================================
 
 static inline __attribute__((always_inline)) void datamover_copy(uint8_t *src, uint8_t *dst, uint32_t size_m, uint32_t size_n) {
-  datamover_cfg_t cfg;
+  datamover_cfg_t cfg = {0};
   datamover_build_copy(&cfg, src, dst, size_m, size_n);
   datamover_launch(&cfg);
 }
 
 static inline __attribute__((always_inline)) void datamover_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                        uint32_t size_n, datamover_transp_mode_t transp_mode) {
-  datamover_cfg_t cfg;
-  datamover_build_transpose(&cfg, matrix_in, matrix_out, size_m, size_n, transp_mode);
-  datamover_launch(&cfg);
+  datamover_cfg_t cfg = {0};
+  uint32_t n_complete = (size_n / DATAMOVER_BANDWIDTH_ELEMS) * DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t leftover_cols = size_n - n_complete;
+  if (n_complete > 0) {
+    datamover_build_transpose(&cfg, matrix_in, matrix_out, size_m, size_n, 0, n_complete, transp_mode);
+    datamover_launch(&cfg);
+  }
+  if (leftover_cols > 0) {
+    datamover_build_transpose(&cfg, matrix_in, matrix_out, size_m, size_n, n_complete, leftover_cols, transp_mode);
+    datamover_launch(&cfg);
+  }
 }
 
 static inline __attribute__((always_inline)) void datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                         uint32_t size_n, uint32_t row_tile_size) {
   // row_tile_size = CIM inner dim (A-layout) or outer dim (B-layout). Must be a
   // multiple of BANDWIDTH_ELEMS; the leftover-column path assumes == BANDWIDTH_ELEMS.
-  datamover_cfg_t cfg;
+  datamover_cfg_t cfg = {0};
   uint32_t leftover_columns = size_n % DATAMOVER_BANDWIDTH_ELEMS;
 
   if (leftover_columns == 0 || size_n > DATAMOVER_BANDWIDTH_ELEMS) {
@@ -111,7 +121,7 @@ static inline __attribute__((always_inline)) void datamover_cim_layout(uint8_t *
 
 static inline __attribute__((always_inline)) void datamover_cim_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                                 uint32_t size_n, uint32_t row_tile_size) {
-  datamover_cfg_t cfg;
+  datamover_cfg_t cfg = {0};
   uint32_t leftover_columns = size_n % DATAMOVER_BANDWIDTH_ELEMS;
 
   if (leftover_columns == 0 || size_n > DATAMOVER_BANDWIDTH_ELEMS) {
@@ -126,14 +136,14 @@ static inline __attribute__((always_inline)) void datamover_cim_layout_reverse(u
 
 static inline __attribute__((always_inline)) void datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
                                     uint32_t size_c, uint32_t size_h, uint32_t size_w) {
-  datamover_cfg_t cfg;
+  datamover_cfg_t cfg = {0};
   datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
   datamover_launch(&cfg);
 }
 
 static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
                                   uint32_t size_c, uint32_t size_h, uint32_t size_w) {
-  datamover_cfg_t cfg;
+  datamover_cfg_t cfg = {0};
   datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
   datamover_launch(&cfg);
 }
@@ -141,7 +151,7 @@ static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix
 static inline __attribute__((always_inline)) void datamover_im2col(uint8_t *tensor_in, uint8_t *matrix_out,
                                     uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                     uint32_t kernel_size, uint32_t conv_stride) {
-  datamover_cfg_t cfg;
+  datamover_cfg_t cfg = {0};
   datamover_build_im2col(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_size, conv_stride);
   datamover_launch(&cfg);
 }

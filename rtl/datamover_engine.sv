@@ -66,12 +66,15 @@ module datamover_engine
   logic                                   data_out_valid;
   logic                                   data_out_ready;
   logic [NB_ELEM_LOG2-1:0]                remaining_elems;
-  logic [17:0]                            total_accesses_copy_mode, total_accesses;
+  logic [17:0]                            total_accesses_copy_mode, total_accesses, acc_target;
   logic [15:0]                            y_elem_cnt_d, y_elem_cnt_q, expanded_y_elems;
   logic                                   y_elem_wrap;
   logic [9:0]                             y_tiles, n_tiles, n_tile_cnt_d, n_tile_cnt_q;
   logic [NB_ELEM_LOG2:0]                  leftover_rows, leftover_cols;
   logic                                   last_y_tile, last_n_tile;
+  logic [9:0]                             tile_y_q, tile_y_d, tile_n_q, tile_n_d;
+  logic [NB_ELEM_LOG2:0]                  write_len, read_len, phase_len;
+  logic                                   tile_complete, transpose_done, tp_last_y, tp_last_n;
 
   logic                                   execution_done;
 
@@ -81,12 +84,12 @@ module datamover_engine
     fsm_d = fsm_q;
     case (fsm_q)
       WRITE: begin
-        if (((cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride)) && (data_in_valid & data_in_ready)) begin
+        if (((cnt_q == phase_len-ctrl_i.transp_stride)) && (data_in_valid & data_in_ready)) begin
           fsm_d = READ;
         end
       end
       READ: begin
-        if (((cnt_q == ctrl_i.transp_len-ctrl_i.transp_stride)) && (data_out_valid & data_out_ready)) begin
+        if (((cnt_q == phase_len-ctrl_i.transp_stride)) && (data_out_valid & data_out_ready)) begin
           fsm_d = WRITE;
         end
       end
@@ -165,17 +168,30 @@ module datamover_engine
                        ((y_elem_cnt_q >> NB_ELEM_LOG2) >= (ctrl_i.tensor_size_m >> NB_ELEM_LOG2));
   assign last_n_tile = (n_tile_cnt_q >= (ctrl_i.tensor_size_n >> NB_ELEM_LOG2));
 
-  logic [NB_ELEMENTS-1:0] strb_copy, strb_transpose_unfold, strb_cim_fold, strb_im2col;
+  // Partial-tile transpose gating
+  assign tp_last_y     = (tile_y_q == y_tiles - 1);
+  assign tp_last_n     = (tile_n_q == n_tiles - 1);
+  assign write_len     = ((ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) && tp_last_y && (leftover_rows != 0)) ? leftover_rows : ctrl_i.transp_len;
+  assign read_len      = ((ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) && tp_last_n && (leftover_cols != 0)) ? leftover_cols : ctrl_i.transp_len;
+  assign phase_len     = (fsm_q == WRITE) ? write_len : read_len;
+  assign tile_complete = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) && clear_elem_matrix;
+  assign tile_y_d      = tile_complete ? (tp_last_y ? '0 : tile_y_q + 1'b1) : tile_y_q;
+  assign tile_n_d      = (tile_complete && tp_last_y) ? tile_n_q + 1'b1 : tile_n_q;
+
+  logic [NB_ELEMENTS-1:0] strb_copy, strb_transpose, strb_unfold, strb_cim_fold, strb_im2col;
 
   assign strb_copy = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((STRB_ONE << remaining_elems) - 1) : '1;
+
+  // Transpose drains write_len valid rows of the last tile
+  assign strb_transpose = (STRB_ONE << write_len) - 1;
 
   // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS)
   assign strb_im2col = (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
-  assign strb_transpose_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
-                                 (last_y_tile && leftover_rows != 0)                                          ? ((STRB_ONE << leftover_rows) - 1) :
-                                 (last_n_tile && leftover_cols != 0)                                          ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? '1 : '0) :
-                                                                                                                '1;
+  assign strb_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
+                       (last_y_tile && leftover_rows != 0)                                          ? ((STRB_ONE << leftover_rows) - 1) :
+                       (last_n_tile && leftover_cols != 0)                                          ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? '1 : '0) :
+                                                                                                      '1;
 
   assign strb_cim_fold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_rows) ? ((STRB_ONE << leftover_cols) - 1) : '0) :
                          (last_y_tile && leftover_rows != 0)                                          ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_rows) ? '1 : '0) :
@@ -185,8 +201,8 @@ module datamover_engine
   assign data_out_prefifo.strb = (ctrl_i.total_elements == 0)                                ? '1 :
                                  (ctrl_i.datamover_mode == DATAMOVER_COPY)                   ? strb_copy :             // Copy mode
                                  (ctrl_i.datamover_mode == DATAMOVER_IM2COL)                 ? strb_im2col :           // Im2col mode
-                                 (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE ||                                      // Transpose mode
-                                  ctrl_i.datamover_mode == DATAMOVER_UNFOLD)                 ? strb_transpose_unfold : // Unfold mode
+                                 (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE)              ? strb_transpose :        // Transpose mode
+                                 (ctrl_i.datamover_mode == DATAMOVER_UNFOLD)                 ? strb_unfold :           // Unfold mode
                                  (ctrl_i.datamover_mode == DATAMOVER_CIM_CONVERSION ||                                 // CIM layout conversion mode
                                   ctrl_i.datamover_mode == DATAMOVER_FOLD)                   ? strb_cim_fold :         // Fold mode (inverse of unfold: leftover_rows <-> leftover_cols roles swapped)
                                                                                               '1;
@@ -197,9 +213,12 @@ module datamover_engine
 
   // Write counter
   assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
-  assign cnt_d = cnt_en ? ((cnt_q < (ctrl_i.transp_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
-  assign execution_done = ((ctrl_i.datamover_mode == DATAMOVER_COPY) || (ctrl_i.datamover_mode == DATAMOVER_IM2COL)) ? (total_accesses_copy_mode != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses_copy_mode - 1) :
-                                                   (total_accesses != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= total_accesses - 1);
+  assign cnt_d = cnt_en ? ((cnt_q < (phase_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
+  assign transpose_done = tp_last_y && tp_last_n && clear_elem_matrix;
+  // COPY/IM2COL count against total_accesses_copy_mode; UNFOLD/FOLD/CIM against total_accesses.
+  assign acc_target     = ((ctrl_i.datamover_mode == DATAMOVER_COPY) || (ctrl_i.datamover_mode == DATAMOVER_IM2COL)) ? total_accesses_copy_mode : total_accesses;
+  assign execution_done = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? transpose_done :
+                          (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
 
   assign tot_cnt_incr = cnt_en & (data_out_prefifo.valid & data_out_prefifo.ready);
   // count total number of write accesses
@@ -277,6 +296,8 @@ module datamover_engine
   `FFARNC(tot_cnt_q,    tot_cnt_d,    clear_run, '0,    clk_i, rst_ni)
   `FFARNC(y_elem_cnt_q, y_elem_cnt_d, clear_run, '0,    clk_i, rst_ni)
   `FFARNC(n_tile_cnt_q, n_tile_cnt_d, clear_run, '0,    clk_i, rst_ni)
+  `FFARNC(tile_y_q,     tile_y_d,     clear_run, '0,    clk_i, rst_ni)
+  `FFARNC(tile_n_q,     tile_n_d,     clear_run, '0,    clk_i, rst_ni)
 
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_ff_x
     for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_ff_y

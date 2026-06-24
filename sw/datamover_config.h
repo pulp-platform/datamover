@@ -152,25 +152,30 @@ static inline __attribute__((always_inline)) void datamover_build_copy(datamover
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_COPY, 0, 0, DATAMOVER_TRANSP_NONE);
 }
 
+// Transpose columns [col_start, col_start+band_cols) into output rows [col_start, ...).
 static inline __attribute__((always_inline)) void datamover_build_transpose(datamover_cfg_t *cfg, const void *in, const void *out,
-                                             uint32_t size_m, uint32_t size_n, datamover_transp_mode_t transp_mode) {
+                                             uint32_t size_m, uint32_t size_n, uint32_t col_start,
+                                             uint32_t band_cols, datamover_transp_mode_t transp_mode) {
   uint32_t t = (uint32_t)transp_mode;
-  uint32_t m_tiles = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
-  uint32_t n_tiles = dm_ceil_div(size_n, DATAMOVER_BANDWIDTH_ELEMS);
+  uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t m_tiles = dm_ceil_div(size_m, BWE);
+  uint32_t n_tiles = dm_ceil_div(band_cols, BWE);
+  uint32_t cols_per_tile = (band_cols >= BWE) ? BWE : band_cols;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out;
-  cfg->tot_len          = m_tiles * n_tiles * DATAMOVER_BANDWIDTH_ELEMS;
-  cfg->in_d0            = dm_stride_len(size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-  cfg->in_d1            = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, n_tiles);
+  cfg->in_ptr           = (uint32_t)(uintptr_t)in + col_start;
+  cfg->out_ptr          = (uint32_t)(uintptr_t)out + col_start * size_m;
+  cfg->tot_len          = size_m * n_tiles;
+  cfg->out_tot_len      = band_cols * m_tiles;
+  cfg->in_d0            = dm_stride_len(size_n, size_m);
+  cfg->in_d1            = dm_stride_len(BWE, n_tiles);
   cfg->in_d2            = dm_stride_len(0, 0);
   cfg->in_d3            = dm_stride_len(0, 0);
-  cfg->out_d0           = dm_stride_len(size_m * t, DATAMOVER_BANDWIDTH_ELEMS / t);
-  cfg->out_d1           = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, m_tiles * t);
-  cfg->out_d2           = dm_stride_len(size_m * DATAMOVER_BANDWIDTH_ELEMS, 0);
+  cfg->out_d0           = dm_stride_len(size_m * t, cols_per_tile / t);
+  cfg->out_d1           = dm_stride_len(BWE, m_tiles * t);
+  cfg->out_d2           = dm_stride_len(size_m * BWE, 0);
   cfg->out_d3           = dm_stride_len(0, 0);
   cfg->in_out_d4_stride = dm_d4_stride(0, 0);
-  cfg->matrix_dim       = dm_matrix_dim(size_n, size_m);
+  cfg->matrix_dim       = dm_matrix_dim(band_cols, size_m);
   cfg->channels         = dm_channels(size_m * size_n, 1);
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_TRANSP, 0x3, 0x1, transp_mode);
 }
@@ -342,7 +347,6 @@ static inline __attribute__((always_inline)) void datamover_build_fold(datamover
 }
 
 // Tensor (C,H,W) -> im2col matrix (K*K*C, H_out*W_out); row = ci*K*K+kh*K+kw, col = oh*W_out+ow.
-// Stride 1 only; pre-pad the input for non-zero conv padding. H=size_h, W=size_w.
 static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                           uint32_t kernel_size, uint32_t conv_stride) {
@@ -358,8 +362,6 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
   cfg->matrix_dim = dm_matrix_dim(w_out, h_out);
 
   if (w_out < BWE) {
-    // Sub-BW strip path: one BW-wide read per (oh, kw, kh, ci); the engine strobe
-    // writes only the low w_out bytes. total_elements set so tot_accesses == tot_len.
     uint32_t tot_len      = h_out * K * K * size_c;
     cfg->tot_len          = tot_len;
     cfg->in_d0            = dm_stride_len(S * size_w, h_out);
@@ -374,7 +376,6 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
     cfg->channels         = dm_channels(tot_len * BWE, size_c);
     cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE);
   } else {
-    // BW-aligned path (w_out a multiple of BWE): AGU walks (ow_tile, oh, kw, kh, ci).
     uint32_t w_tiles      = w_out / BWE;
     uint32_t tot_len      = w_tiles * h_out * K * K * size_c;
     cfg->tot_len          = tot_len;

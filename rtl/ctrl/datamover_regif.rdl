@@ -108,6 +108,14 @@ addrmap datamover_regif {
         } value[31:0] = 0;
     };
 
+    reg dm_out_tot_len {
+        field {
+            desc = "Sink (output) total number of beats.";
+            hw = r;
+            sw = rw;
+        } value[31:0] = 0;
+    };
+
     reg dm_stride_len {
         field {
             desc = "Stride in elements.";
@@ -210,6 +218,7 @@ addrmap datamover_regif {
         dm_matrix_dim  matrix_dim        @ 0x30;  // idx 12
         dm_channels    channels          @ 0x34;  // idx 13
         dm_ctrl_engine ctrl_engine       @ 0x38;  // idx 14
+        dm_out_tot_len out_tot_len       @ 0x3c;  // idx 15
     };
 
     // Top-level address map: mandatory ctrl regs at 0x00, job-indep at 0x20,

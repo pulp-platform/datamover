@@ -228,7 +228,7 @@ module datamover_ctrl
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = job_dep_regs.out_ptr.value.value;
     // Total length (in number of beats).
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = job_dep_regs.tot_len.value.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = job_dep_regs.tot_len.value.value;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = job_dep_regs.out_tot_len.value.value;
     // Source (input) per-dimension stride/length.
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = job_dep_regs.in_d0.length.value;
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = job_dep_regs.in_d0.stride.value;
