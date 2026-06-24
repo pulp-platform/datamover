@@ -184,7 +184,11 @@ package datamover_regif_pkg;
     } datamover_regif__dm_ctrl_engine__write_dim_en__out_t;
 
     typedef struct packed {
-        logic [15:0] value;
+        logic [2:0] value;
+    } datamover_regif__dm_ctrl_engine__conv_stride__out_t;
+
+    typedef struct packed {
+        logic [12:0] value;
     } datamover_regif__dm_ctrl_engine__reserved__out_t;
 
     typedef struct packed {
@@ -192,6 +196,7 @@ package datamover_regif_pkg;
         datamover_regif__dm_ctrl_engine__datamover_mode__out_t datamover_mode;
         datamover_regif__dm_ctrl_engine__read_dim_en__out_t read_dim_en;
         datamover_regif__dm_ctrl_engine__write_dim_en__out_t write_dim_en;
+        datamover_regif__dm_ctrl_engine__conv_stride__out_t conv_stride;
         datamover_regif__dm_ctrl_engine__reserved__out_t reserved;
     } datamover_regif__dm_ctrl_engine__out_t;
 

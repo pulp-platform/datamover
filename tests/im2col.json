@@ -8,6 +8,13 @@
     {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 32,  "SIZE_N": 32,  "KERNEL_SIZE": 1, "CONV_STRIDE": 1}},
     {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
     {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE": 5, "CONV_STRIDE": 1}}
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE": 5, "CONV_STRIDE": 1}},
+
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 64,  "SIZE_N": 64,  "KERNEL_SIZE": 1, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 66,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE": 5, "CONV_STRIDE": 2}}
   ]
 }

@@ -282,7 +282,8 @@ module datamover_engine
 
   // Output assignment
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
-    assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q] : data_in_unrolled[ii];
+    assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
+                                 : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
   end // gen_output
 
   // Input ready & output valid generation

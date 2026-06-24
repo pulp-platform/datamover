@@ -38,6 +38,7 @@ package datamover_package;
     transp_mode_e                     transp_mode;
     logic [$clog2(MAX_BANDWIDTH/8):0] transp_len;
     logic [2:0]                       transp_stride; // 1, 2, or 4 elements
+    logic [2:0]                       conv_stride;   // im2col column subsample factor (conv stride S)
     datamover_mode_e                  datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
     logic [11:0]                      tensor_size_m;
     logic [11:0]                      tensor_size_n;

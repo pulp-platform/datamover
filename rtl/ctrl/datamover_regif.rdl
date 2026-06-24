@@ -173,7 +173,12 @@ addrmap datamover_regif {
             desc = "Reserved.";
             hw = r;
             sw = rw;
-        } reserved[31:16] = 0;
+        } reserved[31:19] = 0;
+        field {
+            desc = "im2col convolution stride (column subsample factor).";
+            hw = r;
+            sw = rw;
+        } conv_stride[18:16] = 0;
         field {
             desc = "Sink enabled dims, one-hot (d0 always on).";
             hw = r;

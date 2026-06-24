@@ -374,7 +374,8 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
     cfg->out_d3           = dm_stride_len(K * K * row_bytes, size_c);
     cfg->in_out_d4_stride = dm_d4_stride(0, 0);
     cfg->channels         = dm_channels(tot_len * BWE, size_c);
-    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
   } else {
     uint32_t w_tiles      = w_out / BWE;
     uint32_t tot_len      = w_tiles * h_out * K * K * size_c;
@@ -389,7 +390,8 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
     cfg->out_d3           = dm_stride_len(K * row_bytes, K);
     cfg->in_out_d4_stride = dm_d4_stride(K * K * row_bytes, size_h * size_w);
     cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
-    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
   }
 }
 

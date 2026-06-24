@@ -263,6 +263,9 @@ module datamover_ctrl
                                 job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? 1 :
                                 job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? 2 : 4;
     engine_ctrl.datamover_mode = datamover_mode_e'(job_dep_regs.ctrl_engine.datamover_mode.value);
+    // im2col subsamples each beat by the conv stride; all other modes pass through (stride 1).
+    engine_ctrl.conv_stride    = (engine_ctrl.datamover_mode == DATAMOVER_IM2COL) ?
+                                 job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
     engine_ctrl.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
     engine_ctrl.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
     engine_ctrl.num_channels   = job_dep_regs.channels.num_channels.value;

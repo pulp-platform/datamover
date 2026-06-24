@@ -368,7 +368,11 @@ module datamover_regif #(
                     logic load_next;
                 } write_dim_en;
                 struct {
-                    logic [15:0] next;
+                    logic [2:0] next;
+                    logic load_next;
+                } conv_stride;
+                struct {
+                    logic [12:0] next;
                     logic load_next;
                 } reserved;
             } ctrl_engine;
@@ -513,7 +517,10 @@ module datamover_regif #(
                     logic [3:0] value;
                 } write_dim_en;
                 struct {
-                    logic [15:0] value;
+                    logic [2:0] value;
+                } conv_stride;
+                struct {
+                    logic [12:0] value;
                 } reserved;
             } ctrl_engine;
             struct {
@@ -1248,14 +1255,37 @@ module datamover_regif #(
         end
     end
     assign hwif_out.hwpe_job_dep.ctrl_engine.write_dim_en.value = field_storage.hwpe_job_dep.ctrl_engine.write_dim_en.value;
+    // Field: datamover_regif.hwpe_job_dep.ctrl_engine.conv_stride
+    always_comb begin
+        automatic logic [2:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.ctrl_engine && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value & ~decoded_wr_biten[18:16]) | (decoded_wr_data[18:16] & decoded_wr_biten[18:16]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.ctrl_engine.conv_stride.next = next_c;
+        field_combo.hwpe_job_dep.ctrl_engine.conv_stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value <= 3'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.ctrl_engine.conv_stride.load_next) begin
+                field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value <= field_combo.hwpe_job_dep.ctrl_engine.conv_stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.ctrl_engine.conv_stride.value = field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value;
     // Field: datamover_regif.hwpe_job_dep.ctrl_engine.reserved
     always_comb begin
-        automatic logic [15:0] next_c;
+        automatic logic [12:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
         load_next_c = '0;
         if(decoded_reg_strb.hwpe_job_dep.ctrl_engine && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.ctrl_engine.reserved.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            next_c = (field_storage.hwpe_job_dep.ctrl_engine.reserved.value & ~decoded_wr_biten[31:19]) | (decoded_wr_data[31:19] & decoded_wr_biten[31:19]);
             load_next_c = '1;
         end
         field_combo.hwpe_job_dep.ctrl_engine.reserved.next = next_c;
@@ -1263,7 +1293,7 @@ module datamover_regif #(
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.ctrl_engine.reserved.value <= 16'h0;
+            field_storage.hwpe_job_dep.ctrl_engine.reserved.value <= 13'h0;
         end else begin
             if(field_combo.hwpe_job_dep.ctrl_engine.reserved.load_next) begin
                 field_storage.hwpe_job_dep.ctrl_engine.reserved.value <= field_combo.hwpe_job_dep.ctrl_engine.reserved.next;
@@ -1401,7 +1431,8 @@ module datamover_regif #(
             readback_data_var[7:3] = field_storage.hwpe_job_dep.ctrl_engine.datamover_mode.value;
             readback_data_var[11:8] = field_storage.hwpe_job_dep.ctrl_engine.read_dim_en.value;
             readback_data_var[15:12] = field_storage.hwpe_job_dep.ctrl_engine.write_dim_en.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
+            readback_data_var[18:16] = field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value;
+            readback_data_var[31:19] = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
         end
         if(rd_mux_addr == 32'h7c) begin
             readback_data_var[31:0] = field_storage.hwpe_job_dep.out_tot_len.value.value;
