@@ -23,8 +23,8 @@ packages:
     dependencies:
     - common_cells
   common_cells:
-    revision: 9ca8a7655f741e7dd5736669a20a301325194c28
-    version: 1.39.0
+    revision: 1281545696eb3fcba50ec5b4275993476a3c710e
+    version: 1.40.0
     source:
       Git: https://github.com/pulp-platform/common_cells.git
     dependencies:
@@ -49,8 +49,8 @@ packages:
     - redundancy_cells
     - register_interface
   hwpe-ctrl:
-    revision: ce04de5fc48df0d536cae32301ccd83d93c05430
-    version: 3.0.0
+    revision: dfcf1cb746709de206377388bbcb4a3571e24f7b
+    version: 3.1.1
     source:
       Git: https://github.com/pulp-platform/hwpe-ctrl.git
     dependencies:
@@ -96,8 +96,8 @@ packages:
     - axi
     - common_cells
   tech_cells_generic:
-    revision: 7968dd6e6180df2c644636bc6d2908a49f2190cf
-    version: 0.2.13
+    revision: 3a3de73632a06826b1bd9c65a0a2e92b32016845
+    version: 0.2.14
     source:
       Git: https://github.com/pulp-platform/tech_cells_generic.git
     dependencies:

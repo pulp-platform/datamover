@@ -5,7 +5,8 @@ hwif_out.hwpe_ctrl.commit_trigger.commit_trigger.value[1:0]
 hwif_out.hwpe_ctrl.commit_trigger.commit_trigger.swacc
 hwif_out.hwpe_ctrl.commit_trigger.r0.value[29:0]
 hwif_out.hwpe_ctrl.acquire.acquire.swacc
-hwif_out.hwpe_ctrl.reserved0.reserved.value[31:0]
+hwif_out.hwpe_ctrl.autotrigger.autotrigger_n.value
+hwif_out.hwpe_ctrl.autotrigger.r0.value[30:0]
 hwif_out.hwpe_ctrl.running_job.r0.value[23:0]
 hwif_out.hwpe_ctrl.soft_clear.soft_clear.value[1:0]
 hwif_out.hwpe_ctrl.soft_clear.soft_clear.swacc

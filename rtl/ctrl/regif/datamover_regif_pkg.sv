@@ -64,12 +64,17 @@ package datamover_regif_pkg;
     } datamover_regif__hwpe_acquire__out_t;
 
     typedef struct packed {
-        logic [31:0] value;
-    } datamover_regif__hwpe_reserved__reserved__out_t;
+        logic value;
+    } datamover_regif__hwpe_autotrigger__autotrigger_n__out_t;
 
     typedef struct packed {
-        datamover_regif__hwpe_reserved__reserved__out_t reserved;
-    } datamover_regif__hwpe_reserved__out_t;
+        logic [30:0] value;
+    } datamover_regif__hwpe_autotrigger__r0__out_t;
+
+    typedef struct packed {
+        datamover_regif__hwpe_autotrigger__autotrigger_n__out_t autotrigger_n;
+        datamover_regif__hwpe_autotrigger__r0__out_t r0;
+    } datamover_regif__hwpe_autotrigger__out_t;
 
     typedef struct packed {
         logic [23:0] value;
@@ -94,9 +99,17 @@ package datamover_regif_pkg;
     } datamover_regif__hwpe_soft_clear__out_t;
 
     typedef struct packed {
+        logic [31:0] value;
+    } datamover_regif__hwpe_reserved__reserved__out_t;
+
+    typedef struct packed {
+        datamover_regif__hwpe_reserved__reserved__out_t reserved;
+    } datamover_regif__hwpe_reserved__out_t;
+
+    typedef struct packed {
         datamover_regif__hwpe_commit_trigger__out_t commit_trigger;
         datamover_regif__hwpe_acquire__out_t acquire;
-        datamover_regif__hwpe_reserved__out_t reserved0;
+        datamover_regif__hwpe_autotrigger__out_t autotrigger;
         datamover_regif__hwpe_running_job__out_t running_job;
         datamover_regif__hwpe_soft_clear__out_t soft_clear;
         datamover_regif__hwpe_reserved__out_t reserved1;

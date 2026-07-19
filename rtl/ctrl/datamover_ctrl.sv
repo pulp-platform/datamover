@@ -53,19 +53,19 @@ module datamover_ctrl
   datamover_regif_pkg::datamover_regif__in_t  hwif_in;
   datamover_regif_pkg::datamover_regif__out_t hwif_out;
 
-  // OBI plug between hwpe_ctrl_target and datamover_regif
-  logic                 target_obi_req;
-  logic                 target_obi_gnt;
-  logic [31:0]          target_obi_addr;
-  logic                 target_obi_we;
-  logic [3:0]           target_obi_be;
-  logic [31:0]          target_obi_wdata;
-  logic [ID_WIDTH-1:0]  target_obi_aid;
-  logic                 target_obi_rvalid;
-  logic                 target_obi_rready;
-  logic [31:0]          target_obi_rdata;
-  logic                 target_obi_err;
-  logic [ID_WIDTH-1:0]  target_obi_rid;
+  // cpuif plug between hwpe_ctrl_target and datamover_regif
+  logic        target_cpuif_req;
+  logic        target_cpuif_req_is_wr;
+  logic [31:0] target_cpuif_addr;
+  logic [31:0] target_cpuif_wr_data;
+  logic [31:0] target_cpuif_wr_biten;
+  logic        target_cpuif_req_stall_wr;
+  logic        target_cpuif_req_stall_rd;
+  logic        target_cpuif_rd_ack;
+  logic        target_cpuif_rd_err;
+  logic [31:0] target_cpuif_rd_data;
+  logic        target_cpuif_wr_ack;
+  logic        target_cpuif_wr_err;
 
   // hwpe_ctrl_target outputs
   logic                                                      target_clear;
@@ -104,41 +104,39 @@ module datamover_ctrl
     .job_indep_regs_o     ( job_indep_regs     ),
     .job_dep_regs_valid_o ( job_dep_regs_valid ),
     .job_dep_regs_o       ( job_dep_regs       ),
-    .target_obi_req_o     ( target_obi_req     ),
-    .target_obi_gnt_i     ( target_obi_gnt     ),
-    .target_obi_addr_o    ( target_obi_addr    ),
-    .target_obi_we_o      ( target_obi_we      ),
-    .target_obi_be_o      ( target_obi_be      ),
-    .target_obi_wdata_o   ( target_obi_wdata   ),
-    .target_obi_aid_o     ( target_obi_aid     ),
-    .target_obi_rvalid_i  ( target_obi_rvalid  ),
-    .target_obi_rready_o  ( target_obi_rready  ),
-    .target_obi_rdata_i   ( target_obi_rdata   ),
-    .target_obi_err_i     ( target_obi_err     ),
-    .target_obi_rid_i     ( target_obi_rid     ),
+    .target_cpuif_req_o          ( target_cpuif_req          ),
+    .target_cpuif_req_is_wr_o    ( target_cpuif_req_is_wr    ),
+    .target_cpuif_addr_o         ( target_cpuif_addr         ),
+    .target_cpuif_wr_data_o      ( target_cpuif_wr_data      ),
+    .target_cpuif_wr_biten_o     ( target_cpuif_wr_biten     ),
+    .target_cpuif_req_stall_wr_i ( target_cpuif_req_stall_wr ),
+    .target_cpuif_req_stall_rd_i ( target_cpuif_req_stall_rd ),
+    .target_cpuif_rd_ack_i       ( target_cpuif_rd_ack       ),
+    .target_cpuif_rd_err_i       ( target_cpuif_rd_err       ),
+    .target_cpuif_rd_data_i      ( target_cpuif_rd_data      ),
+    .target_cpuif_wr_ack_i       ( target_cpuif_wr_ack       ),
+    .target_cpuif_wr_err_i       ( target_cpuif_wr_err       ),
     .hwif_in              ( hwif_in            ),
     .hwif_out             ( hwif_out           )
   );
 
-  datamover_regif #(
-    .ID_WIDTH ( ID_WIDTH )
-  ) i_regif (
-    .clk          ( clk_i             ),
-    .arst_n       ( rst_ni            ),
-    .s_obi_req    ( target_obi_req    ),
-    .s_obi_gnt    ( target_obi_gnt    ),
-    .s_obi_addr   ( target_obi_addr   ),
-    .s_obi_we     ( target_obi_we     ),
-    .s_obi_be     ( target_obi_be     ),
-    .s_obi_wdata  ( target_obi_wdata  ),
-    .s_obi_aid    ( target_obi_aid    ),
-    .s_obi_rvalid ( target_obi_rvalid ),
-    .s_obi_rready ( target_obi_rready ),
-    .s_obi_rdata  ( target_obi_rdata  ),
-    .s_obi_err    ( target_obi_err    ),
-    .s_obi_rid    ( target_obi_rid    ),
-    .hwif_in      ( hwif_in           ),
-    .hwif_out     ( hwif_out          )
+  datamover_regif i_regif (
+    .clk                  ( clk_i                     ),
+    .arst_n               ( rst_ni                    ),
+    .s_cpuif_req          ( target_cpuif_req          ),
+    .s_cpuif_req_is_wr    ( target_cpuif_req_is_wr    ),
+    .s_cpuif_addr         ( target_cpuif_addr         ),
+    .s_cpuif_wr_data      ( target_cpuif_wr_data      ),
+    .s_cpuif_wr_biten     ( target_cpuif_wr_biten     ),
+    .s_cpuif_req_stall_wr ( target_cpuif_req_stall_wr ),
+    .s_cpuif_req_stall_rd ( target_cpuif_req_stall_rd ),
+    .s_cpuif_rd_ack       ( target_cpuif_rd_ack       ),
+    .s_cpuif_rd_err       ( target_cpuif_rd_err       ),
+    .s_cpuif_rd_data      ( target_cpuif_rd_data      ),
+    .s_cpuif_wr_ack       ( target_cpuif_wr_ack       ),
+    .s_cpuif_wr_err       ( target_cpuif_wr_err       ),
+    .hwif_in              ( hwif_in                   ),
+    .hwif_out             ( hwif_out                  )
   );
 
   // ----------------------------------------------------------------------

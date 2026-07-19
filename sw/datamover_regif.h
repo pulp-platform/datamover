@@ -26,11 +26,15 @@ extern "C" {
 #define DATAMOVER_REGIF__HWPE_ACQUIRE__ACQUIRE_bw 32
 #define DATAMOVER_REGIF__HWPE_ACQUIRE__ACQUIRE_reset 0x0
 
-// reg - datamover_regif::hwpe_reserved
-#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_bm 0xffffffff
-#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_bp 0
-#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_bw 32
-#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_reset 0x0
+// reg - datamover_regif::hwpe_autotrigger
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__AUTOTRIGGER_N_bm 0x1
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__AUTOTRIGGER_N_bp 0
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__AUTOTRIGGER_N_bw 1
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__AUTOTRIGGER_N_reset 0x0
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__R0_bm 0xfffffffe
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__R0_bp 1
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__R0_bw 31
+#define DATAMOVER_REGIF__HWPE_AUTOTRIGGER__R0_reset 0x0
 
 // reg - datamover_regif::hwpe_status
 #define DATAMOVER_REGIF__HWPE_STATUS__STATUS0_bm 0xffffffff
@@ -58,11 +62,17 @@ extern "C" {
 #define DATAMOVER_REGIF__HWPE_SOFT_CLEAR__R0_bw 30
 #define DATAMOVER_REGIF__HWPE_SOFT_CLEAR__R0_reset 0x0
 
+// reg - datamover_regif::hwpe_reserved
+#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_bm 0xffffffff
+#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_bp 0
+#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_bw 32
+#define DATAMOVER_REGIF__HWPE_RESERVED__RESERVED_reset 0x0
+
 // regfile - datamover_regif::hwpe_ctrl_mandatory
 typedef struct {
     uint32_t commit_trigger;
     uint32_t acquire;
-    uint32_t reserved0;
+    uint32_t autotrigger;
     uint32_t status;
     uint32_t running_job;
     uint32_t soft_clear;

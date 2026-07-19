@@ -119,6 +119,20 @@ _quick-test:
 	$(MAKE) TEST_NAME="$(TEST_NAME)" clean-sim sw-gen
 	$(MAKE) TEST_NAME="$(TEST_NAME)" run-sim-execute
 
+REGIF_RDL     := rtl/ctrl/datamover_regif.rdl
+REGIF_RTL_DIR := rtl/ctrl/regif
+REGIF_SW_HDR  := sw/datamover_regif.h
+REGIF_PEAKRDL ?= uv run peakrdl
+
+.PHONY: regif
+regif:
+	@mkdir -p $(REGIF_RTL_DIR)
+	$(REGIF_PEAKRDL) regblock $(REGIF_RDL) -o $(REGIF_RTL_DIR)/ --cpuif passthrough --default-reset arst_n --hwif-report --addr-width 32
+	$(REGIF_PEAKRDL) html     $(REGIF_RDL) -o $(REGIF_RTL_DIR)/html/
+	$(REGIF_PEAKRDL) c-header  $(REGIF_RDL) -o $(REGIF_SW_HDR)
+	sed -i 's/ __attribute__ ((__packed__))//g' $(REGIF_SW_HDR)
+	sed -i 's/typedef[[:space:]]\+struct\b/typedef struct packed/g' $(REGIF_RTL_DIR)/datamover_regif_pkg.sv
+
 # ============================================================================
 # Backend
 # ============================================================================

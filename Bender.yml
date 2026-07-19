@@ -10,7 +10,7 @@ dependencies:
   common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.39.0 }
   hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 40ab0fe1433dc080a49aa1926ce09df9ab3f5fb5 } # branch: prasadar/multi-precision
   hci:         { git: "https://github.com/pulp-platform/hci.git", rev: e7a0ebd219efd819bb5bc91ea1b24fdcfcfde6c6 } # branch: prasadar/multi-precision
-  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 3.0.0 } # SystemRDL-based hwpe_ctrl_target flow
+  hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 3.1.1 } # SystemRDL-based hwpe_ctrl_target flow
   ibex:        { git: "https://github.com/pulp-platform/ibex.git", rev: "pulpissimo-v6.1.2", target: datamover_standalone } # RISC-V core for testbench
 
 sources:

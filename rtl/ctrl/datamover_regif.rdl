@@ -41,6 +41,20 @@ addrmap datamover_regif {
             swacc = true;
         } acquire[31:0] = 0;
     };
+    reg hwpe_autotrigger {
+        field {
+            name = "reserved";
+            desc = "Reserved.";
+            hw = r;
+            sw = r;
+        } r0[31:1] = 0;
+        field {
+            name = "autotrigger_n";
+            desc = "If 0 (default) trigger automatically the next job when the current is finished. If 1, wait for an explicit trigger.";
+            hw = r;
+            sw = rw;
+        } autotrigger_n[0:0] = 0;
+    };
     reg hwpe_reserved {
         field {
             name = "reserved";
@@ -90,7 +104,7 @@ addrmap datamover_regif {
     regfile hwpe_ctrl_mandatory {
         hwpe_commit_trigger commit_trigger @ 0x00;
         hwpe_acquire        acquire        @ 0x04;
-        hwpe_reserved       reserved0      @ 0x08;
+        hwpe_autotrigger    autotrigger    @ 0x08;
         hwpe_status         status         @ 0x0c;
         hwpe_running_job    running_job    @ 0x10;
         hwpe_soft_clear     soft_clear     @ 0x14;
