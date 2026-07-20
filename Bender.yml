@@ -27,12 +27,12 @@ sources:
   - rtl/datamover_top.sv
   # Level 4
   - rtl/datamover_top_wrap.sv
-  - target: datamover_standalone
+  - target: all(datamover_standalone,simulation)
     files:
       - rtl/verif/tb_dummy_memory.sv
       - rtl/verif/tb_datamover.sv
 
   # GF12 tech cells
-  - target: gf12
+  - target: all(datamover_standalone,gf12)
     files:
       - nonfree/gf12/sourcecode/tc_clk.sv
