@@ -8,6 +8,7 @@
 """Datamover HWPE test runner (rich live progress, only/skip filters)."""
 
 import argparse
+import concurrent.futures
 import ctypes
 import errno
 import fnmatch
@@ -44,7 +45,7 @@ from datamover_model.testing.reports import (
     generate_junit_report,
     generate_metrics_csv,
 )
-from datamover_model.workloads.suite import list_tests
+from datamover_model.workloads.suite import build_tag, list_tests, load_hw_config
 
 STATUS_PASS = "pass"
 STATUS_MISMATCH = "mismatch"
@@ -54,6 +55,7 @@ STATUS_TIMEOUT = "timeout"
 MARK_TB_PASS = "==== TEST PASSED ===="
 MARK_TB_FAIL = "==== TEST FAILED ===="
 MARK_RUNNER_TIMEOUT = "TIMEOUT"
+MARK_RTL_REBUILD = ">>> Building RTL for build:"
 
 _PR_SET_PDEATHSIG = 1
 try:
@@ -463,6 +465,62 @@ def _count_planned(args, suites: List[str]) -> int:
     return total
 
 
+def _suite_meta(suite_path: str) -> dict:
+    try:
+        with open(suite_path) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def prebuild_hw_configs(suites: List[str], parallel: int = 1) -> int:
+    seen: set = set()
+    builds: List[Tuple[str, str, str]] = []
+    for suite in suites:
+        cfg = _suite_meta(suite)
+        suite_hw = cfg.get("hw_config") or "default"
+        make_args = cfg.get("make_args", "") or ""
+        stall = next((t.split("=", 1)[1] for t in make_args.split() if t.startswith("STALL=")), "0.0")
+        for test in cfg.get("tests", []):
+            name = test.get("hw_config") or suite_hw
+            try:
+                hw = load_hw_config(name)
+            except Exception as e:
+                _CONSOLE.print(f"[red]Pre-build: cannot load hw_config '{name}' from {suite}: {e}[/]")
+                return 1
+            tag = build_tag(hw, stall)
+            if tag not in seen:
+                seen.add(tag)
+                builds.append((name, make_args, tag))
+    if not builds:
+        return 0
+
+    def _build_one(item: Tuple[str, str, str]) -> Tuple[str, int, str]:
+        name, make_args, tag = item
+        rc = subprocess.run(
+            ["make", f"HW_CONFIG={name}", "TEST_NAME=__build__", "build-sim", *make_args.split()],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+        return tag, rc.returncode, rc.stdout
+
+    workers = max(1, min(parallel, len(builds)))
+    _CONSOLE.print(f"[dim]Building {len(builds)} sim build(s) with {workers} worker(s): "
+                   f"{', '.join(tag for _n, _m, tag in builds)}[/]")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        futures = [ex.submit(_build_one, b) for b in builds]
+        for fut in concurrent.futures.as_completed(futures):
+            tag, code, out = fut.result()
+            if code != 0:
+                _CONSOLE.print(f"[red]Build failed for {tag}:[/]")
+                _CONSOLE.print(out)
+                for other in futures:
+                    other.cancel()
+                return code
+            verb = "built" if MARK_RTL_REBUILD in out else "reused"
+            _CONSOLE.print(f"[dim]  {verb} {tag}[/]")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Datamover HWPE Test Runner")
     parser.add_argument("json_file", nargs="?", help="JSON test suite file")
@@ -491,6 +549,10 @@ def main():
     if not suites:
         _CONSOLE.print(f"[red]No test JSON files found (glob: {args.discover_glob})[/]")
         sys.exit(1)
+
+    prebuild_rc = prebuild_hw_configs(suites, args.parallel)
+    if prebuild_rc != 0:
+        sys.exit(prebuild_rc)
 
     planned = _count_planned(args, suites)
     started_q = multiprocessing.Queue()

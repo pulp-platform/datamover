@@ -244,6 +244,8 @@ module tb_datamover;
                       (other_r_valid & other_r_is_read) ? other_r_data : '0;
   assign data_rvalid = periph_r_valid | tcdm[MP-1].r_valid | other_r_valid;
 
+  logic dut_busy;
+
   datamover_top_wrap #(
 `ifndef SYNTHESIS
     .WAIVE_RQ3_ASSERT  ( 1'b1 ),
@@ -264,7 +266,7 @@ module tb_datamover;
     .rst_ni         ( rst_ni          ),
     .test_mode_i    ( 1'b0            ),
     .evt_o          ( evt_unused      ),
-    .busy_o         (                 ),
+    .busy_o         ( dut_busy        ),
     .tcdm_req       ( dm_tcdm_req     ),
     .tcdm_gnt       ( dm_tcdm_gnt     ),
     .tcdm_add       ( dm_tcdm_add     ),
@@ -303,6 +305,25 @@ module tb_datamover;
     .stallable_i ( 1'b1  ),
     .tcdm        ( tcdm  )
   );
+
+  localparam int unsigned DeadlockCycles = 10000;
+  wire tcdm_handshake = |(i_dummy_memory.tcdm_req & i_dummy_memory.tcdm_gnt);
+  int unsigned idle_cycles;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      idle_cycles <= 0;
+    end else if (dut_busy && !tcdm_handshake) begin
+      idle_cycles <= idle_cycles + 1;
+      if (idle_cycles + 1 >= DeadlockCycles) begin
+        $display("=====================");
+        $display("==== TEST DEADLOCK ====");
+        $display("=====================");
+        $fatal(1, "TCDM idle: No TCDM handshake for %0d cycles", DeadlockCycles);
+      end
+    end else begin
+      idle_cycles <= 0;
+    end
+  end
 
   tb_dummy_memory #(
     .MP              ( 1               ),
