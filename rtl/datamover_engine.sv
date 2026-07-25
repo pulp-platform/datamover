@@ -78,22 +78,13 @@ module datamover_engine
 
   logic                                   execution_done;
 
-  // im2col sub-BW packing: gather 32 valid elems (P=32/w_out output rows) per input
-  // beat, merge two consecutive reads into one dense store beat (elem_matrix row 0 = hold).
-  logic                                   im2col_pack;
-  logic                                   pack_half_d, pack_half_q;
-  logic                                   pack_accept, pack_wr_lo;
+  logic                                   im2col_pack, im2col_pad;
+  logic                                   pack_wr_lo, pack_half_q;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] pack_extract;
-
-  // im2col padding: synthesize a 1-pixel zero border from an unpadded input. A 1:1 dense
-  // pass-through (P = NB_ELEMENTS/w_out rows per beat) with a combinational boundary mask;
-  // the (kh-1,kw-1) read shift lives in the address, so only the border zeros stay here.
-  logic                                   im2col_pad, pad_beat;
-  logic [11:0]                            pad_oh_base_d, pad_oh_base_q;
-  logic [2:0]                             pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
-  logic [NB_ELEM_LOG2:0]                  pad_P;
-  logic                                   pad_oh_wrap, pad_kw_wrap, pad_kh_wrap;
   logic [NB_ELEMENTS-1:0]                 pad_zero;
+
+  assign im2col_pack = ctrl_i.im2col_pack;
+  assign im2col_pad  = ctrl_i.im2col_pad;
 
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
@@ -116,8 +107,6 @@ module datamover_engine
     endcase
   end
 
-  // Only the transpose FSM corner-turns the buffer; im2col packing reuses row 0 as a
-  // cross-beat hold, so it must not be cleared on the (harmless) copy-mode FSM toggles.
   assign clear_elem_matrix = (fsm_q == READ && fsm_d == WRITE) && (ctrl_i.transp_mode != TRANSP_NONE);
   assign clear_run = clear_i || execution_done;
 
@@ -274,75 +263,55 @@ module datamover_engine
     end // gen_data_shifting_y
   end // gen_data_shifting_x
 
-  // im2col packing control: alternate reads fill the low/high half of a store beat.
-  assign im2col_pack = ctrl_i.im2col_pack;
-  assign pack_accept = im2col_pack & data_in_valid & data_in_ready;
-  assign pack_wr_lo  = pack_accept & (pack_half_q == 1'b0);
-  assign pack_half_d = pack_accept ? ~pack_half_q : pack_half_q;
+  datamover_im2col_ctrl #(
+    .NB_ELEMENTS ( NB_ELEMENTS ),
+    .ELEM_WIDTH  ( ELEM_WIDTH  )
+  ) i_im2col_ctrl (
+    .clk_i              ( clk_i            ),
+    .rst_ni             ( rst_ni           ),
+    .clear_run_i        ( clear_run        ),
+    .ctrl_i             ( ctrl_i           ),
+    .data_in_unrolled_i ( data_in_unrolled ),
+    .data_in_valid_i    ( data_in_valid    ),
+    .data_in_ready_i    ( data_in_ready    ),
+    .pack_extract_o     ( pack_extract     ),
+    .pack_wr_lo_o       ( pack_wr_lo       ),
+    .pack_half_q_o      ( pack_half_q      ),
+    .pad_zero_o         ( pad_zero         )
+  );
 
-  // Gap-skip gather: element ii of a read -> output row (ii>>log2w), col (ii & (w_out-1));
-  // input index = row*W_pad + col*conv_stride. Only the low NB_ELEMENTS/2 (=32) are valid.
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pack_extract
-    if (ii < NB_ELEMENTS/2) begin : gen_valid
-      assign pack_extract[ii] = data_in_unrolled[(ii >> ctrl_i.pack_log2w) * ctrl_i.pack_row_stride
-                                               + (ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) * ctrl_i.conv_stride];
-    end else begin : gen_zero
-      assign pack_extract[ii] = '0;
-    end
-  end
+  logic [NB_ELEMENTS-1:0]                                  wr_row_en;
+  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] wr_row_data;
+  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_q;
 
-  // im2col padding control: mirror the address generator's (oh-group, kw, kh) iteration so
-  // the mask knows which tap/rows the current beat holds (pack_row_stride carries K here).
-  assign im2col_pad  = ctrl_i.im2col_pad;
-  assign pad_beat    = im2col_pad & data_in_valid & data_in_ready;
-  assign pad_P       = NB_ELEMENTS >> ctrl_i.pack_log2w;
-  assign pad_oh_wrap = (pad_oh_base_q + pad_P >= ctrl_i.tensor_size_m);
-  assign pad_kw_wrap = (pad_kw_q == ctrl_i.pack_row_stride - 1);
-  assign pad_kh_wrap = (pad_kh_q == ctrl_i.pack_row_stride - 1);
-  assign pad_oh_base_d = pad_beat ? (pad_oh_wrap ? '0 : pad_oh_base_q + pad_P) : pad_oh_base_q;
-  assign pad_kw_d      = (pad_beat & pad_oh_wrap)               ? (pad_kw_wrap ? 3'd0 : pad_kw_q + 3'd1) : pad_kw_q;
-  assign pad_kh_d      = (pad_beat & pad_oh_wrap & pad_kw_wrap) ? (pad_kh_wrap ? 3'd0 : pad_kh_q + 3'd1) : pad_kh_q;
-
-  // Boundary mask: zero the left/right column of each packed row (kw at an edge) and the
-  // whole top/bottom output row (kh at an edge and oh at the image edge).
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pad_zero
-    logic [11:0] pad_oh_ii;
-    assign pad_oh_ii = pad_oh_base_q + (ii >> ctrl_i.pack_log2w);
-    assign pad_zero[ii] = (pad_kw_q == 3'd0                       && (ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) == 32'd0)                              ||
-                          (pad_kw_q == ctrl_i.pack_row_stride - 1 && (ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) == ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) ||
-                          (pad_kh_q == 3'd0                       && pad_oh_ii == 12'd0)                                                                  ||
-                          (pad_kh_q == ctrl_i.pack_row_stride - 1 && pad_oh_ii == ctrl_i.tensor_size_m - 12'd1);
-  end
-
-  // Buffering matrix: this 2D array of word elements (e.g., bytes
-  // when ELEM_WIDTH = 8) is used to buffer values to transpose.
-  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_d, elem_matrix_q;
-  logic clear_int;
-  assign clear_int = clear_i | clear_elem_matrix;
-
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_x
-
-    // enable buffer rows that are aligned with counter in groups of four (in 32b mode),
-    // of two (in 16b mode) or single rows (in 8b mode).
-    logic buffer_enable;
-    assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE ? 1'b0 :
-                           ctrl_i.transp_mode == TRANSP_4ELEM ? ((cnt_q >> 2) == (ii >> 2)) & data_in_valid & data_in_ready :
-                           ctrl_i.transp_mode == TRANSP_2ELEM ? ((cnt_q >> 1) == (ii >> 1)) & data_in_valid & data_in_ready :
-                                                                ( cnt_q       ==  ii      ) & data_in_valid & data_in_ready;
-    // select appropriately shifted rows
+  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_buffer_write
+    logic in_hs, buffer_enable;
+    assign in_hs = data_in_valid & data_in_ready;
+    assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE  ? 1'b0 :
+                           ctrl_i.transp_mode == TRANSP_4ELEM ? ((cnt_q>>2) == (ii>>2)) & in_hs :
+                           ctrl_i.transp_mode == TRANSP_2ELEM ? ((cnt_q>>1) == (ii>>1)) & in_hs :
+                                                                ( cnt_q     ==  ii    ) & in_hs;
     logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_selected;
     assign data_in_selected = ctrl_i.transp_mode == TRANSP_4ELEM? data_in_shifted[ii % 4] :
                               ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] :
                                                                    data_in_shifted[0];
 
-    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_y
-      // Row 0 doubles as the im2col packing hold: capture the first read's 32 gathered
-      // elems, then read them back as the low half when the second read completes the beat.
-      assign elem_matrix_d[ii][jj] = (im2col_pack && (ii == 0) && pack_wr_lo) ? pack_extract[jj] :
-                                     buffer_enable                           ? data_in_selected[jj] :
-                                                                               elem_matrix_q[ii][jj];
-    end // gen_elem_matrix_y
-  end // gen_elem_matrix_x
+    assign wr_row_en[ii]   = (im2col_pack && (ii == 0)) ? pack_wr_lo : buffer_enable;
+    assign wr_row_data[ii] = (im2col_pack && (ii == 0)) ? pack_extract : data_in_selected;
+  end // gen_buffer_write
+
+  datamover_buffer #(
+    .NB_ELEMENTS ( NB_ELEMENTS ),
+    .ELEM_WIDTH  ( ELEM_WIDTH  )
+  ) i_buffer (
+    .clk_i          ( clk_i             ),
+    .rst_ni         ( rst_ni            ),
+    .clear_i        ( clear_i           ),
+    .clear_matrix_i ( clear_elem_matrix ),
+    .wr_row_en_i    ( wr_row_en         ),
+    .wr_row_data_i  ( wr_row_data       ),
+    .rd_data_o      ( elem_matrix_q     )
+  );
 
   // Output assignment
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
@@ -353,8 +322,6 @@ module datamover_engine
                                  : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
   end // gen_output
 
-  // Input ready & output valid generation. im2col packing consumes two reads per store:
-  // the first (low half) is always accepted; the second (high half) emits the merged beat.
   assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE :
                           im2col_pack ? (pack_half_q == 1'b0 ? 1'b1 : data_out_ready) : data_out_ready;
   assign data_out_valid = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == READ  :
@@ -369,16 +336,6 @@ module datamover_engine
   `FFARNC(n_tile_cnt_q, n_tile_cnt_d, clear_run, '0,    clk_i, rst_ni)
   `FFARNC(tile_y_q,     tile_y_d,     clear_run, '0,    clk_i, rst_ni)
   `FFARNC(tile_n_q,     tile_n_d,     clear_run, '0,    clk_i, rst_ni)
-  `FFARNC(pack_half_q,  pack_half_d,  clear_run, 1'b0,  clk_i, rst_ni)
-  `FFARNC(pad_oh_base_q, pad_oh_base_d, clear_run, '0,   clk_i, rst_ni)
-  `FFARNC(pad_kw_q,     pad_kw_d,     clear_run, '0,    clk_i, rst_ni)
-  `FFARNC(pad_kh_q,     pad_kh_d,     clear_run, '0,    clk_i, rst_ni)
-
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_ff_x
-    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_ff_y
-      `FFARNC(elem_matrix_q[ii][jj], elem_matrix_d[ii][jj], clear_int, '0, clk_i, rst_ni)
-    end // gen_elem_matrix_ff_y
-  end // gen_elem_matrix_ff_x
 
 `ifndef SYNTHESIS
 `ifndef VERILATOR

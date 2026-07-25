@@ -19,6 +19,8 @@ sources:
   - rtl/ctrl/regif/datamover_regif_pkg.sv  # SystemRDL-generated register file package
   # Level 1
   - rtl/ctrl/regif/datamover_regif.sv      # SystemRDL-generated register file
+  - rtl/datamover_buffer.sv
+  - rtl/datamover_im2col_ctrl.sv
   - rtl/datamover_engine.sv
   - rtl/datamover_streamer.sv
   # Level 2
