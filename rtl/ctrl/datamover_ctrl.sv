@@ -236,7 +236,7 @@ module datamover_ctrl
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = job_dep_regs.in_d2.stride.value;
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d3_len    = job_dep_regs.in_d3.length.value;
     streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d3_stride = job_dep_regs.in_d3.stride.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d4_stride = job_dep_regs.in_out_d4_stride.in_stride.value;
+    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d4_stride = job_dep_regs.in_d4_stride.value.value;
     // Sink (output) per-dimension stride/length.
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = job_dep_regs.out_d0.length.value;
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = job_dep_regs.out_d0.stride.value;
@@ -246,7 +246,7 @@ module datamover_ctrl
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = job_dep_regs.out_d2.stride.value;
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d3_len     = job_dep_regs.out_d3.length.value;
     streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d3_stride  = job_dep_regs.out_d3.stride.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = job_dep_regs.in_out_d4_stride.out_stride.value;
+    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = job_dep_regs.out_d4_stride.value.value;
   end
 
   // ----------------------------------------------------------------------
@@ -264,6 +264,9 @@ module datamover_ctrl
     // im2col subsamples each beat by the conv stride; all other modes pass through (stride 1).
     engine_ctrl.conv_stride    = (engine_ctrl.datamover_mode == DATAMOVER_IM2COL) ?
                                  job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
+    engine_ctrl.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
+    engine_ctrl.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;
+    engine_ctrl.pack_row_stride = job_dep_regs.ctrl_engine.pack_row_stride.value;
     engine_ctrl.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
     engine_ctrl.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
     engine_ctrl.num_channels   = job_dep_regs.channels.num_channels.value;

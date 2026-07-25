@@ -143,19 +143,6 @@ addrmap datamover_regif {
         } length[15:0] = 0;
     };
 
-    reg dm_d4_stride {
-        field {
-            desc = "Sink (output) d4 stride in elements.";
-            hw = r;
-            sw = rw;
-        } out_stride[31:16] = 0;
-        field {
-            desc = "Source (input) d4 stride in elements.";
-            hw = r;
-            sw = rw;
-        } in_stride[15:0] = 0;
-    };
-
     reg dm_matrix_dim {
         field {
             desc = "Tensor size N.";
@@ -187,7 +174,22 @@ addrmap datamover_regif {
             desc = "Reserved.";
             hw = r;
             sw = rw;
-        } reserved[31:19] = 0;
+        } reserved[31:31] = 0;
+        field {
+            desc = "im2col packing: input row width W_pad (sub-BW dense-store gather).";
+            hw = r;
+            sw = rw;
+        } pack_row_stride[30:23] = 0;
+        field {
+            desc = "im2col packing: log2 of the output row width w_out.";
+            hw = r;
+            sw = rw;
+        } pack_log2w[22:20] = 0;
+        field {
+            desc = "im2col packing: enable dense-store row gather (sub-BW).";
+            hw = r;
+            sw = rw;
+        } im2col_pack[19:19] = 0;
         field {
             desc = "im2col convolution stride (column subsample factor).";
             hw = r;
@@ -233,11 +235,12 @@ addrmap datamover_regif {
         dm_stride_len  out_d1            @ 0x20;  // idx 8
         dm_stride_len  out_d2            @ 0x24;  // idx 9
         dm_stride_len  out_d3            @ 0x28;  // idx 10
-        dm_d4_stride   in_out_d4_stride  @ 0x2c;  // idx 11
-        dm_matrix_dim  matrix_dim        @ 0x30;  // idx 12
-        dm_channels    channels          @ 0x34;  // idx 13
-        dm_ctrl_engine ctrl_engine       @ 0x38;  // idx 14
-        dm_out_tot_len out_tot_len       @ 0x3c;  // idx 15
+        dm_value32     in_d4_stride      @ 0x2c;  // idx 11 (full 32-bit: large channel strides)
+        dm_value32     out_d4_stride     @ 0x30;  // idx 12
+        dm_matrix_dim  matrix_dim        @ 0x34;  // idx 13
+        dm_channels    channels          @ 0x38;  // idx 14
+        dm_ctrl_engine ctrl_engine       @ 0x3c;  // idx 15
+        dm_out_tot_len out_tot_len       @ 0x40;  // idx 16
     };
 
     // Top-level address map: mandatory ctrl regs at 0x00, job-indep at 0x20,

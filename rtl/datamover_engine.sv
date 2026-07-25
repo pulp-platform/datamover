@@ -78,6 +78,13 @@ module datamover_engine
 
   logic                                   execution_done;
 
+  // im2col sub-BW packing: gather 32 valid elems (P=32/w_out output rows) per input
+  // beat, merge two consecutive reads into one dense store beat (elem_matrix row 0 = hold).
+  logic                                   im2col_pack;
+  logic                                   pack_half_d, pack_half_q;
+  logic                                   pack_accept, pack_wr_lo;
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] pack_extract;
+
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
   begin
@@ -99,7 +106,9 @@ module datamover_engine
     endcase
   end
 
-  assign clear_elem_matrix = (fsm_q == READ && fsm_d == WRITE);
+  // Only the transpose FSM corner-turns the buffer; im2col packing reuses row 0 as a
+  // cross-beat hold, so it must not be cleared on the (harmless) copy-mode FSM toggles.
+  assign clear_elem_matrix = (fsm_q == READ && fsm_d == WRITE) && (ctrl_i.transp_mode != TRANSP_NONE);
   assign clear_run = clear_i || execution_done;
 
   // internal interfaces and unrolling
@@ -185,8 +194,9 @@ module datamover_engine
   // Transpose drains write_len valid rows of the last tile
   assign strb_transpose = (STRB_ONE << write_len) - 1;
 
-  // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS)
-  assign strb_im2col = (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
+  // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS); packed stores are always full.
+  assign strb_im2col = im2col_pack ? '1 :
+                       (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
   assign strb_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
                        (last_y_tile && leftover_rows != 0)                                          ? ((STRB_ONE << leftover_rows) - 1) :
@@ -220,7 +230,7 @@ module datamover_engine
   assign execution_done = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? transpose_done :
                           (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
 
-  assign tot_cnt_incr = cnt_en & (data_out_prefifo.valid & data_out_prefifo.ready);
+  assign tot_cnt_incr = (im2col_pack ? 1'b1 : cnt_en) & (data_out_prefifo.valid & data_out_prefifo.ready);
   // count total number of write accesses
   assign tot_cnt_d = tot_cnt_incr ? tot_cnt_q + 1 : tot_cnt_q;
 
@@ -254,6 +264,23 @@ module datamover_engine
     end // gen_data_shifting_y
   end // gen_data_shifting_x
 
+  // im2col packing control: alternate reads fill the low/high half of a store beat.
+  assign im2col_pack = ctrl_i.im2col_pack;
+  assign pack_accept = im2col_pack & data_in_valid & data_in_ready;
+  assign pack_wr_lo  = pack_accept & (pack_half_q == 1'b0);
+  assign pack_half_d = pack_accept ? ~pack_half_q : pack_half_q;
+
+  // Gap-skip gather: element ii of a read -> output row (ii>>log2w), col (ii & (w_out-1));
+  // input index = row*W_pad + col*conv_stride. Only the low NB_ELEMENTS/2 (=32) are valid.
+  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pack_extract
+    if (ii < NB_ELEMENTS/2) begin : gen_valid
+      assign pack_extract[ii] = data_in_unrolled[(ii >> ctrl_i.pack_log2w) * ctrl_i.pack_row_stride
+                                               + (ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) * ctrl_i.conv_stride];
+    end else begin : gen_zero
+      assign pack_extract[ii] = '0;
+    end
+  end
+
   // Buffering matrix: this 2D array of word elements (e.g., bytes
   // when ELEM_WIDTH = 8) is used to buffer values to transpose.
   logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_d, elem_matrix_q;
@@ -276,19 +303,28 @@ module datamover_engine
                                                                    data_in_shifted[0];
 
     for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_y
-      assign elem_matrix_d[ii][jj] = buffer_enable ? data_in_selected[jj] : elem_matrix_q[ii][jj];
+      // Row 0 doubles as the im2col packing hold: capture the first read's 32 gathered
+      // elems, then read them back as the low half when the second read completes the beat.
+      assign elem_matrix_d[ii][jj] = (im2col_pack && (ii == 0) && pack_wr_lo) ? pack_extract[jj] :
+                                     buffer_enable                           ? data_in_selected[jj] :
+                                                                               elem_matrix_q[ii][jj];
     end // gen_elem_matrix_y
   end // gen_elem_matrix_x
 
   // Output assignment
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
     assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
+                                 : im2col_pack ? (ii < NB_ELEMENTS/2 ? elem_matrix_q[0][ii]
+                                                                     : pack_extract[ii-NB_ELEMENTS/2])
                                  : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
   end // gen_output
 
-  // Input ready & output valid generation
-  assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE : data_out_ready;
-  assign data_out_valid = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == READ  : data_in_valid;
+  // Input ready & output valid generation. im2col packing consumes two reads per store:
+  // the first (low half) is always accepted; the second (high half) emits the merged beat.
+  assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE :
+                          im2col_pack ? (pack_half_q == 1'b0 ? 1'b1 : data_out_ready) : data_out_ready;
+  assign data_out_valid = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == READ  :
+                          im2col_pack ? (pack_half_q == 1'b1 && data_in_valid)         : data_in_valid;
 
   // Sequential logic
 
@@ -299,6 +335,7 @@ module datamover_engine
   `FFARNC(n_tile_cnt_q, n_tile_cnt_d, clear_run, '0,    clk_i, rst_ni)
   `FFARNC(tile_y_q,     tile_y_d,     clear_run, '0,    clk_i, rst_ni)
   `FFARNC(tile_n_q,     tile_n_d,     clear_run, '0,    clk_i, rst_ni)
+  `FFARNC(pack_half_q,  pack_half_d,  clear_run, 1'b0,  clk_i, rst_ni)
 
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_ff_x
     for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_ff_y

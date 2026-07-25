@@ -5,7 +5,7 @@ package datamover_regif_pkg;
 
     localparam DATAMOVER_REGIF_DATA_WIDTH = 32;
     localparam DATAMOVER_REGIF_MIN_ADDR_WIDTH = 32;
-    localparam DATAMOVER_REGIF_SIZE = 'h80;
+    localparam DATAMOVER_REGIF_SIZE = 'h84;
 
     typedef struct packed {
         logic [31:0] next;
@@ -143,19 +143,6 @@ package datamover_regif_pkg;
 
     typedef struct packed {
         logic [15:0] value;
-    } datamover_regif__dm_d4_stride__in_stride__out_t;
-
-    typedef struct packed {
-        logic [15:0] value;
-    } datamover_regif__dm_d4_stride__out_stride__out_t;
-
-    typedef struct packed {
-        datamover_regif__dm_d4_stride__in_stride__out_t in_stride;
-        datamover_regif__dm_d4_stride__out_stride__out_t out_stride;
-    } datamover_regif__dm_d4_stride__out_t;
-
-    typedef struct packed {
-        logic [15:0] value;
     } datamover_regif__dm_matrix_dim__tensor_size_m__out_t;
 
     typedef struct packed {
@@ -201,7 +188,19 @@ package datamover_regif_pkg;
     } datamover_regif__dm_ctrl_engine__conv_stride__out_t;
 
     typedef struct packed {
-        logic [12:0] value;
+        logic value;
+    } datamover_regif__dm_ctrl_engine__im2col_pack__out_t;
+
+    typedef struct packed {
+        logic [2:0] value;
+    } datamover_regif__dm_ctrl_engine__pack_log2w__out_t;
+
+    typedef struct packed {
+        logic [7:0] value;
+    } datamover_regif__dm_ctrl_engine__pack_row_stride__out_t;
+
+    typedef struct packed {
+        logic value;
     } datamover_regif__dm_ctrl_engine__reserved__out_t;
 
     typedef struct packed {
@@ -210,6 +209,9 @@ package datamover_regif_pkg;
         datamover_regif__dm_ctrl_engine__read_dim_en__out_t read_dim_en;
         datamover_regif__dm_ctrl_engine__write_dim_en__out_t write_dim_en;
         datamover_regif__dm_ctrl_engine__conv_stride__out_t conv_stride;
+        datamover_regif__dm_ctrl_engine__im2col_pack__out_t im2col_pack;
+        datamover_regif__dm_ctrl_engine__pack_log2w__out_t pack_log2w;
+        datamover_regif__dm_ctrl_engine__pack_row_stride__out_t pack_row_stride;
         datamover_regif__dm_ctrl_engine__reserved__out_t reserved;
     } datamover_regif__dm_ctrl_engine__out_t;
 
@@ -233,7 +235,8 @@ package datamover_regif_pkg;
         datamover_regif__dm_stride_len__out_t out_d1;
         datamover_regif__dm_stride_len__out_t out_d2;
         datamover_regif__dm_stride_len__out_t out_d3;
-        datamover_regif__dm_d4_stride__out_t in_out_d4_stride;
+        datamover_regif__dm_value32__out_t in_d4_stride;
+        datamover_regif__dm_value32__out_t out_d4_stride;
         datamover_regif__dm_matrix_dim__out_t matrix_dim;
         datamover_regif__dm_channels__out_t channels;
         datamover_regif__dm_ctrl_engine__out_t ctrl_engine;

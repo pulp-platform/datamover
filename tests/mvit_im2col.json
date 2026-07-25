@@ -1,0 +1,11 @@
+{
+  "hw_config": "default",
+  "tests": [
+    {"name": "MVIT_STEM_258_C3_S2",  "params": {"DATAMOVER_MODE": 6, "SIZE_C": 3,   "SIZE_M": 258, "SIZE_N": 258, "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
+    {"name": "MVIT_34_C64_S1",       "params": {"DATAMOVER_MODE": 6, "SIZE_C": 64,  "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
+    {"name": "MVIT_18_C128_S1",      "params": {"DATAMOVER_MODE": 6, "SIZE_C": 128, "SIZE_M": 18,  "SIZE_N": 18,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
+    {"name": "MVIT_18_C256_S1",      "params": {"DATAMOVER_MODE": 6, "SIZE_C": 256, "SIZE_M": 18,  "SIZE_N": 18,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
+    {"name": "MVIT_10_C160_S1",      "params": {"DATAMOVER_MODE": 6, "SIZE_C": 160, "SIZE_M": 10,  "SIZE_N": 10,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
+    {"name": "MVIT_10_C320_S1",      "params": {"DATAMOVER_MODE": 6, "SIZE_C": 320, "SIZE_M": 10,  "SIZE_N": 10,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}}
+  ]
+}

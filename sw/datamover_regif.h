@@ -101,16 +101,6 @@ typedef struct {
 #define DATAMOVER_REGIF__DM_STRIDE_LEN__STRIDE_bw 16
 #define DATAMOVER_REGIF__DM_STRIDE_LEN__STRIDE_reset 0x0
 
-// reg - datamover_regif::dm_d4_stride
-#define DATAMOVER_REGIF__DM_D4_STRIDE__IN_STRIDE_bm 0xffff
-#define DATAMOVER_REGIF__DM_D4_STRIDE__IN_STRIDE_bp 0
-#define DATAMOVER_REGIF__DM_D4_STRIDE__IN_STRIDE_bw 16
-#define DATAMOVER_REGIF__DM_D4_STRIDE__IN_STRIDE_reset 0x0
-#define DATAMOVER_REGIF__DM_D4_STRIDE__OUT_STRIDE_bm 0xffff0000
-#define DATAMOVER_REGIF__DM_D4_STRIDE__OUT_STRIDE_bp 16
-#define DATAMOVER_REGIF__DM_D4_STRIDE__OUT_STRIDE_bw 16
-#define DATAMOVER_REGIF__DM_D4_STRIDE__OUT_STRIDE_reset 0x0
-
 // reg - datamover_regif::dm_matrix_dim
 #define DATAMOVER_REGIF__DM_MATRIX_DIM__TENSOR_SIZE_M_bm 0xffff
 #define DATAMOVER_REGIF__DM_MATRIX_DIM__TENSOR_SIZE_M_bp 0
@@ -152,9 +142,21 @@ typedef struct {
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__CONV_STRIDE_bp 16
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__CONV_STRIDE_bw 3
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__CONV_STRIDE_reset 0x0
-#define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bm 0xfff80000
-#define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bp 19
-#define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bw 13
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_PACK_bm 0x80000
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_PACK_bp 19
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_PACK_bw 1
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_PACK_reset 0x0
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_LOG2W_bm 0x700000
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_LOG2W_bp 20
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_LOG2W_bw 3
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_LOG2W_reset 0x0
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_ROW_STRIDE_bm 0x7f800000
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_ROW_STRIDE_bp 23
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_ROW_STRIDE_bw 8
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__PACK_ROW_STRIDE_reset 0x0
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bm 0x80000000
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bp 31
+#define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_bw 1
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__RESERVED_reset 0x0
 
 // reg - datamover_regif::dm_out_tot_len
@@ -176,7 +178,8 @@ typedef struct {
     uint32_t out_d1;
     uint32_t out_d2;
     uint32_t out_d3;
-    uint32_t in_out_d4_stride;
+    uint32_t in_d4_stride;
+    uint32_t out_d4_stride;
     uint32_t matrix_dim;
     uint32_t channels;
     uint32_t ctrl_engine;
@@ -192,7 +195,7 @@ typedef struct {
 } datamover_regif_t;
 
 
-static_assert(sizeof(datamover_regif_t) == 0x80, "Packing error");
+static_assert(sizeof(datamover_regif_t) == 0x84, "Packing error");
 
 #ifdef __cplusplus
 }

@@ -64,7 +64,8 @@ static inline __attribute__((always_inline)) void datamover_program(const datamo
   r->out_d1           = cfg->out_d1;
   r->out_d2           = cfg->out_d2;
   r->out_d3           = cfg->out_d3;
-  r->in_out_d4_stride = cfg->in_out_d4_stride;
+  r->in_d4_stride     = cfg->in_d4_stride;
+  r->out_d4_stride    = cfg->out_d4_stride;
   r->matrix_dim       = cfg->matrix_dim;
   r->channels         = cfg->channels;
   r->ctrl_engine      = cfg->ctrl_engine;
