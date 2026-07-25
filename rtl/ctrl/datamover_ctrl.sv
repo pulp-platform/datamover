@@ -265,6 +265,7 @@ module datamover_ctrl
     engine_ctrl.conv_stride    = (engine_ctrl.datamover_mode == DATAMOVER_IM2COL) ?
                                  job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
     engine_ctrl.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
+    engine_ctrl.im2col_pad      = job_dep_regs.ctrl_engine.im2col_pad.value;
     engine_ctrl.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;
     engine_ctrl.pack_row_stride = job_dep_regs.ctrl_engine.pack_row_stride.value;
     engine_ctrl.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;

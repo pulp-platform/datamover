@@ -47,5 +47,5 @@ hwif_out.hwpe_job_dep.ctrl_engine.conv_stride.value[2:0]
 hwif_out.hwpe_job_dep.ctrl_engine.im2col_pack.value
 hwif_out.hwpe_job_dep.ctrl_engine.pack_log2w.value[2:0]
 hwif_out.hwpe_job_dep.ctrl_engine.pack_row_stride.value[7:0]
-hwif_out.hwpe_job_dep.ctrl_engine.reserved.value
+hwif_out.hwpe_job_dep.ctrl_engine.im2col_pad.value
 hwif_out.hwpe_job_dep.out_tot_len.value.value[31:0]

@@ -151,9 +151,9 @@ static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix
 
 static inline __attribute__((always_inline)) void datamover_im2col(uint8_t *tensor_in, uint8_t *matrix_out,
                                     uint32_t size_c, uint32_t size_h, uint32_t size_w,
-                                    uint32_t kernel_size, uint32_t conv_stride) {
+                                    uint32_t kernel_size, uint32_t conv_stride, uint32_t conv_pad) {
   datamover_cfg_t cfg = {0};
-  datamover_build_im2col(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_size, conv_stride);
+  datamover_build_im2col(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_size, conv_stride, conv_pad);
   datamover_launch(&cfg);
 }
 
@@ -204,7 +204,7 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
       return DATAMOVER_OK;
     case DATAMOVER_IM2COL:
       datamover_im2col(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n,
-                       t->kernel_size, t->conv_stride);
+                       t->kernel_size, t->conv_stride, t->conv_pad);
       return DATAMOVER_OK;
     default:
       return DATAMOVER_ERR;

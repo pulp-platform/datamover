@@ -89,6 +89,7 @@ typedef struct {
   uint32_t                size_n;
   uint32_t                kernel_size;
   uint32_t                conv_stride;
+  uint32_t                conv_pad;
 } datamover_task_config_t;
 
 //==========================================================================
@@ -350,17 +351,46 @@ static inline __attribute__((always_inline)) void datamover_build_fold(datamover
 // Tensor (C,H,W) -> im2col matrix (K*K*C, H_out*W_out); row = ci*K*K+kh*K+kw, col = oh*W_out+ow.
 static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w,
-                                          uint32_t kernel_size, uint32_t conv_stride) {
+                                          uint32_t kernel_size, uint32_t conv_stride, uint32_t pad) {
   const uint32_t K = kernel_size;
   const uint32_t S = conv_stride;
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t h_out = (size_h - K) / S + 1;
-  uint32_t w_out = (size_w - K) / S + 1;
+  uint32_t h_out = (size_h + 2 * pad - K) / S + 1;
+  uint32_t w_out = (size_w + 2 * pad - K) / S + 1;
   uint32_t row_bytes = h_out * w_out;
 
-  cfg->in_ptr     = (uint32_t)(uintptr_t)in;
   cfg->out_ptr    = (uint32_t)(uintptr_t)out;
   cfg->matrix_dim = dm_matrix_dim(w_out, h_out);
+
+  // Padded S=1 path: read the unpadded input densely (1 read = P=64/w_out full rows) and
+  // synthesize the 1-pixel border in the engine. The (kh-1,kw-1) shift is folded into the
+  // base; boundary reads land just outside the tensor and are masked to zero by the engine.
+  if (pad != 0 && S == 1 && w_out >= 1 && w_out <= 32 && (BWE % w_out) == 0 && (row_bytes % BWE) == 0) {
+    uint32_t P = BWE / w_out;
+    uint32_t log2w = 0;
+    while ((1u << log2w) < w_out) log2w++;
+    cfg->in_ptr           = (uint32_t)(uintptr_t)in - (size_w + 1);       // pad=1: (kh-1)*W + (kw-1)
+    cfg->tot_len          = (row_bytes / BWE) * K * K * size_c;           // 1:1 (reads == stores)
+    cfg->out_tot_len      = (row_bytes / BWE) * K * K * size_c;
+    cfg->in_d0            = dm_stride_len(P * size_w, h_out / P);         // P-row groups within a tap
+    cfg->in_d1            = dm_stride_len(1, K);                          // kw
+    cfg->in_d2            = dm_stride_len(size_w, K);                     // kh
+    cfg->in_d3            = dm_stride_len(size_h * size_w, size_c);       // c
+    cfg->out_d0           = dm_stride_len(BWE, row_bytes / BWE);         // dense store beats
+    cfg->out_d1           = dm_stride_len(row_bytes, K);
+    cfg->out_d2           = dm_stride_len(K * row_bytes, K);
+    cfg->out_d3           = dm_stride_len(K * K * row_bytes, size_c);
+    dm_set_d4(cfg, 0, 0);
+    cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PAD, 1)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_LOG2W, log2w)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_ROW_STRIDE, K);  // carries K in padding mode
+    return;
+  }
+
+  cfg->in_ptr     = (uint32_t)(uintptr_t)in;
 
   if (w_out < BWE) {
     // Packed dense-store path: gather P=32/w_out output rows per read, merge two reads into

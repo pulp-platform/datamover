@@ -40,8 +40,9 @@ package datamover_package;
     logic [2:0]                       transp_stride; // 1, 2, or 4 elements
     logic [2:0]                       conv_stride;   // im2col column subsample factor (conv stride S)
     logic                             im2col_pack;   // im2col: pack sub-BW output rows into dense store beats
+    logic                             im2col_pad;    // im2col: synthesize a 1-pixel zero border (unpadded input)
     logic [2:0]                       pack_log2w;    // im2col packing: log2(w_out)
-    logic [7:0]                       pack_row_stride;// im2col packing: input row width W_pad
+    logic [7:0]                       pack_row_stride;// im2col packing: input row width W_pad (= K in padding mode)
     datamover_mode_e                  datamover_mode; // 0: copy, 1: tranpose, 2: CIM layout conversion
     logic [11:0]                      tensor_size_m;
     logic [11:0]                      tensor_size_n;

@@ -171,12 +171,12 @@ addrmap datamover_regif {
 
     reg dm_ctrl_engine {
         field {
-            desc = "Reserved.";
+            desc = "im2col padding: synthesize a 1-pixel zero border from an unpadded input.";
             hw = r;
             sw = rw;
-        } reserved[31:31] = 0;
+        } im2col_pad[31:31] = 0;
         field {
-            desc = "im2col packing: input row width W_pad (sub-BW dense-store gather).";
+            desc = "im2col packing: input row width W_pad; in padding mode carries the kernel size K.";
             hw = r;
             sw = rw;
         } pack_row_stride[30:23] = 0;

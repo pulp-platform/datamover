@@ -85,6 +85,16 @@ module datamover_engine
   logic                                   pack_accept, pack_wr_lo;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] pack_extract;
 
+  // im2col padding: synthesize a 1-pixel zero border from an unpadded input. A 1:1 dense
+  // pass-through (P = NB_ELEMENTS/w_out rows per beat) with a combinational boundary mask;
+  // the (kh-1,kw-1) read shift lives in the address, so only the border zeros stay here.
+  logic                                   im2col_pad, pad_beat;
+  logic [11:0]                            pad_oh_base_d, pad_oh_base_q;
+  logic [2:0]                             pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
+  logic [NB_ELEM_LOG2:0]                  pad_P;
+  logic                                   pad_oh_wrap, pad_kw_wrap, pad_kh_wrap;
+  logic [NB_ELEMENTS-1:0]                 pad_zero;
+
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
   begin
@@ -194,8 +204,8 @@ module datamover_engine
   // Transpose drains write_len valid rows of the last tile
   assign strb_transpose = (STRB_ONE << write_len) - 1;
 
-  // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS); packed stores are always full.
-  assign strb_im2col = im2col_pack ? '1 :
+  // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS); packed/padded stores are full.
+  assign strb_im2col = (im2col_pack || im2col_pad) ? '1 :
                        (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
   assign strb_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
@@ -281,6 +291,29 @@ module datamover_engine
     end
   end
 
+  // im2col padding control: mirror the address generator's (oh-group, kw, kh) iteration so
+  // the mask knows which tap/rows the current beat holds (pack_row_stride carries K here).
+  assign im2col_pad  = ctrl_i.im2col_pad;
+  assign pad_beat    = im2col_pad & data_in_valid & data_in_ready;
+  assign pad_P       = NB_ELEMENTS >> ctrl_i.pack_log2w;
+  assign pad_oh_wrap = (pad_oh_base_q + pad_P >= ctrl_i.tensor_size_m);
+  assign pad_kw_wrap = (pad_kw_q == ctrl_i.pack_row_stride - 1);
+  assign pad_kh_wrap = (pad_kh_q == ctrl_i.pack_row_stride - 1);
+  assign pad_oh_base_d = pad_beat ? (pad_oh_wrap ? '0 : pad_oh_base_q + pad_P) : pad_oh_base_q;
+  assign pad_kw_d      = (pad_beat & pad_oh_wrap)               ? (pad_kw_wrap ? 3'd0 : pad_kw_q + 3'd1) : pad_kw_q;
+  assign pad_kh_d      = (pad_beat & pad_oh_wrap & pad_kw_wrap) ? (pad_kh_wrap ? 3'd0 : pad_kh_q + 3'd1) : pad_kh_q;
+
+  // Boundary mask: zero the left/right column of each packed row (kw at an edge) and the
+  // whole top/bottom output row (kh at an edge and oh at the image edge).
+  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pad_zero
+    logic [11:0] pad_oh_ii;
+    assign pad_oh_ii = pad_oh_base_q + (ii >> ctrl_i.pack_log2w);
+    assign pad_zero[ii] = (pad_kw_q == 3'd0                       && (ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) == 32'd0)                              ||
+                          (pad_kw_q == ctrl_i.pack_row_stride - 1 && (ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) == ((32'd1 << ctrl_i.pack_log2w) - 32'd1)) ||
+                          (pad_kh_q == 3'd0                       && pad_oh_ii == 12'd0)                                                                  ||
+                          (pad_kh_q == ctrl_i.pack_row_stride - 1 && pad_oh_ii == ctrl_i.tensor_size_m - 12'd1);
+  end
+
   // Buffering matrix: this 2D array of word elements (e.g., bytes
   // when ELEM_WIDTH = 8) is used to buffer values to transpose.
   logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_d, elem_matrix_q;
@@ -316,6 +349,7 @@ module datamover_engine
     assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
                                  : im2col_pack ? (ii < NB_ELEMENTS/2 ? elem_matrix_q[0][ii]
                                                                      : pack_extract[ii-NB_ELEMENTS/2])
+                                 : (im2col_pad && pad_zero[ii]) ? '0
                                  : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
   end // gen_output
 
@@ -336,6 +370,9 @@ module datamover_engine
   `FFARNC(tile_y_q,     tile_y_d,     clear_run, '0,    clk_i, rst_ni)
   `FFARNC(tile_n_q,     tile_n_d,     clear_run, '0,    clk_i, rst_ni)
   `FFARNC(pack_half_q,  pack_half_d,  clear_run, 1'b0,  clk_i, rst_ni)
+  `FFARNC(pad_oh_base_q, pad_oh_base_d, clear_run, '0,   clk_i, rst_ni)
+  `FFARNC(pad_kw_q,     pad_kw_d,     clear_run, '0,    clk_i, rst_ni)
+  `FFARNC(pad_kh_q,     pad_kh_d,     clear_run, '0,    clk_i, rst_ni)
 
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_ff_x
     for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_ff_y

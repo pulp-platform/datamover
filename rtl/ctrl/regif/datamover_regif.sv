@@ -339,7 +339,7 @@ module datamover_regif (
                 struct {
                     logic next;
                     logic load_next;
-                } reserved;
+                } im2col_pad;
             } ctrl_engine;
             struct {
                 struct {
@@ -502,7 +502,7 @@ module datamover_regif (
                 } pack_row_stride;
                 struct {
                     logic value;
-                } reserved;
+                } im2col_pad;
             } ctrl_engine;
             struct {
                 struct {
@@ -1351,29 +1351,29 @@ module datamover_regif (
         end
     end
     assign hwif_out.hwpe_job_dep.ctrl_engine.pack_row_stride.value = field_storage.hwpe_job_dep.ctrl_engine.pack_row_stride.value;
-    // Field: datamover_regif.hwpe_job_dep.ctrl_engine.reserved
+    // Field: datamover_regif.hwpe_job_dep.ctrl_engine.im2col_pad
     always_comb begin
         automatic logic [0:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
+        next_c = field_storage.hwpe_job_dep.ctrl_engine.im2col_pad.value;
         load_next_c = '0;
         if(decoded_reg_strb.hwpe_job_dep.ctrl_engine && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.ctrl_engine.reserved.value & ~decoded_wr_biten[31:31]) | (decoded_wr_data[31:31] & decoded_wr_biten[31:31]);
+            next_c = (field_storage.hwpe_job_dep.ctrl_engine.im2col_pad.value & ~decoded_wr_biten[31:31]) | (decoded_wr_data[31:31] & decoded_wr_biten[31:31]);
             load_next_c = '1;
         end
-        field_combo.hwpe_job_dep.ctrl_engine.reserved.next = next_c;
-        field_combo.hwpe_job_dep.ctrl_engine.reserved.load_next = load_next_c;
+        field_combo.hwpe_job_dep.ctrl_engine.im2col_pad.next = next_c;
+        field_combo.hwpe_job_dep.ctrl_engine.im2col_pad.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.ctrl_engine.reserved.value <= 1'h0;
+            field_storage.hwpe_job_dep.ctrl_engine.im2col_pad.value <= 1'h0;
         end else begin
-            if(field_combo.hwpe_job_dep.ctrl_engine.reserved.load_next) begin
-                field_storage.hwpe_job_dep.ctrl_engine.reserved.value <= field_combo.hwpe_job_dep.ctrl_engine.reserved.next;
+            if(field_combo.hwpe_job_dep.ctrl_engine.im2col_pad.load_next) begin
+                field_storage.hwpe_job_dep.ctrl_engine.im2col_pad.value <= field_combo.hwpe_job_dep.ctrl_engine.im2col_pad.next;
             end
         end
     end
-    assign hwif_out.hwpe_job_dep.ctrl_engine.reserved.value = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
+    assign hwif_out.hwpe_job_dep.ctrl_engine.im2col_pad.value = field_storage.hwpe_job_dep.ctrl_engine.im2col_pad.value;
     // Field: datamover_regif.hwpe_job_dep.out_tot_len.value
     always_comb begin
         automatic logic [31:0] next_c;
@@ -1511,7 +1511,7 @@ module datamover_regif (
             readback_data_var[19] = field_storage.hwpe_job_dep.ctrl_engine.im2col_pack.value;
             readback_data_var[22:20] = field_storage.hwpe_job_dep.ctrl_engine.pack_log2w.value;
             readback_data_var[30:23] = field_storage.hwpe_job_dep.ctrl_engine.pack_row_stride.value;
-            readback_data_var[31] = field_storage.hwpe_job_dep.ctrl_engine.reserved.value;
+            readback_data_var[31] = field_storage.hwpe_job_dep.ctrl_engine.im2col_pad.value;
         end
         if(rd_mux_addr == 32'h80) begin
             readback_data_var[31:0] = field_storage.hwpe_job_dep.out_tot_len.value.value;

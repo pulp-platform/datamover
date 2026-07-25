@@ -201,7 +201,7 @@ package datamover_regif_pkg;
 
     typedef struct packed {
         logic value;
-    } datamover_regif__dm_ctrl_engine__reserved__out_t;
+    } datamover_regif__dm_ctrl_engine__im2col_pad__out_t;
 
     typedef struct packed {
         datamover_regif__dm_ctrl_engine__transp_mode__out_t transp_mode;
@@ -212,7 +212,7 @@ package datamover_regif_pkg;
         datamover_regif__dm_ctrl_engine__im2col_pack__out_t im2col_pack;
         datamover_regif__dm_ctrl_engine__pack_log2w__out_t pack_log2w;
         datamover_regif__dm_ctrl_engine__pack_row_stride__out_t pack_row_stride;
-        datamover_regif__dm_ctrl_engine__reserved__out_t reserved;
+        datamover_regif__dm_ctrl_engine__im2col_pad__out_t im2col_pad;
     } datamover_regif__dm_ctrl_engine__out_t;
 
     typedef struct packed {
