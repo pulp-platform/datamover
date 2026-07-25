@@ -41,7 +41,7 @@ Set via `config.mk` defaults or per-test via `configs/hw_configs.json`:
 | `BANDWIDTH`           | Total HWPE↔TCDM port width (bits) |
 | `WORD_WIDTH`          | Memory-bank word width (bits) |
 | `ELEM_WIDTH`          | Element width (bits) |
-| `MISALIGNED_ACCESSES` | Non-power-of-two strobed accesses (RTL path currently disabled) |
+| `MISALIGNED_ACCESSES` | Non-power-of-two strobed accesses |
 
 **Constraints**: `BANDWIDTH` must divide by `WORD_WIDTH`; `WORD_WIDTH/ELEM_WIDTH` must be a power of two. Transpose only supports `NUM_ELEM_WORD ∈ {2, 4}`; granularity is selected at runtime via `TRANSP_MODE`.
 
