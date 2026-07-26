@@ -1,20 +1,44 @@
 {
   "hw_config": "default",
   "tests": [
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 64,  "SIZE_N": 64,  "KERNEL_SIZE": 1, "CONV_STRIDE": 1}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 66,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 4,   "SIZE_N": 130, "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 64,  "SIZE_N": 64,  "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 66,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 4,   "SIZE_N": 130, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
 
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 32,  "SIZE_N": 32,  "KERNEL_SIZE": 1, "CONV_STRIDE": 1}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 1}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE": 5, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 32,  "SIZE_N": 32,  "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE_H": 5, "KERNEL_SIZE_W": 5, "CONV_STRIDE": 1}},
 
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 64,  "SIZE_N": 64,  "KERNEL_SIZE": 1, "CONV_STRIDE": 2}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 66,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 34,  "KERNEL_SIZE": 3, "CONV_STRIDE": 2}},
-    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE": 5, "CONV_STRIDE": 2}}
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 64,  "SIZE_N": 64,  "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 66,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 34,  "SIZE_N": 34,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 66,  "SIZE_N": 34,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20,  "SIZE_N": 20,  "KERNEL_SIZE_H": 5, "KERNEL_SIZE_W": 5, "CONV_STRIDE": 2}},
+
+    {"name": "IM2COL_FULLBW_S2_MULT64",   "params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 6,  "SIZE_N": 255, "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 2}},
+    {"name": "IM2COL_FULLBW_S2_LEFTOVER", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 6,  "SIZE_N": 129, "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 2}},
+    {"name": "IM2COL_FULLBW_S1_LEFTOVER", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 6,  "SIZE_N": 131, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 32, "SIZE_N": 32, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 16, "SIZE_N": 16, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 8,  "SIZE_N": 8,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 16, "SIZE_N": 16, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1}},
+
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20, "SIZE_N": 20, "KERNEL_SIZE_H": 7, "KERNEL_SIZE_W": 7, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 3,  "SIZE_N": 3,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 8, "SIZE_M": 18, "SIZE_N": 18, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+
+    {"name": "IM2COL_D3_STRIDE_OVERFLOW", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 256, "SIZE_N": 256, "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 1}},
+
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 10, "SIZE_N": 20,  "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20, "SIZE_N": 10,  "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 1}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 20, "SIZE_N": 10,  "KERNEL_SIZE_H": 5, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 2}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 4, "SIZE_M": 8,  "SIZE_N": 20,  "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 5, "CONV_STRIDE": 1}},
+    {"name": "IM2COL_NONSQ_FULLBW_LEFTOVER", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 1, "SIZE_M": 6, "SIZE_N": 130, "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 1, "CONV_STRIDE": 1}},
+
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 18, "SIZE_N": 16, "KERNEL_SIZE_H": 5, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1}},
+    {"name": "IM2COL_NONSQ_PAD_K1_EDGE", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 2, "SIZE_M": 6, "SIZE_N": 16, "KERNEL_SIZE_H": 1, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1}}
   ]
 }

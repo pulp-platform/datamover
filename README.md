@@ -55,6 +55,7 @@ Set via `config.mk` defaults or per-test via `configs/hw_configs.json`:
 | 3 | **CIMT fwd/rev** |
 | 4 | **Unfold** (MobileViT) |
 | 5 | **Fold** (MobileViT) |
+| 6 | **im2col** — convolution unfold; `KERNEL_SIZE_H/W`, `CONV_STRIDE`, `CONV_PAD` |
 
 For register layout, see [datamover_package.sv](rtl/datamover_package.sv).
 

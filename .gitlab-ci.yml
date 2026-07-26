@@ -76,3 +76,15 @@ test:stallability:
   variables:
     TEST_JSON: tests/stallability.json
     SUITE_NAME: stallability
+
+test:im2col:
+  extends: .test-template
+  variables:
+    TEST_JSON: tests/im2col.json
+    SUITE_NAME: im2col
+
+test:mvit_im2col:
+  extends: .test-template
+  variables:
+    TEST_JSON: tests/mvit_im2col.json
+    SUITE_NAME: mvit_im2col
