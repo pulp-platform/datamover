@@ -99,7 +99,7 @@ $(BUILD_SENTINEL): $(RTL_DEPS)
 	@echo ">>> Building RTL for build: $(BUILD_TAG)"
 	@mkdir -p $(MODELSIM_BUILDS_DIR)
 	@rm -f $(MODELSIM_BUILDS_DIR)/compile.tcl
-	$(BENDER_VERSION) script vsim --vlog-arg="$(VLOG_FLAGS)" $(VLOG_DEFS) >> $(MODELSIM_BUILDS_DIR)/compile.tcl
+	@flock $(ROOT_DIR)/.bender-checkout.lock $(BENDER_VERSION) script vsim --vlog-arg="$(VLOG_FLAGS)" $(VLOG_DEFS) >> $(MODELSIM_BUILDS_DIR)/compile.tcl
 	cd $(MODELSIM_DIR) && $(MAKE) BUILDPATH=builds/$(BUILD_TAG) TOP_MODULE=$(TOP_MODULE) lib build
 	@printf '%s\n' '$(BUILD_FINGERPRINT)' > $@
 
