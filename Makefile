@@ -14,6 +14,11 @@ VLOG_FLAGS += +nosparse
 
 VLOG_DEFS  += -t rtl -t datamover_standalone
 
+.PHONY: bender-checkout
+bender-checkout:
+	@mkdir -p $(ROOT_DIR)/.bender
+	@flock $(ROOT_DIR)/.bender/.checkout.lock $(BENDER_VERSION) checkout
+
 # HW config + workload defaults + auto TEST_NAME + build-once machinery
 # (build-sim / run-sim / BUILD_TAG / SIM_DEFINES live here).
 include mk/config.mk
@@ -75,7 +80,7 @@ PARALLEL ?= 8
 VSIM_FLAGS ?= $(STANDALONE_VSIM_FLAGS)
 
 .PHONY: tests run-test run-all-tests
-tests:
+tests: bender-checkout
 ifeq ($(SUITE_VSIM_FLAGS),-gui)
 	@$(MAKE) run-sim-pipeline TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST)" VSIM_FLAGS=-gui
 else
