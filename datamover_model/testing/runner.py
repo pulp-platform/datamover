@@ -45,7 +45,13 @@ from datamover_model.testing.reports import (
     generate_junit_report,
     generate_metrics_csv,
 )
-from datamover_model.workloads.suite import build_tag, list_tests, load_hw_config
+from datamover_model.testing.utilization import bw_utilization, ideal_cycles_entry
+from datamover_model.workloads.suite import (
+    build_tag,
+    find_test_entry,
+    list_tests,
+    load_hw_config,
+)
 
 STATUS_PASS = "pass"
 STATUS_MISMATCH = "mismatch"
@@ -96,6 +102,20 @@ def parse_metrics(stdout: str) -> dict:
     if m:
         metrics["hwpe_cycles"] = int(m[-1])
     return metrics
+
+
+def _ideal_and_util(json_file: str, test_name: str, hwpe_cycles: Optional[int]):
+    """Ideal shared-port beats and bandwidth utilization for one test, from its
+    suite params + HW config. Returns (None, None) if the entry cannot be
+    resolved."""
+    try:
+        entry = find_test_entry(json_file, test_name)
+        hw = load_hw_config(entry.get("hw_config") or "default")
+        ideal = ideal_cycles_entry(entry, hw)
+    except Exception:
+        return None, None
+    util = bw_utilization(ideal, hwpe_cycles) if hwpe_cycles else None
+    return ideal, util
 
 
 def build_make_command(test: dict, json_file: str, vsim_flags: str = "-gui", make_args: str = "") -> str:
@@ -168,6 +188,7 @@ def run_single_test(test: dict, json_file: str, vsim_flags: str, timeout: int, m
     cmd = build_make_command(test, json_file, vsim_flags, make_args)
     returncode, stdout, stderr, elapsed, timed_out = _run_command_with_process_group(cmd, timeout)
     metrics = parse_metrics(stdout)
+    ideal_cycles, bw_util = _ideal_and_util(json_file, test_name, metrics["hwpe_cycles"])
     if timed_out:
         status = STATUS_TIMEOUT
     elif MARK_TB_PASS in stdout:
@@ -181,7 +202,8 @@ def run_single_test(test: dict, json_file: str, vsim_flags: str, timeout: int, m
     return TestResult(
         name=test_name, passed=(status == STATUS_PASS), time=elapsed,
         stdout=stdout, stderr=stderr,
-        returncode=returncode if not timed_out else 1, status=status, **metrics,
+        returncode=returncode if not timed_out else 1, status=status,
+        ideal_cycles=ideal_cycles, bw_util=bw_util, **metrics,
     )
 
 
@@ -285,7 +307,8 @@ def _fmt_done(r: TestResult) -> str:
     if r.status != STATUS_PASS:
         return f"{base}  [dim]{r.status}[/]"
     cyc = f"cyc={r.hwpe_cycles:>6}" if r.hwpe_cycles is not None else " " * _CYC_W
-    return f"{base}  {cyc}"
+    util = f"  util={r.bw_util:>4.0%}" if r.bw_util is not None else ""
+    return f"{base}  {cyc}{util}"
 
 
 class _LiveState:

@@ -23,6 +23,8 @@ class TestResult:
     returncode: int
     status: str = "mismatch"  # pass | mismatch | build | timeout
     hwpe_cycles: Optional[int] = None
+    ideal_cycles: Optional[int] = None
+    bw_util: Optional[float] = None
 
 
 def generate_junit_report(results: List[TestResult], output_file: str):
@@ -58,6 +60,8 @@ def generate_json_report(results: List[TestResult], output_file: str):
                 "time": r.time,
                 "returncode": r.returncode,
                 "hwpe_cycles": r.hwpe_cycles,
+                "ideal_cycles": r.ideal_cycles,
+                "bw_util": r.bw_util,
             }
             for r in results
         ],
@@ -70,11 +74,13 @@ def generate_json_report(results: List[TestResult], output_file: str):
 def generate_metrics_csv(results: List[TestResult], output_file: str):
     os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
     with open(output_file, "w") as f:
-        f.write("name,passed,status,time_s,hwpe_cycles\n")
+        f.write("name,passed,status,time_s,hwpe_cycles,ideal_cycles,bw_util\n")
         for r in results:
             f.write(
                 f"{r.name},{int(r.passed)},{r.status},{r.time:.6f},"
-                f"{'' if r.hwpe_cycles is None else r.hwpe_cycles}\n"
+                f"{'' if r.hwpe_cycles is None else r.hwpe_cycles},"
+                f"{'' if r.ideal_cycles is None else r.ideal_cycles},"
+                f"{'' if r.bw_util is None else f'{r.bw_util:.4f}'}\n"
             )
 
 
