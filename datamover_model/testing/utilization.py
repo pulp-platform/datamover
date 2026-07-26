@@ -6,21 +6,23 @@
 
 """Ideal-cycle estimation and bandwidth utilization for datamover jobs.
 
-Loads and stores are muxed onto a single BANDWIDTH-wide TCDM port
-(hci_core_load_store_mixer / hci_core_mux_dynamic in datamover_streamer.sv), so
-a read beat and a write beat never occupy the same cycle. The ideal cost of a
-job is therefore the number of full-width read beats plus full-width write
-beats; utilization is that ideal against the measured busy cycles. im2col is the
-only mode whose write volume exceeds its read volume, and whose ideal read
-counts each input pixel once, so its utilization exposes redundant re-reads of
-overlapping receptive fields.
+Loads and stores share one BANDWIDTH-wide TCDM port, so utilization is the
+ideal beat count (full-width reads + writes) against measured busy cycles.
 """
 
 import math
 
 
 def _elems_per_beat(hw: dict) -> int:
-    return hw["BANDWIDTH"] // hw["ELEM_WIDTH"]
+    """Payload elements per beat (misaligned accesses reserve one WORD_WIDTH slice)."""
+    payload_bits = hw["BANDWIDTH"] - (hw["WORD_WIDTH"] if hw["MISALIGNED_ACCESSES"] else 0)
+    return payload_bits // hw["ELEM_WIDTH"]
+
+
+def _axis_referenced(size: int, out: int, k: int, s: int, p: int) -> int:
+    """Distinct in-range input indices touched along one axis by the unfold."""
+    idx = {o * s + t - p for o in range(out) for t in range(k)}
+    return sum(1 for i in idx if 0 <= i < size)
 
 
 def transfer_elems(params: dict) -> tuple:
@@ -32,8 +34,9 @@ def transfer_elems(params: dict) -> tuple:
         s, p = params["CONV_STRIDE"], params["CONV_PAD"]
         h_out = (m + 2 * p - kh) // s + 1
         w_out = (n + 2 * p - kw) // s + 1
-        return c * m * n, kh * kw * c * h_out * w_out
-    # Modes 0-5 are volume-preserving re-layouts.
+        read = c * _axis_referenced(m, h_out, kh, s, p) * _axis_referenced(n, w_out, kw, s, p)
+        write = kh * kw * c * h_out * w_out
+        return read, write
     return c * m * n, c * m * n
 
 
