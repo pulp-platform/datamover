@@ -312,7 +312,7 @@ module tb_datamover;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
       idle_cycles <= 0;
-    end else if (dut_busy && !tcdm_handshake) begin
+    end else if (!tcdm_handshake) begin
       idle_cycles <= idle_cycles + 1;
       if (idle_cycles + 1 >= DeadlockCycles) begin
         $display("=====================");
