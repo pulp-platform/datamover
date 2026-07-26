@@ -79,7 +79,7 @@ module datamover_ctrl
 
   logic             start;
   ctrl_streamer_t   streamer_ctrl_cfg;
-  ctrl_engine_t     engine_ctrl;
+  ctrl_engine_t     engine_ctrl_d, engine_ctrl_q;
   datamover_state_e state_d, state_q;
 
   // ----------------------------------------------------------------------
@@ -253,27 +253,29 @@ module datamover_ctrl
   // Engine configuration from the typed job-dependent registers
   // ----------------------------------------------------------------------
   always_comb begin
-    engine_ctrl = '0;
-    engine_ctrl.transp_mode   = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? TRANSP_NONE  :
-                                job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? TRANSP_1ELEM :
-                                job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
-    engine_ctrl.transp_stride = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? 1 :
-                                job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? 1 :
-                                job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? 2 : 4;
-    engine_ctrl.datamover_mode = datamover_mode_e'(job_dep_regs.ctrl_engine.datamover_mode.value);
+    engine_ctrl_d = '0;
+    engine_ctrl_d.transp_mode   = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? TRANSP_NONE  :
+                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? TRANSP_1ELEM :
+                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
+    engine_ctrl_d.transp_stride = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? 1 :
+                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? 1 :
+                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? 2 : 4;
+    engine_ctrl_d.datamover_mode = datamover_mode_e'(job_dep_regs.ctrl_engine.datamover_mode.value);
     // im2col subsamples each beat by the conv stride; all other modes pass through (stride 1).
-    engine_ctrl.conv_stride    = (engine_ctrl.datamover_mode == DATAMOVER_IM2COL) ?
-                                 job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
-    engine_ctrl.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
-    engine_ctrl.im2col_pad      = job_dep_regs.ctrl_engine.im2col_pad.value;
-    engine_ctrl.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;
-    engine_ctrl.pack_row_stride = job_dep_regs.ctrl_engine.pack_row_stride.value;
-    engine_ctrl.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
-    engine_ctrl.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
-    engine_ctrl.num_channels   = job_dep_regs.channels.num_channels.value;
-    engine_ctrl.total_elements = job_dep_regs.channels.total_elements.value;
-    engine_ctrl.transp_len     = TRANSP_LEN;
+    engine_ctrl_d.conv_stride    = (engine_ctrl_d.datamover_mode == DATAMOVER_IM2COL) ?
+                                   job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
+    engine_ctrl_d.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
+    engine_ctrl_d.im2col_pad      = job_dep_regs.ctrl_engine.im2col_pad.value;
+    engine_ctrl_d.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;
+    engine_ctrl_d.pack_row_stride = job_dep_regs.ctrl_engine.pack_row_stride.value;
+    engine_ctrl_d.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
+    engine_ctrl_d.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
+    engine_ctrl_d.num_channels   = job_dep_regs.channels.num_channels.value;
+    engine_ctrl_d.total_elements = job_dep_regs.channels.total_elements.value;
+    engine_ctrl_d.transp_len     = TRANSP_LEN;
   end
-  assign ctrl_engine_o = engine_ctrl;
+
+  `FFARNC(engine_ctrl_q, engine_ctrl_d, clear_o, '0, clk_i, rst_ni)
+  assign ctrl_engine_o = engine_ctrl_q;
 
 endmodule // datamover_ctrl
