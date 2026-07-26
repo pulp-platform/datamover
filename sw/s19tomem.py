@@ -43,7 +43,8 @@ else:
     data_txt  = "stim_data.txt"
 
 instr_mem = np.zeros(INSTR_MEM_SIZE, dtype=np.int64)
-data_mem  = np.zeros(DATA_MEM_SIZE,  dtype=np.int64)
+# poison unwritten memory so bytes the DUT fails to write mismatch golden in verify
+data_mem  = np.random.default_rng(0).integers(1 << 32, size=DATA_MEM_SIZE, dtype=np.int64)
 
 # Vectorized parsing: each token is "AAAAAAAA?HHHHHHHHLLLLLLLL" (25 chars).
 tokens = s.split()

@@ -168,6 +168,17 @@ module tb_datamover;
   logic [31:0]  verify_ptr, verify_gold;
   int           verify_errors;
 
+  // VERIFY mismatch logging: keep the first and last MaxMismatchLog entries.
+  localparam int unsigned MaxMismatchLog = 50;
+  typedef struct packed {
+    int         idx;
+    logic [7:0] act;
+    logic [7:0] gold;
+  } mismatch_t;
+  int         verify_mismatch_cnt;
+  mismatch_t  first_mismatch_log [MaxMismatchLog];
+  mismatch_t  last_mismatch_log  [MaxMismatchLog];
+
   always_ff @(posedge clk_i) begin
     other_r_valid   <= data_req & is_mbox_req;
     other_r_is_read <= ~data_we;
@@ -434,46 +445,57 @@ module tb_datamover;
       verify_gold <= data_wdata;
     end
     if ((data_addr == TB_MBOX_VERIFY_SIZE_ADDR) && (data_we == 1'b1) && (data_req == 1'b1)) begin
-      automatic int MaxLog = 50;
-      automatic int errs = 0;
-      automatic int first_n = 0;
-      automatic int idx_log [50];
-      automatic logic [7:0] act_log [50];
-      automatic logic [7:0] gold_log [50];
+      // Compare output vs golden directly from TCDM memory.
+      int act_idx, act_off, gold_idx, gold_off;
+      logic [7:0] act_b, gold_b;
+      int head_cnt, tail_cnt, rank;
 
+      verify_mismatch_cnt = 0;
       for (int i = 0; i < int'(data_wdata); i++) begin
-        automatic int act_idx  = (verify_ptr  + i - TCDM_DATA_BASE) / STORAGE_BYTES;
-        automatic int act_off  = (verify_ptr  + i - TCDM_DATA_BASE) % STORAGE_BYTES;
-        automatic int gold_idx = (verify_gold + i - TCDM_DATA_BASE) / STORAGE_BYTES;
-        automatic int gold_off = (verify_gold + i - TCDM_DATA_BASE) % STORAGE_BYTES;
-        automatic logic [7:0] act_b  = i_dummy_memory.memory[act_idx][act_off*8 +: 8];
-        automatic logic [7:0] gold_b = i_dummy_memory.memory[gold_idx][gold_off*8 +: 8];
+        act_idx  = (verify_ptr  + i - TCDM_DATA_BASE) / STORAGE_BYTES;
+        act_off  = (verify_ptr  + i - TCDM_DATA_BASE) % STORAGE_BYTES;
+        gold_idx = (verify_gold + i - TCDM_DATA_BASE) / STORAGE_BYTES;
+        gold_off = (verify_gold + i - TCDM_DATA_BASE) % STORAGE_BYTES;
+        act_b  = i_dummy_memory.memory[act_idx][act_off*8 +: 8];
+        gold_b = i_dummy_memory.memory[gold_idx][gold_off*8 +: 8];
         if (act_b !== gold_b) begin
-          errs++;
-          if (first_n < MaxLog) begin
-            idx_log[first_n]  = i;
-            act_log[first_n]  = act_b;
-            gold_log[first_n] = gold_b;
-            first_n++;
+          if (verify_mismatch_cnt < MaxMismatchLog)
+            first_mismatch_log[verify_mismatch_cnt] = '{idx: i, act: act_b, gold: gold_b};
+          last_mismatch_log[verify_mismatch_cnt % MaxMismatchLog] = '{idx: i, act: act_b, gold: gold_b};
+          verify_mismatch_cnt++;
+        end
+      end
+
+      if (verify_mismatch_cnt > 0) begin
+        $display("[TB] VERIFY mismatches: %0d", verify_mismatch_cnt);
+
+        head_cnt = (verify_mismatch_cnt < MaxMismatchLog) ? verify_mismatch_cnt : MaxMismatchLog;
+        for (int k = 0; k < head_cnt; k++)
+          $display("[TB] mismatch[%0d] idx=%0d gold=0x%02h act=0x%02h",
+                   k, first_mismatch_log[k].idx, first_mismatch_log[k].gold, first_mismatch_log[k].act);
+
+        if (verify_mismatch_cnt > MaxMismatchLog) begin
+          tail_cnt = (verify_mismatch_cnt - MaxMismatchLog < MaxMismatchLog) ?
+                     (verify_mismatch_cnt - MaxMismatchLog) : MaxMismatchLog;
+          if (verify_mismatch_cnt - MaxMismatchLog > tail_cnt)
+            $display("[TB] ... %0d mismatches omitted ...", verify_mismatch_cnt - MaxMismatchLog - tail_cnt);
+          for (int k = 0; k < tail_cnt; k++) begin
+            rank = verify_mismatch_cnt - tail_cnt + k;
+            $display("[TB] mismatch[%0d] idx=%0d gold=0x%02h act=0x%02h",
+                     rank, last_mismatch_log[rank % MaxMismatchLog].idx,
+                     last_mismatch_log[rank % MaxMismatchLog].gold,
+                     last_mismatch_log[rank % MaxMismatchLog].act);
           end
         end
       end
 
-      if (errs > 0) begin
-        $display("[TB] VERIFY mismatches: %0d", errs);
-        for (int k = 0; k < first_n; k++) begin
-          $display("[TB] mismatch[%0d] idx=%0d gold=0x%02h act=0x%02h",
-                   k, idx_log[k], gold_log[k], act_log[k]);
-        end
-      end
-
-      verify_errors <= errs;
+      verify_errors <= verify_mismatch_cnt;
     end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) cnt_cycles <= 0;
-    else if (dm_tcdm_req != '0) cnt_cycles += 1;
+    else if (dut_busy) cnt_cycles += 1;
   end
 
   initial begin

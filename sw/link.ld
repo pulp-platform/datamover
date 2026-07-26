@@ -123,6 +123,15 @@ SECTIONS
         _bss_end = .;
     } > dataram
 
+    /* NOLOAD + outside _bss: crt0 does not clear it, so the poisoned image
+     * survives as a verify sentinel for bytes the DUT fails to write. */
+    .noinit (NOLOAD) :
+    {
+        . = ALIGN(4);
+        *(.noinit)
+        *(.noinit.*)
+    } > dataram
+
     /* ensure there is enough room for stack */
     .stack (NOLOAD): {
         . = ALIGN(4);

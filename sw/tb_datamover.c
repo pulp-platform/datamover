@@ -49,7 +49,7 @@ static void tb_putc(void *p, char c) {
  * datamover's word-width accesses are aligned. In a chain, task i reads the
  * output buffer of an earlier task (TASK<i>_IN_PTR resolves to it). */
 #define DM_TASK_OUT_BUF(i) \
-  static uint8_t task##i##_out[TASK##i##_OUT_SIZE] __attribute__((aligned(8)));
+  static uint8_t task##i##_out[TASK##i##_OUT_SIZE] __attribute__((aligned(8), section(".noinit")));
 DATAMOVER_TASKS(DM_TASK_OUT_BUF)
 #undef DM_TASK_OUT_BUF
 
@@ -89,13 +89,6 @@ int main(void) {
 
   datamover_soft_clear();
   for (volatile int kk = 0; kk < 10; kk++);
-
-  /* Pre-fill output buffers with a sentinel so unwritten bytes show up in the
-   * verify pass instead of accidentally matching golden. */
-  for (int i = 0; i < NUM_TASKS; i++) {
-    const datamover_task_config_t *t = &dm_tasks[i];
-    for (uint32_t b = 0; b < t->out_size; b++) t->out_ptr[b] = 0xA5;
-  }
 
   /* Trigger all jobs back-to-back. The 2-deep job queue lets each be programmed
    * while the previous one runs; acquire spins when the queue is full. */
