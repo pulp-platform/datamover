@@ -63,19 +63,22 @@ module datamover_im2col_ctrl
 
   logic pad_beat;
   logic [11:0] pad_oh_base_d, pad_oh_base_q;
-  logic [2:0]  pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
+  logic [3:0]  pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
   logic [NB_ELEM_LOG2:0] pad_P;
   logic pad_oh_wrap, pad_kw_wrap, pad_kh_wrap;
-  logic [2:0] pad_kw_next, pad_kh_next;
+  logic [3:0] pad_kw_next, pad_kh_next;
   logic [NB_ELEMENTS-1:0] pad_zero;
+  logic [3:0] pad_kw_max, pad_kh_max;
+  assign pad_kw_max = ctrl_i.pack_row_stride[3:0];
+  assign pad_kh_max = ctrl_i.pack_row_stride[7:4];
 
   assign pad_beat    = ctrl_i.im2col_pad & data_in_valid_i & data_in_ready_i;
   assign pad_P       = NB_ELEMENTS >> ctrl_i.pack_log2w;
   assign pad_oh_wrap = (pad_oh_base_q + pad_P >= ctrl_i.tensor_size_m);
-  assign pad_kw_wrap = (pad_kw_q == ctrl_i.pack_row_stride - 1);
-  assign pad_kh_wrap = (pad_kh_q == ctrl_i.pack_row_stride - 1);
-  assign pad_kw_next = pad_kw_wrap ? 3'd0 : pad_kw_q + 3'd1;
-  assign pad_kh_next = pad_kh_wrap ? 3'd0 : pad_kh_q + 3'd1;
+  assign pad_kw_wrap = (pad_kw_q == pad_kw_max - 1);
+  assign pad_kh_wrap = (pad_kh_q == pad_kh_max - 1);
+  assign pad_kw_next = pad_kw_wrap ? 4'd0 : pad_kw_q + 4'd1;
+  assign pad_kh_next = pad_kh_wrap ? 4'd0 : pad_kh_q + 4'd1;
 
   assign pad_oh_base_d = pad_beat ? (pad_oh_wrap ? '0 : pad_oh_base_q + pad_P) : pad_oh_base_q;
   assign pad_kw_d      = (pad_beat & pad_oh_wrap)               ? pad_kw_next : pad_kw_q;
@@ -91,10 +94,10 @@ module datamover_im2col_ctrl
     assign pad_col_last  = (pad_col == ((32'd1 << ctrl_i.pack_log2w) - 32'd1));
     assign pad_row_first = (pad_oh_ii == 12'd0);
     assign pad_row_last  = (pad_oh_ii == ctrl_i.tensor_size_m - 12'd1);
-    assign pad_zero[ii] = (pad_kw_q == 3'd0                       && pad_col_first) ||
-                          (pad_kw_q == ctrl_i.pack_row_stride - 1 && pad_col_last)  ||
-                          (pad_kh_q == 3'd0                       && pad_row_first) ||
-                          (pad_kh_q == ctrl_i.pack_row_stride - 1 && pad_row_last);
+    assign pad_zero[ii] = (pad_kw_q == 4'd0           && pad_col_first) ||
+                          (pad_kw_q == pad_kw_max - 1 && pad_col_last)  ||
+                          (pad_kh_q == 4'd0           && pad_row_first) ||
+                          (pad_kh_q == pad_kh_max - 1 && pad_row_last);
   end
 
   assign pack_extract_o = pack_extract;

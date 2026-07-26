@@ -81,9 +81,9 @@ def fold(tensor, patch_size, num_channels, height, width):
     return tensor_folded
 
 
-def im2col(tensor, kernel_size, stride=1, padding=0):
-    # (C, H, W) -> (kernel_size*kernel_size*C, H_out*W_out); row = ci*K*K + kh*K + kw, col = oh*W_out + ow.
+def im2col(tensor, kernel_h, kernel_w, stride=1, padding=0):
+    # (C, H, W) -> (kernel_h*kernel_w*C, H_out*W_out); row = ci*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow.
     import torch
     x = torch.from_numpy(tensor.astype(np.float32)).unsqueeze(0)
-    cols = torch.nn.functional.unfold(x, kernel_size, stride=stride, padding=padding)
+    cols = torch.nn.functional.unfold(x, (kernel_h, kernel_w), stride=stride, padding=padding)
     return cols.squeeze(0).to(torch.uint8).numpy()

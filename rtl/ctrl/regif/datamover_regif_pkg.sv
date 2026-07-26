@@ -142,6 +142,19 @@ package datamover_regif_pkg;
     } datamover_regif__dm_stride_len__out_t;
 
     typedef struct packed {
+        logic [10:0] value;
+    } datamover_regif__dm_d3_stride_len__length__out_t;
+
+    typedef struct packed {
+        logic [20:0] value;
+    } datamover_regif__dm_d3_stride_len__stride__out_t;
+
+    typedef struct packed {
+        datamover_regif__dm_d3_stride_len__length__out_t length;
+        datamover_regif__dm_d3_stride_len__stride__out_t stride;
+    } datamover_regif__dm_d3_stride_len__out_t;
+
+    typedef struct packed {
         logic [15:0] value;
     } datamover_regif__dm_matrix_dim__tensor_size_m__out_t;
 
@@ -230,11 +243,11 @@ package datamover_regif_pkg;
         datamover_regif__dm_stride_len__out_t in_d0;
         datamover_regif__dm_stride_len__out_t in_d1;
         datamover_regif__dm_stride_len__out_t in_d2;
-        datamover_regif__dm_stride_len__out_t in_d3;
+        datamover_regif__dm_d3_stride_len__out_t in_d3;
         datamover_regif__dm_stride_len__out_t out_d0;
         datamover_regif__dm_stride_len__out_t out_d1;
         datamover_regif__dm_stride_len__out_t out_d2;
-        datamover_regif__dm_stride_len__out_t out_d3;
+        datamover_regif__dm_d3_stride_len__out_t out_d3;
         datamover_regif__dm_value32__out_t in_d4_stride;
         datamover_regif__dm_value32__out_t out_d4_stride;
         datamover_regif__dm_matrix_dim__out_t matrix_dim;

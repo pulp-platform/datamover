@@ -223,11 +223,11 @@ module datamover_regif (
             } in_d2;
             struct {
                 struct {
-                    logic [15:0] next;
+                    logic [10:0] next;
                     logic load_next;
                 } length;
                 struct {
-                    logic [15:0] next;
+                    logic [20:0] next;
                     logic load_next;
                 } stride;
             } in_d3;
@@ -263,11 +263,11 @@ module datamover_regif (
             } out_d2;
             struct {
                 struct {
-                    logic [15:0] next;
+                    logic [10:0] next;
                     logic load_next;
                 } length;
                 struct {
-                    logic [15:0] next;
+                    logic [20:0] next;
                     logic load_next;
                 } stride;
             } out_d3;
@@ -411,10 +411,10 @@ module datamover_regif (
             } in_d2;
             struct {
                 struct {
-                    logic [15:0] value;
+                    logic [10:0] value;
                 } length;
                 struct {
-                    logic [15:0] value;
+                    logic [20:0] value;
                 } stride;
             } in_d3;
             struct {
@@ -443,10 +443,10 @@ module datamover_regif (
             } out_d2;
             struct {
                 struct {
-                    logic [15:0] value;
+                    logic [10:0] value;
                 } length;
                 struct {
-                    logic [15:0] value;
+                    logic [20:0] value;
                 } stride;
             } out_d3;
             struct {
@@ -801,12 +801,12 @@ module datamover_regif (
     assign hwif_out.hwpe_job_dep.in_d2.stride.value = field_storage.hwpe_job_dep.in_d2.stride.value;
     // Field: datamover_regif.hwpe_job_dep.in_d3.length
     always_comb begin
-        automatic logic [15:0] next_c;
+        automatic logic [10:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.hwpe_job_dep.in_d3.length.value;
         load_next_c = '0;
         if(decoded_reg_strb.hwpe_job_dep.in_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d3.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            next_c = (field_storage.hwpe_job_dep.in_d3.length.value & ~decoded_wr_biten[10:0]) | (decoded_wr_data[10:0] & decoded_wr_biten[10:0]);
             load_next_c = '1;
         end
         field_combo.hwpe_job_dep.in_d3.length.next = next_c;
@@ -814,7 +814,7 @@ module datamover_regif (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d3.length.value <= 16'h0;
+            field_storage.hwpe_job_dep.in_d3.length.value <= 11'h0;
         end else begin
             if(field_combo.hwpe_job_dep.in_d3.length.load_next) begin
                 field_storage.hwpe_job_dep.in_d3.length.value <= field_combo.hwpe_job_dep.in_d3.length.next;
@@ -824,12 +824,12 @@ module datamover_regif (
     assign hwif_out.hwpe_job_dep.in_d3.length.value = field_storage.hwpe_job_dep.in_d3.length.value;
     // Field: datamover_regif.hwpe_job_dep.in_d3.stride
     always_comb begin
-        automatic logic [15:0] next_c;
+        automatic logic [20:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.hwpe_job_dep.in_d3.stride.value;
         load_next_c = '0;
         if(decoded_reg_strb.hwpe_job_dep.in_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d3.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            next_c = (field_storage.hwpe_job_dep.in_d3.stride.value & ~decoded_wr_biten[31:11]) | (decoded_wr_data[31:11] & decoded_wr_biten[31:11]);
             load_next_c = '1;
         end
         field_combo.hwpe_job_dep.in_d3.stride.next = next_c;
@@ -837,7 +837,7 @@ module datamover_regif (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d3.stride.value <= 16'h0;
+            field_storage.hwpe_job_dep.in_d3.stride.value <= 21'h0;
         end else begin
             if(field_combo.hwpe_job_dep.in_d3.stride.load_next) begin
                 field_storage.hwpe_job_dep.in_d3.stride.value <= field_combo.hwpe_job_dep.in_d3.stride.next;
@@ -985,12 +985,12 @@ module datamover_regif (
     assign hwif_out.hwpe_job_dep.out_d2.stride.value = field_storage.hwpe_job_dep.out_d2.stride.value;
     // Field: datamover_regif.hwpe_job_dep.out_d3.length
     always_comb begin
-        automatic logic [15:0] next_c;
+        automatic logic [10:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.hwpe_job_dep.out_d3.length.value;
         load_next_c = '0;
         if(decoded_reg_strb.hwpe_job_dep.out_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d3.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            next_c = (field_storage.hwpe_job_dep.out_d3.length.value & ~decoded_wr_biten[10:0]) | (decoded_wr_data[10:0] & decoded_wr_biten[10:0]);
             load_next_c = '1;
         end
         field_combo.hwpe_job_dep.out_d3.length.next = next_c;
@@ -998,7 +998,7 @@ module datamover_regif (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d3.length.value <= 16'h0;
+            field_storage.hwpe_job_dep.out_d3.length.value <= 11'h0;
         end else begin
             if(field_combo.hwpe_job_dep.out_d3.length.load_next) begin
                 field_storage.hwpe_job_dep.out_d3.length.value <= field_combo.hwpe_job_dep.out_d3.length.next;
@@ -1008,12 +1008,12 @@ module datamover_regif (
     assign hwif_out.hwpe_job_dep.out_d3.length.value = field_storage.hwpe_job_dep.out_d3.length.value;
     // Field: datamover_regif.hwpe_job_dep.out_d3.stride
     always_comb begin
-        automatic logic [15:0] next_c;
+        automatic logic [20:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.hwpe_job_dep.out_d3.stride.value;
         load_next_c = '0;
         if(decoded_reg_strb.hwpe_job_dep.out_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d3.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            next_c = (field_storage.hwpe_job_dep.out_d3.stride.value & ~decoded_wr_biten[31:11]) | (decoded_wr_data[31:11] & decoded_wr_biten[31:11]);
             load_next_c = '1;
         end
         field_combo.hwpe_job_dep.out_d3.stride.next = next_c;
@@ -1021,7 +1021,7 @@ module datamover_regif (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d3.stride.value <= 16'h0;
+            field_storage.hwpe_job_dep.out_d3.stride.value <= 21'h0;
         end else begin
             if(field_combo.hwpe_job_dep.out_d3.stride.load_next) begin
                 field_storage.hwpe_job_dep.out_d3.stride.value <= field_combo.hwpe_job_dep.out_d3.stride.next;
@@ -1469,8 +1469,8 @@ module datamover_regif (
             readback_data_var[31:16] = field_storage.hwpe_job_dep.in_d2.stride.value;
         end
         if(rd_mux_addr == 32'h58) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.in_d3.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.in_d3.stride.value;
+            readback_data_var[10:0] = field_storage.hwpe_job_dep.in_d3.length.value;
+            readback_data_var[31:11] = field_storage.hwpe_job_dep.in_d3.stride.value;
         end
         if(rd_mux_addr == 32'h5c) begin
             readback_data_var[15:0] = field_storage.hwpe_job_dep.out_d0.length.value;
@@ -1485,8 +1485,8 @@ module datamover_regif (
             readback_data_var[31:16] = field_storage.hwpe_job_dep.out_d2.stride.value;
         end
         if(rd_mux_addr == 32'h68) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.out_d3.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.out_d3.stride.value;
+            readback_data_var[10:0] = field_storage.hwpe_job_dep.out_d3.length.value;
+            readback_data_var[31:11] = field_storage.hwpe_job_dep.out_d3.stride.value;
         end
         if(rd_mux_addr == 32'h6c) begin
             readback_data_var[31:0] = field_storage.hwpe_job_dep.in_d4_stride.value.value;

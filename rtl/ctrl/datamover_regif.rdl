@@ -143,6 +143,19 @@ addrmap datamover_regif {
         } length[15:0] = 0;
     };
 
+    reg dm_d3_stride_len {
+        field {
+            desc = "Stride in elements (widened: d3 carries channel-plane strides).";
+            hw = r;
+            sw = rw;
+        } stride[31:11] = 0;
+        field {
+            desc = "Length in iterations.";
+            hw = r;
+            sw = rw;
+        } length[10:0] = 0;
+    };
+
     reg dm_matrix_dim {
         field {
             desc = "Tensor size N.";
@@ -230,11 +243,11 @@ addrmap datamover_regif {
         dm_stride_len  in_d0             @ 0x0c;  // idx 3
         dm_stride_len  in_d1             @ 0x10;  // idx 4
         dm_stride_len  in_d2             @ 0x14;  // idx 5
-        dm_stride_len  in_d3             @ 0x18;  // idx 6
+        dm_d3_stride_len in_d3           @ 0x18;  // idx 6
         dm_stride_len  out_d0            @ 0x1c;  // idx 7
         dm_stride_len  out_d1            @ 0x20;  // idx 8
         dm_stride_len  out_d2            @ 0x24;  // idx 9
-        dm_stride_len  out_d3            @ 0x28;  // idx 10
+        dm_d3_stride_len out_d3          @ 0x28;  // idx 10
         dm_value32     in_d4_stride      @ 0x2c;  // idx 11 (full 32-bit: large channel strides)
         dm_value32     out_d4_stride     @ 0x30;  // idx 12
         dm_matrix_dim  matrix_dim        @ 0x34;  // idx 13

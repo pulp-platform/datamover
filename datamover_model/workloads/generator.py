@@ -70,7 +70,8 @@ def golden_for(params: dict, in_tensor: np.ndarray):
         unfolded = unfold(in_tensor, PATCH_SIZE)
         return unfolded, fold(unfolded, PATCH_SIZE, c, m, n)
     if mode == 6:
-        return in_tensor, im2col(in_tensor, params["KERNEL_SIZE"], params["CONV_STRIDE"], params["CONV_PAD"])
+        return in_tensor, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"],
+                                  params["CONV_STRIDE"], params["CONV_PAD"])
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 

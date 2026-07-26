@@ -87,7 +87,8 @@ typedef struct {
   uint32_t                size_c;
   uint32_t                size_m;
   uint32_t                size_n;
-  uint32_t                kernel_size;
+  uint32_t                kernel_h;
+  uint32_t                kernel_w;
   uint32_t                conv_stride;
   uint32_t                conv_pad;
 } datamover_task_config_t;
@@ -105,6 +106,10 @@ static inline uint32_t dm_ceil_div(uint32_t a, uint32_t b) {
 
 static inline uint32_t dm_stride_len(uint32_t stride, uint32_t len) {
   return DATAMOVER_FIELD(DM_STRIDE_LEN, STRIDE, stride) | DATAMOVER_FIELD(DM_STRIDE_LEN, LENGTH, len);
+}
+
+static inline uint32_t dm_d3_stride_len(uint32_t stride, uint32_t len) {
+  return DATAMOVER_FIELD(DM_D3_STRIDE_LEN, STRIDE, stride) | DATAMOVER_FIELD(DM_D3_STRIDE_LEN, LENGTH, len);
 }
 
 static inline void dm_set_d4(datamover_cfg_t *cfg, uint32_t out_stride, uint32_t in_stride) {
@@ -143,11 +148,11 @@ static inline __attribute__((always_inline)) void datamover_build_copy(datamover
   cfg->in_d0            = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, total_accesses);
   cfg->in_d1            = dm_stride_len(0, 0);
   cfg->in_d2            = dm_stride_len(0, 0);
-  cfg->in_d3            = dm_stride_len(0, 0);
+  cfg->in_d3            = dm_d3_stride_len(0, 0);
   cfg->out_d0           = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, total_accesses);
   cfg->out_d1           = dm_stride_len(0, 0);
   cfg->out_d2           = dm_stride_len(0, 0);
-  cfg->out_d3           = dm_stride_len(0, 0);
+  cfg->out_d3           = dm_d3_stride_len(0, 0);
   dm_set_d4(cfg, 0, 0);
   cfg->matrix_dim       = dm_matrix_dim(size_n, size_m);
   cfg->channels         = dm_channels(size_m * size_n, 1);
@@ -171,11 +176,11 @@ static inline __attribute__((always_inline)) void datamover_build_transpose(data
   cfg->in_d0            = dm_stride_len(size_n, size_m);
   cfg->in_d1            = dm_stride_len(BWE, n_tiles);
   cfg->in_d2            = dm_stride_len(0, 0);
-  cfg->in_d3            = dm_stride_len(0, 0);
+  cfg->in_d3            = dm_d3_stride_len(0, 0);
   cfg->out_d0           = dm_stride_len(size_m * t, cols_per_tile / t);
   cfg->out_d1           = dm_stride_len(BWE, m_tiles * t);
   cfg->out_d2           = dm_stride_len(size_m * BWE, 0);
-  cfg->out_d3           = dm_stride_len(0, 0);
+  cfg->out_d3           = dm_d3_stride_len(0, 0);
   dm_set_d4(cfg, 0, 0);
   cfg->matrix_dim       = dm_matrix_dim(band_cols, size_m);
   cfg->channels         = dm_channels(size_m * size_n, 1);
@@ -195,18 +200,18 @@ static inline __attribute__((always_inline)) void datamover_build_cim_complete(d
   cfg->in_d0   = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
   cfg->in_d1   = dm_stride_len(size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->in_d2   = dm_stride_len(row_tile_size, 0);
-  cfg->in_d3   = dm_stride_len(0, 0);
+  cfg->in_d3   = dm_d3_stride_len(0, 0);
   if (beats_per_row > 1) {
     cfg->out_d0      = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
     cfg->out_d1      = dm_stride_len(row_tile_size, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
     cfg->out_d2      = dm_stride_len(row_tile_size * size_m, complete_n_tiles);
-    cfg->out_d3      = dm_stride_len(0, 0);
+    cfg->out_d3      = dm_d3_stride_len(0, 0);
     cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x3, 0x3, DATAMOVER_TRANSP_NONE);
   } else {
     cfg->out_d0      = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
     cfg->out_d1      = dm_stride_len(row_tile_size * size_m, complete_n_tiles);
     cfg->out_d2      = dm_stride_len(0, 0);
-    cfg->out_d3      = dm_stride_len(0, 0);
+    cfg->out_d3      = dm_d3_stride_len(0, 0);
     cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
   }
   dm_set_d4(cfg, 0, 0);
@@ -229,11 +234,11 @@ static inline __attribute__((always_inline)) void datamover_build_cim_leftover(d
   cfg->in_d0            = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, row_tile_size / DATAMOVER_BANDWIDTH_ELEMS);
   cfg->in_d1            = dm_stride_len(size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->in_d2            = dm_stride_len(0, 0);
-  cfg->in_d3            = dm_stride_len(0, 0);
+  cfg->in_d3            = dm_d3_stride_len(0, 0);
   cfg->out_d0           = dm_stride_len(leftover_columns, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->out_d1           = dm_stride_len(0, 0);
   cfg->out_d2           = dm_stride_len(0, 0);
-  cfg->out_d3           = dm_stride_len(0, 0);
+  cfg->out_d3           = dm_d3_stride_len(0, 0);
   dm_set_d4(cfg, 0, 0);
   cfg->matrix_dim       = dm_matrix_dim(leftover_columns, size_m);
   cfg->channels         = dm_channels(leftover_columns * size_m, 1);
@@ -253,18 +258,18 @@ static inline __attribute__((always_inline)) void datamover_build_cim_rev_comple
   cfg->in_d0   = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, size_m * complete_n_tiles * beats_per_row);
   cfg->in_d1   = dm_stride_len(0, 0);
   cfg->in_d2   = dm_stride_len(0, 0);
-  cfg->in_d3   = dm_stride_len(0, 0);
+  cfg->in_d3   = dm_d3_stride_len(0, 0);
   if (beats_per_row > 1) {
     cfg->out_d0      = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
     cfg->out_d1      = dm_stride_len(size_n, size_m);
     cfg->out_d2      = dm_stride_len(row_tile_size, complete_n_tiles);
-    cfg->out_d3      = dm_stride_len(0, 0);
+    cfg->out_d3      = dm_d3_stride_len(0, 0);
     cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x3, 0x0, DATAMOVER_TRANSP_NONE);
   } else {
     cfg->out_d0      = dm_stride_len(size_n, size_m);
     cfg->out_d1      = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, complete_n_tiles);
     cfg->out_d2      = dm_stride_len(0, 0);
-    cfg->out_d3      = dm_stride_len(0, 0);
+    cfg->out_d3      = dm_d3_stride_len(0, 0);
     cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
   }
   dm_set_d4(cfg, 0, 0);
@@ -287,11 +292,11 @@ static inline __attribute__((always_inline)) void datamover_build_cim_rev_leftov
   cfg->in_d0            = dm_stride_len(leftover_columns, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->in_d1            = dm_stride_len(0, 0);
   cfg->in_d2            = dm_stride_len(0, 0);
-  cfg->in_d3            = dm_stride_len(0, 0);
+  cfg->in_d3            = dm_d3_stride_len(0, 0);
   cfg->out_d0           = dm_stride_len(size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->out_d1           = dm_stride_len(0, 0);
   cfg->out_d2           = dm_stride_len(0, 0);
-  cfg->out_d3           = dm_stride_len(0, 0);
+  cfg->out_d3           = dm_d3_stride_len(0, 0);
   dm_set_d4(cfg, 0, 0);
   cfg->matrix_dim       = dm_matrix_dim(leftover_columns, size_m);
   cfg->channels         = dm_channels(leftover_columns * size_m, 1);
@@ -312,11 +317,11 @@ static inline __attribute__((always_inline)) void datamover_build_unfold(datamov
   cfg->in_d0            = dm_stride_len(size_h * size_w, c_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->in_d1            = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, w_tiles);
   cfg->in_d2            = dm_stride_len(size_w, size_h);
-  cfg->in_d3            = dm_stride_len(0, 0);
+  cfg->in_d3            = dm_d3_stride_len(0, 0);
   cfg->out_d0           = dm_stride_len(size_c * size_h * size_w / P, side_P);
   cfg->out_d1           = dm_stride_len(size_c, (w_tiles * DATAMOVER_BANDWIDTH_ELEMS) / side_P);
   cfg->out_d2           = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, c_tiles);
-  cfg->out_d3           = dm_stride_len(size_c * size_h * size_w / side_P, side_P);
+  cfg->out_d3           = dm_d3_stride_len(size_c * size_h * size_w / side_P, side_P);
   dm_set_d4(cfg, size_c * size_w / side_P, 0);
   cfg->matrix_dim       = dm_matrix_dim(size_w, size_h);
   cfg->channels         = dm_channels(size_c * size_h * size_w, size_c);
@@ -337,26 +342,29 @@ static inline __attribute__((always_inline)) void datamover_build_fold(datamover
   cfg->in_d0            = dm_stride_len(size_c * size_h * size_w / P, side_P);
   cfg->in_d1            = dm_stride_len(size_c, (w_tiles * DATAMOVER_BANDWIDTH_ELEMS) / side_P);
   cfg->in_d2            = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, c_tiles);
-  cfg->in_d3            = dm_stride_len(size_c * size_h * size_w / side_P, side_P);
+  cfg->in_d3            = dm_d3_stride_len(size_c * size_h * size_w / side_P, side_P);
   cfg->out_d0           = dm_stride_len(size_h * size_w, c_tiles * DATAMOVER_BANDWIDTH_ELEMS);
   cfg->out_d1           = dm_stride_len(DATAMOVER_BANDWIDTH_ELEMS, w_tiles);
   cfg->out_d2           = dm_stride_len(size_w, size_h);
-  cfg->out_d3           = dm_stride_len(0, 0);
+  cfg->out_d3           = dm_d3_stride_len(0, 0);
   dm_set_d4(cfg, 0, size_c * size_w / side_P);
   cfg->matrix_dim       = dm_matrix_dim(size_w, size_h);
   cfg->channels         = dm_channels(size_c * size_h * size_w, size_c);
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_FOLD, 0x3, 0xF, DATAMOVER_TRANSP_1ELEM);
 }
 
-// Tensor (C,H,W) -> im2col matrix (K*K*C, H_out*W_out); row = ci*K*K+kh*K+kw, col = oh*W_out+ow.
+// Tensor (C,H,W) -> im2col matrix (Kh*Kw*C, H_out*W_out); row = ci*Kh*Kw+kh*Kw+kw, col = oh*W_out+ow.
+// kernel_h/kernel_w may differ (independent address-generator tap counts); conv_stride is
+// a single scalar applied to both spatial dims (asymmetric stride is not supported).
 static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w,
-                                          uint32_t kernel_size, uint32_t conv_stride, uint32_t pad) {
-  const uint32_t K = kernel_size;
+                                          uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride, uint32_t pad) {
+  const uint32_t Kh = kernel_h;
+  const uint32_t Kw = kernel_w;
   const uint32_t S = conv_stride;
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t h_out = (size_h + 2 * pad - K) / S + 1;
-  uint32_t w_out = (size_w + 2 * pad - K) / S + 1;
+  uint32_t h_out = (size_h + 2 * pad - Kh) / S + 1;
+  uint32_t w_out = (size_w + 2 * pad - Kw) / S + 1;
   uint32_t row_bytes = h_out * w_out;
 
   cfg->out_ptr    = (uint32_t)(uintptr_t)out;
@@ -365,28 +373,31 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
   // Padded S=1 path: read the unpadded input densely (1 read = P=64/w_out full rows) and
   // synthesize the 1-pixel border in the engine. The (kh-1,kw-1) shift is folded into the
   // base; boundary reads land just outside the tensor and are masked to zero by the engine.
-  if (pad != 0 && S == 1 && w_out >= 1 && w_out <= 32 && (BWE % w_out) == 0 && (row_bytes % BWE) == 0) {
+  // Dense reads assume no per-row gap, i.e. w_out == size_w, which the fixed 1-pixel border
+  // only gives at Kw == 3 (Kh is unconstrained: row-to-row stepping uses the true size_w pitch).
+  if (pad != 0 && S == 1 && w_out == size_w && w_out >= 1 && w_out <= 32 && (BWE % w_out) == 0 && (row_bytes % BWE) == 0) {
     uint32_t P = BWE / w_out;
     uint32_t log2w = 0;
     while ((1u << log2w) < w_out) log2w++;
     cfg->in_ptr           = (uint32_t)(uintptr_t)in - (size_w + 1);       // pad=1: (kh-1)*W + (kw-1)
-    cfg->tot_len          = (row_bytes / BWE) * K * K * size_c;           // 1:1 (reads == stores)
-    cfg->out_tot_len      = (row_bytes / BWE) * K * K * size_c;
+    cfg->tot_len          = (row_bytes / BWE) * Kh * Kw * size_c;         // 1:1 (reads == stores)
+    cfg->out_tot_len      = (row_bytes / BWE) * Kh * Kw * size_c;
     cfg->in_d0            = dm_stride_len(P * size_w, h_out / P);         // P-row groups within a tap
-    cfg->in_d1            = dm_stride_len(1, K);                          // kw
-    cfg->in_d2            = dm_stride_len(size_w, K);                     // kh
-    cfg->in_d3            = dm_stride_len(size_h * size_w, size_c);       // c
+    cfg->in_d1            = dm_stride_len(1, Kw);                        // kw
+    cfg->in_d2            = dm_stride_len(size_w, Kh);                   // kh
+    cfg->in_d3            = dm_d3_stride_len(size_h * size_w, size_c);   // c
     cfg->out_d0           = dm_stride_len(BWE, row_bytes / BWE);         // dense store beats
-    cfg->out_d1           = dm_stride_len(row_bytes, K);
-    cfg->out_d2           = dm_stride_len(K * row_bytes, K);
-    cfg->out_d3           = dm_stride_len(K * K * row_bytes, size_c);
+    cfg->out_d1           = dm_stride_len(row_bytes, Kw);
+    cfg->out_d2           = dm_stride_len(Kw * row_bytes, Kh);
+    cfg->out_d3           = dm_d3_stride_len(Kh * Kw * row_bytes, size_c);
     dm_set_d4(cfg, 0, 0);
-    cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
+    cfg->channels         = dm_channels(Kh * Kw * size_c * row_bytes, size_c);
     cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PAD, 1)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_LOG2W, log2w)
-                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_ROW_STRIDE, K);  // carries K in padding mode
+                          // padding mode: PACK_ROW_STRIDE carries {kh_max[7:4], kw_max[3:0]}
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_ROW_STRIDE, (Kh << 4) | Kw);
     return;
   }
 
@@ -399,34 +410,34 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
     if (P != 0 && (h_out % P) == 0 && ((h_out * w_out) % BWE) == 0) {
       uint32_t log2w = 0;
       while ((1u << log2w) < w_out) log2w++;
-      cfg->tot_len          = (h_out / P) * K * K * size_c;             // read beats (2 per store)
-      cfg->out_tot_len      = (row_bytes / BWE) * K * K * size_c;       // dense store beats
+      cfg->tot_len          = (h_out / P) * Kh * Kw * size_c;           // read beats (2 per store)
+      cfg->out_tot_len      = (row_bytes / BWE) * Kh * Kw * size_c;     // dense store beats
       cfg->in_d0            = dm_stride_len(P * size_w, h_out / P);      // P-row groups within a tap
-      cfg->in_d1            = dm_stride_len(1, K);
-      cfg->in_d2            = dm_stride_len(size_w, K);
-      cfg->in_d3            = dm_stride_len(size_h * size_w, size_c);
+      cfg->in_d1            = dm_stride_len(1, Kw);
+      cfg->in_d2            = dm_stride_len(size_w, Kh);
+      cfg->in_d3            = dm_d3_stride_len(size_h * size_w, size_c);
       cfg->out_d0           = dm_stride_len(BWE, row_bytes / BWE);      // dense store beats
-      cfg->out_d1           = dm_stride_len(row_bytes, K);
-      cfg->out_d2           = dm_stride_len(K * row_bytes, K);
-      cfg->out_d3           = dm_stride_len(K * K * row_bytes, size_c);
+      cfg->out_d1           = dm_stride_len(row_bytes, Kw);
+      cfg->out_d2           = dm_stride_len(Kw * row_bytes, Kh);
+      cfg->out_d3           = dm_d3_stride_len(Kh * Kw * row_bytes, size_c);
       dm_set_d4(cfg, 0, 0);
-      cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
+      cfg->channels         = dm_channels(Kh * Kw * size_c * row_bytes, size_c);
       cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PACK, 1)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_LOG2W, log2w)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_ROW_STRIDE, size_w);
     } else {
-    uint32_t tot_len      = h_out * K * K * size_c;
+    uint32_t tot_len      = h_out * Kh * Kw * size_c;
     cfg->tot_len          = tot_len;
     cfg->in_d0            = dm_stride_len(S * size_w, h_out);
-    cfg->in_d1            = dm_stride_len(1, K);
-    cfg->in_d2            = dm_stride_len(size_w, K);
-    cfg->in_d3            = dm_stride_len(size_h * size_w, size_c);
+    cfg->in_d1            = dm_stride_len(1, Kw);
+    cfg->in_d2            = dm_stride_len(size_w, Kh);
+    cfg->in_d3            = dm_d3_stride_len(size_h * size_w, size_c);
     cfg->out_d0           = dm_stride_len(w_out, h_out);
-    cfg->out_d1           = dm_stride_len(row_bytes, K);
-    cfg->out_d2           = dm_stride_len(K * row_bytes, K);
-    cfg->out_d3           = dm_stride_len(K * K * row_bytes, size_c);
+    cfg->out_d1           = dm_stride_len(row_bytes, Kw);
+    cfg->out_d2           = dm_stride_len(Kw * row_bytes, Kh);
+    cfg->out_d3           = dm_d3_stride_len(Kh * Kw * row_bytes, size_c);
     dm_set_d4(cfg, 0, 0);
     cfg->channels         = dm_channels(tot_len * BWE, size_c);
     cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE)
@@ -438,39 +449,74 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
       // Full-BW strided (S=2): each 64-col input block subsamples to 32 output cols, so two
       // reads merge into one dense store beat via im2col_pack. pack_log2w=5 makes the gather a
       // pure ii*S column subsample (row index always 0). Two 64-blocks tile one output tile.
-      cfg->tot_len          = 2 * w_tiles * h_out * K * K * size_c;    // reads (2 per store)
-      cfg->out_tot_len      = w_tiles * h_out * K * K * size_c;        // dense store beats
+      cfg->tot_len          = 2 * w_tiles * h_out * Kh * Kw * size_c;   // reads (2 per store)
+      cfg->out_tot_len      = w_tiles * h_out * Kh * Kw * size_c;       // dense store beats
       cfg->in_d0            = dm_stride_len(BWE, 2 * w_tiles);         // 64-col input blocks
       cfg->in_d1            = dm_stride_len(S * size_w, h_out);
-      cfg->in_d2            = dm_stride_len(1, K);
-      cfg->in_d3            = dm_stride_len(size_w, K);
+      cfg->in_d2            = dm_stride_len(1, Kw);
+      cfg->in_d3            = dm_d3_stride_len(size_w, Kh);
       cfg->out_d0           = dm_stride_len(BWE, w_tiles);
       cfg->out_d1           = dm_stride_len(w_out, h_out);
-      cfg->out_d2           = dm_stride_len(row_bytes, K);
-      cfg->out_d3           = dm_stride_len(K * row_bytes, K);
-      dm_set_d4(cfg, K * K * row_bytes, size_h * size_w);
-      cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
+      cfg->out_d2           = dm_stride_len(row_bytes, Kw);
+      cfg->out_d3           = dm_d3_stride_len(Kw * row_bytes, Kh);
+      dm_set_d4(cfg, Kh * Kw * row_bytes, size_h * size_w);
+      cfg->channels         = dm_channels(Kh * Kw * size_c * row_bytes, size_c);
       cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PACK, 1)
                             | DATAMOVER_FIELD(DM_CTRL_ENGINE, PACK_LOG2W, 5);
     } else {
-    uint32_t tot_len      = w_tiles * h_out * K * K * size_c;
+    uint32_t tot_len      = w_tiles * h_out * Kh * Kw * size_c;
     cfg->tot_len          = tot_len;
     cfg->in_d0            = dm_stride_len(BWE, w_tiles);
     cfg->in_d1            = dm_stride_len(S * size_w, h_out);
-    cfg->in_d2            = dm_stride_len(1, K);
-    cfg->in_d3            = dm_stride_len(size_w, K);
+    cfg->in_d2            = dm_stride_len(1, Kw);
+    cfg->in_d3            = dm_d3_stride_len(size_w, Kh);
     cfg->out_d0           = dm_stride_len(BWE, w_tiles);
     cfg->out_d1           = dm_stride_len(w_out, h_out);
-    cfg->out_d2           = dm_stride_len(row_bytes, K);
-    cfg->out_d3           = dm_stride_len(K * row_bytes, K);
-    dm_set_d4(cfg, K * K * row_bytes, size_h * size_w);
-    cfg->channels         = dm_channels(K * K * size_c * row_bytes, size_c);
+    cfg->out_d2           = dm_stride_len(row_bytes, Kw);
+    cfg->out_d3           = dm_d3_stride_len(Kw * row_bytes, Kh);
+    dm_set_d4(cfg, Kh * Kw * row_bytes, size_h * size_w);
+    cfg->channels         = dm_channels(Kh * Kw * size_c * row_bytes, size_c);
     cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
     }
   }
+}
+
+static inline __attribute__((always_inline)) uint32_t datamover_build_im2col_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
+                                          uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                          uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride, uint32_t pad) {
+  const uint32_t Kh = kernel_h;
+  const uint32_t Kw = kernel_w;
+  const uint32_t S = conv_stride;
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t h_out = (size_h + 2 * pad - Kh) / S + 1;
+  uint32_t w_out = (size_w + 2 * pad - Kw) / S + 1;
+  if (pad != 0 || w_out < BWE) return 0;
+  uint32_t w_full = (w_out / BWE) * BWE;
+  uint32_t w_len  = w_out - w_full;
+  if (w_len == 0) return 0;
+  uint32_t row_bytes = h_out * w_out;
+  uint32_t tot_len   = h_out * Kh * Kw * size_c;
+
+  cfg->in_ptr           = (uint32_t)(uintptr_t)in  + w_full * S;
+  cfg->out_ptr          = (uint32_t)(uintptr_t)out + w_full;
+  cfg->tot_len          = tot_len;
+  cfg->in_d0            = dm_stride_len(S * size_w, h_out);
+  cfg->in_d1            = dm_stride_len(1, Kw);
+  cfg->in_d2            = dm_stride_len(size_w, Kh);
+  cfg->in_d3            = dm_d3_stride_len(size_h * size_w, size_c);
+  cfg->out_d0           = dm_stride_len(w_out, h_out);
+  cfg->out_d1           = dm_stride_len(row_bytes, Kw);
+  cfg->out_d2           = dm_stride_len(Kw * row_bytes, Kh);
+  cfg->out_d3           = dm_d3_stride_len(Kh * Kw * row_bytes, size_c);
+  dm_set_d4(cfg, 0, 0);
+  cfg->matrix_dim       = dm_matrix_dim(w_len, h_out);
+  cfg->channels         = dm_channels(tot_len * BWE, size_c);
+  cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE)
+                        | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
+  return 1;
 }
 
 #endif // __DATAMOVER_CONFIG_H__

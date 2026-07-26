@@ -66,7 +66,8 @@ DATAMOVER_TASKS(DM_TASK_OUT_BUF)
     .size_c        = TASK##i##_SIZE_C,                   \
     .size_m        = TASK##i##_SIZE_M,                   \
     .size_n        = TASK##i##_SIZE_N,                   \
-    .kernel_size   = TASK##i##_KERNEL_SIZE,              \
+    .kernel_h      = TASK##i##_KERNEL_SIZE_H,            \
+    .kernel_w      = TASK##i##_KERNEL_SIZE_W,            \
     .conv_stride   = TASK##i##_CONV_STRIDE,              \
     .conv_pad      = TASK##i##_CONV_PAD,                 \
   },

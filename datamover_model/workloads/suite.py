@@ -20,7 +20,8 @@ PARAM_DEFAULTS = {
     "SIZE_M": 1,
     "SIZE_N": 1,
     "COUNT": 0,
-    "KERNEL_SIZE": 1,
+    "KERNEL_SIZE_H": 1,
+    "KERNEL_SIZE_W": 1,
     "CONV_STRIDE": 1,
     "CONV_PAD": 0,
 }
@@ -71,7 +72,35 @@ def normalize_params(raw: dict) -> dict:
         raise ValueError(f"TRANSP_MODE must be in {{0,1,2,4}}, got {out['TRANSP_MODE']}")
     if out["CIM_MODE"] not in (0, 1):
         raise ValueError(f"CIM_MODE must be 0 or 1, got {out['CIM_MODE']}")
+    if out["DATAMOVER_MODE"] == 6:
+        _validate_im2col_params(out)
     return out
+
+
+IM2COL_MAX_PADDED_KERNEL_SIZE = 15
+IM2COL_PADDED_KERNEL_W = 3
+
+
+def _validate_im2col_params(params: dict) -> None:
+    kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
+    s, pad = params["CONV_STRIDE"], params["CONV_PAD"]
+    if kh < 1 or kw < 1:
+        raise ValueError(f"KERNEL_SIZE_H/KERNEL_SIZE_W must be >= 1, got {kh}x{kw}")
+    if s not in (1, 2):
+        raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
+    if pad not in (0, 1):
+        raise ValueError(f"im2col CONV_PAD must be 0 or 1, got {pad}")
+    if pad != 0 and s != 1:
+        raise ValueError(f"im2col CONV_PAD requires CONV_STRIDE == 1, got CONV_STRIDE={s}")
+    if pad != 0 and kw != IM2COL_PADDED_KERNEL_W:
+        raise ValueError(
+            f"im2col CONV_PAD requires KERNEL_SIZE_W == {IM2COL_PADDED_KERNEL_W} "
+            f"(the fixed 1-pixel border only preserves row width at kw=3), got KERNEL_SIZE_W={kw}"
+        )
+    if pad != 0 and kh > IM2COL_MAX_PADDED_KERNEL_SIZE:
+        raise ValueError(
+            f"im2col CONV_PAD requires KERNEL_SIZE_H <= {IM2COL_MAX_PADDED_KERNEL_SIZE}, got {kh}"
+        )
 
 
 def hw_tag(name: str) -> str:
@@ -97,7 +126,9 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
     elif mode == 5:
         base = f"FOLD_C{c}_{m}x{n}"
     else:
-        base = f"IM2COL_C{c}_{m}x{n}_K{params['KERNEL_SIZE']}_S{params['CONV_STRIDE']}"
+        kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
+        k_tag = f"{kh}" if kh == kw else f"{kh}x{kw}"
+        base = f"IM2COL_C{c}_{m}x{n}_K{k_tag}_S{params['CONV_STRIDE']}"
         if params["CONV_PAD"] > 0:
             base += f"_P{params['CONV_PAD']}"
     if c > 1 and mode in (0, 1, 2, 3):
