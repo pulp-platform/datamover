@@ -6,18 +6,31 @@ variables:
   NO_DEBUG: "1"
   UV_CACHE_DIR: $CI_BUILDS_DIR/../cache/uv
 
-before_script:
-  - unset VIRTUAL_ENV
-  - export UV_LINK_MODE=hardlink
-  - uv sync --frozen --python 3.11
-  - source .venv/bin/activate
-  - bender checkout
-
 stages:
+  - setup
   - test
+
+setup:
+  stage: setup
+  script:
+    - unset VIRTUAL_ENV
+    - export UV_LINK_MODE=hardlink
+    - uv sync --frozen --python 3.11
+    - bender checkout
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - .bender/
 
 .test-template:
   stage: test
+  needs:
+    - setup
+  before_script:
+    - unset VIRTUAL_ENV
+    - export UV_LINK_MODE=hardlink
+    - uv sync --frozen --python 3.11
+    - source .venv/bin/activate
   script:
     - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG}
   artifacts:
