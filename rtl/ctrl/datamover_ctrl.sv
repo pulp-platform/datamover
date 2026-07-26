@@ -70,15 +70,13 @@ module datamover_ctrl
   // hwpe_ctrl_target outputs
   logic                                                      target_clear;
   logic                                                      job_trigger;
-  logic                                                      job_done;
-  logic                                                      job_done_q;
+  logic                                                      job_done_d, job_done_q;
   logic [31:0]                                               job_status;
   datamover_regif_pkg::datamover_regif__hwpe_ctrl_job_indep__out_t job_indep_regs;
   logic                                                      job_dep_regs_valid;
   datamover_regif_pkg::datamover_regif__hwpe_ctrl_job_dep__out_t   job_dep_regs;
 
   logic             start;
-  ctrl_streamer_t   streamer_ctrl_cfg;
   ctrl_engine_t     engine_ctrl_d, engine_ctrl_q;
   datamover_state_e state_d, state_q;
 
@@ -99,7 +97,7 @@ module datamover_ctrl
     .clear_o              ( target_clear       ),
     .target               ( periph             ),
     .job_trigger_o        ( job_trigger        ),
-    .job_done_i           ( job_done           ),
+    .job_done_i           ( job_done_d         ),
     .job_status_i         ( job_status         ),
     .job_indep_regs_o     ( job_indep_regs     ),
     .job_dep_regs_valid_o ( job_dep_regs_valid ),
@@ -157,29 +155,19 @@ module datamover_ctrl
   assign job_status = busy_o ? 32'h1 : 32'h0;
 
   // Completion event, one cycle after the job is done.
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni)
-      job_done_q <= 1'b0;
-    else
-      job_done_q <= job_done;
-  end
-  always_comb begin
-    evt_o = '0;
-    evt_o[0][0] = job_done_q;
+  for (genvar c = 0; c < NUM_CORES; c++) begin : gen_evt_core
+    for (genvar e = 0; e < REGFILE_N_EVT; e++) begin : gen_evt_bit
+      if (c == 0 && e == 0) begin : gen_job_done_evt
+        assign evt_o[c][e] = job_done_q;
+      end else begin : gen_zero_evt
+        assign evt_o[c][e] = 1'b0;
+      end
+    end
   end
 
   // ----------------------------------------------------------------------
   // Datamover FSM
   // ----------------------------------------------------------------------
-  always_ff @(posedge clk_i or negedge rst_ni) begin : fsm_seq
-    if (~rst_ni)
-      state_q <= DM_IDLE;
-    else if (clear_o)
-      state_q <= DM_IDLE;
-    else
-      state_q <= state_d;
-  end
-
   always_comb begin : fsm_ns_comb
     state_d = state_q;
     if (state_q == DM_IDLE) begin
@@ -200,82 +188,73 @@ module datamover_ctrl
     end
   end
 
-  // FSM outputs: drive req_start while STARTING, signal job completion when FINISHED.
-  always_comb begin : fsm_out_comb
-    job_done        = 1'b0;
-    ctrl_streamer_o = streamer_ctrl_cfg;
-    if (state_q == DM_STARTING) begin
-      ctrl_streamer_o.data_in_source_ctrl.req_start = 1'b1;
-      ctrl_streamer_o.data_out_sink_ctrl.req_start  = 1'b1;
-    end
-    else if (state_q == DM_FINISHED) begin
-      job_done = 1'b1;
-    end
-  end
+  assign job_done_d = (state_q == DM_FINISHED);
 
   // ----------------------------------------------------------------------
   // Streamer base configuration from the typed job-dependent registers
   // ----------------------------------------------------------------------
-  always_comb begin
-    streamer_ctrl_cfg = '0;
-    // Enabled address-generator dimensions (d0 is always enabled).
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = job_dep_regs.ctrl_engine.read_dim_en.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = job_dep_regs.ctrl_engine.write_dim_en.value;
-    // Base addresses.
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.base_addr = job_dep_regs.in_ptr.value.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.base_addr  = job_dep_regs.out_ptr.value.value;
-    // Total length (in number of beats).
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.tot_len   = job_dep_regs.tot_len.value.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.tot_len    = job_dep_regs.out_tot_len.value.value;
-    // Source (input) per-dimension stride/length.
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_len    = job_dep_regs.in_d0.length.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d0_stride = job_dep_regs.in_d0.stride.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_len    = job_dep_regs.in_d1.length.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d1_stride = job_dep_regs.in_d1.stride.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_len    = job_dep_regs.in_d2.length.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d2_stride = job_dep_regs.in_d2.stride.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d3_len    = job_dep_regs.in_d3.length.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d3_stride = job_dep_regs.in_d3.stride.value;
-    streamer_ctrl_cfg.data_in_source_ctrl.addressgen_ctrl.d4_stride = job_dep_regs.in_d4_stride.value.value;
-    // Sink (output) per-dimension stride/length.
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_len     = job_dep_regs.out_d0.length.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = job_dep_regs.out_d0.stride.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_len     = job_dep_regs.out_d1.length.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = job_dep_regs.out_d1.stride.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_len     = job_dep_regs.out_d2.length.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = job_dep_regs.out_d2.stride.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d3_len     = job_dep_regs.out_d3.length.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d3_stride  = job_dep_regs.out_d3.stride.value;
-    streamer_ctrl_cfg.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = job_dep_regs.out_d4_stride.value.value;
-  end
+  assign ctrl_streamer_o.data_in_source_ctrl.req_start = (state_q == DM_STARTING);
+  assign ctrl_streamer_o.data_out_sink_ctrl.req_start  = (state_q == DM_STARTING);
+  // Enabled address-generator dimensions (d0 is always enabled).
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = job_dep_regs.ctrl_engine.read_dim_en.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = job_dep_regs.ctrl_engine.write_dim_en.value;
+  // Base addresses.
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.base_addr = job_dep_regs.in_ptr.value.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.base_addr  = job_dep_regs.out_ptr.value.value;
+  // Total length (in number of beats).
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.tot_len   = job_dep_regs.tot_len.value.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.tot_len    = job_dep_regs.out_tot_len.value.value;
+  // Source (input) per-dimension stride/length.
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d0_len    = job_dep_regs.in_d0.length.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d0_stride = job_dep_regs.in_d0.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d1_len    = job_dep_regs.in_d1.length.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d1_stride = job_dep_regs.in_d1.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d2_len    = job_dep_regs.in_d2.length.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d2_stride = job_dep_regs.in_d2.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d3_len    = job_dep_regs.in_d3.length.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d3_stride = job_dep_regs.in_d3.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d4_stride = job_dep_regs.in_d4_stride.value.value;
+  // Sink (output) per-dimension stride/length.
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d0_len     = job_dep_regs.out_d0.length.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = job_dep_regs.out_d0.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d1_len     = job_dep_regs.out_d1.length.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = job_dep_regs.out_d1.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d2_len     = job_dep_regs.out_d2.length.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = job_dep_regs.out_d2.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d3_len     = job_dep_regs.out_d3.length.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d3_stride  = job_dep_regs.out_d3.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = job_dep_regs.out_d4_stride.value.value;
 
   // ----------------------------------------------------------------------
   // Engine configuration from the typed job-dependent registers
   // ----------------------------------------------------------------------
-  always_comb begin
-    engine_ctrl_d = '0;
-    engine_ctrl_d.transp_mode   = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? TRANSP_NONE  :
-                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? TRANSP_1ELEM :
-                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
-    engine_ctrl_d.transp_stride = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? 1 :
-                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? 1 :
-                                  job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? 2 : 4;
-    engine_ctrl_d.datamover_mode = datamover_mode_e'(job_dep_regs.ctrl_engine.datamover_mode.value);
-    // im2col subsamples each beat by the conv stride; all other modes pass through (stride 1).
-    engine_ctrl_d.conv_stride    = (engine_ctrl_d.datamover_mode == DATAMOVER_IM2COL) ?
-                                   job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
-    engine_ctrl_d.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
-    engine_ctrl_d.im2col_pad      = job_dep_regs.ctrl_engine.im2col_pad.value;
-    engine_ctrl_d.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;
-    engine_ctrl_d.pack_row_stride = job_dep_regs.ctrl_engine.pack_row_stride.value;
-    engine_ctrl_d.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
-    engine_ctrl_d.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
-    engine_ctrl_d.num_channels   = job_dep_regs.channels.num_channels.value;
-    engine_ctrl_d.total_elements = job_dep_regs.channels.total_elements.value;
-    engine_ctrl_d.transp_len     = TRANSP_LEN;
-  end
+  assign engine_ctrl_d.transp_mode   = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? TRANSP_NONE  :
+                                       job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? TRANSP_1ELEM :
+                                       job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? TRANSP_2ELEM : TRANSP_4ELEM;
+  assign engine_ctrl_d.transp_stride = job_dep_regs.ctrl_engine.transp_mode.value == 3'b000 ? 1 :
+                                       job_dep_regs.ctrl_engine.transp_mode.value == 3'b001 ? 1 :
+                                       job_dep_regs.ctrl_engine.transp_mode.value == 3'b010 ? 2 : 4;
+  assign engine_ctrl_d.datamover_mode = datamover_mode_e'(job_dep_regs.ctrl_engine.datamover_mode.value);
+  // im2col subsamples each beat by the conv stride; all other modes pass through (stride 1).
+  assign engine_ctrl_d.conv_stride    = (engine_ctrl_d.datamover_mode == DATAMOVER_IM2COL) ?
+                                        job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
+  assign engine_ctrl_d.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
+  assign engine_ctrl_d.im2col_pad      = job_dep_regs.ctrl_engine.im2col_pad.value;
+  assign engine_ctrl_d.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;
+  assign engine_ctrl_d.pack_row_stride = job_dep_regs.ctrl_engine.pack_row_stride.value;
+  assign engine_ctrl_d.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
+  assign engine_ctrl_d.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
+  assign engine_ctrl_d.num_channels   = job_dep_regs.channels.num_channels.value;
+  assign engine_ctrl_d.total_elements = job_dep_regs.channels.total_elements.value;
+  assign engine_ctrl_d.transp_len     = TRANSP_LEN;
 
-  `FFARNC(engine_ctrl_q, engine_ctrl_d, clear_o, '0, clk_i, rst_ni)
   assign ctrl_engine_o = engine_ctrl_q;
+
+  // ----------------------------------------------------------------------
+  // Sequential logic
+  // ----------------------------------------------------------------------
+  `FFARN(job_done_q, job_done_d, 1'b0, clk_i, rst_ni)
+  `FFARNC(state_q, state_d, clear_o, DM_IDLE, clk_i, rst_ni)
+  `FFARNC(engine_ctrl_q, engine_ctrl_d, clear_o, '0, clk_i, rst_ni)
 
 endmodule // datamover_ctrl
