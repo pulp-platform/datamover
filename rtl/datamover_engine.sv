@@ -325,11 +325,12 @@ module datamover_engine
 
   // Output assignment
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
-    assign data_out_unrolled[ii] = ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
-                                 : im2col_pack ? (ii < NB_ELEMENTS/2 ? elem_matrix_q[0][ii]
-                                                                     : pack_extract[ii-NB_ELEMENTS/2])
-                                 : (im2col_pad && pad_zero[ii]) ? '0
-                                 : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
+    assign data_out_unrolled[ii] =
+        ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
+      : im2col_pack ? (ii < NB_ELEMENTS/2 ? elem_matrix_q[0][ii]
+                                          : pack_extract[(ii+NB_ELEMENTS/2) % NB_ELEMENTS])
+      : (im2col_pad && pad_zero[ii]) ? '0
+      : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
   end // gen_output
 
   assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE :
