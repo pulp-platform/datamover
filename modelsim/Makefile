@@ -20,7 +20,11 @@ lib:
 	cd $(BUILDPATH) && $(VLIB) work && $(VMAP) work "$$(pwd)/work"
 
 build:
-	cd $(BUILDPATH) && $(VSIM) -c -do 'source compile.tcl; quit'
+	cd $(BUILDPATH) && $(VSIM) -c -do 'source compile.tcl; quit' 2>&1 | tee vlog_build.log
+	@if grep -qE 'Errors: [1-9]' $(BUILDPATH)/vlog_build.log; then \
+		echo ">>> vlog reported compile errors in $(BUILDPATH) -- see $(BUILDPATH)/vlog_build.log" >&2; \
+		exit 1; \
+	fi
 	cd $(BUILDPATH) && $(VOPT) +acc=r +nosparse -o vopt_$(TOP_MODULE) -work work $(TOP_MODULE)
 
 # Run a test in its own dir, mapping work to the shared build. The tb reads
