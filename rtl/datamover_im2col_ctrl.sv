@@ -62,7 +62,7 @@ module datamover_im2col_ctrl
   end
 
   logic pad_beat;
-  logic [11:0] pad_oh_base_d, pad_oh_base_q;
+  logic [15:0] pad_oh_base_d, pad_oh_base_q;
   logic [3:0]  pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
   logic [NB_ELEM_LOG2:0] pad_P;
   logic pad_oh_wrap, pad_kw_wrap, pad_kh_wrap;
@@ -85,15 +85,15 @@ module datamover_im2col_ctrl
   assign pad_kh_d      = (pad_beat & pad_oh_wrap & pad_kw_wrap) ? pad_kh_next : pad_kh_q;
 
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pad_zero
-    logic [11:0] pad_oh_ii;
+    logic [15:0] pad_oh_ii;
     logic [NB_ELEM_LOG2-1:0] pad_col;
     logic pad_col_first, pad_col_last, pad_row_first, pad_row_last;
     assign pad_oh_ii = pad_oh_base_q + (ii >> ctrl_i.pack_log2w);
     assign pad_col = ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1);
     assign pad_col_first = (pad_col == 0);
     assign pad_col_last  = (pad_col == ((32'd1 << ctrl_i.pack_log2w) - 32'd1));
-    assign pad_row_first = (pad_oh_ii == 12'd0);
-    assign pad_row_last  = (pad_oh_ii == ctrl_i.tensor_size_m - 12'd1);
+    assign pad_row_first = (pad_oh_ii == 16'd0);
+    assign pad_row_last  = (pad_oh_ii == ctrl_i.tensor_size_m - 16'd1);
     assign pad_zero[ii] = (pad_kw_q == 4'd0           && pad_col_first) ||
                           (pad_kw_q == pad_kw_max - 1 && pad_col_last)  ||
                           (pad_kh_q == 4'd0           && pad_row_first) ||

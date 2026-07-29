@@ -67,9 +67,9 @@ module datamover_engine
   logic                                   data_out_ready;
   logic [NB_ELEM_LOG2-1:0]                remaining_elems;
   logic [17:0]                            total_accesses_copy_mode, total_accesses, acc_target;
-  logic [15:0]                            y_elem_cnt_d, y_elem_cnt_q, expanded_y_elems;
+  logic [16:0]                            y_elem_cnt_d, y_elem_cnt_q, expanded_y_elems;
   logic                                   y_elem_wrap;
-  logic [9:0]                             y_tiles, n_tiles, n_tile_cnt_d, n_tile_cnt_q;
+  logic [10:0]                            y_tiles, n_tiles, n_tile_cnt_d, n_tile_cnt_q;
   logic [NB_ELEM_LOG2:0]                  leftover_rows, leftover_cols;
   logic                                   last_y_tile, last_n_tile;
   logic [9:0]                             tile_y_q, tile_y_d, tile_n_q, tile_n_d;
