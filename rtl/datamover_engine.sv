@@ -290,9 +290,9 @@ module datamover_engine
     .pad_zero_o         ( pad_zero         )
   );
 
-  logic [NB_ELEMENTS-1:0]                                  wr_row_en;
-  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] wr_row_data;
-  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_q;
+  logic [NB_ELEMENTS-1:0]                     wr_row_en;
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]     wr_row_data   [NB_ELEMENTS-1:0];
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]     elem_matrix_q [NB_ELEMENTS-1:0];
 
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_buffer_write
     logic in_hs, buffer_enable;

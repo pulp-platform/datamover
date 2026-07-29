@@ -25,16 +25,16 @@ module datamover_buffer
   parameter int unsigned NB_ELEMENTS = 64,
   parameter int unsigned ELEM_WIDTH  = 8
 ) (
-  input  logic                                                    clk_i,
-  input  logic                                                    rst_ni,
-  input  logic                                                    clear_i,
-  input  logic                                                    clear_matrix_i,
-  input  logic [NB_ELEMENTS-1:0]                                  wr_row_en_i,
-  input  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] wr_row_data_i,
-  output logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] rd_data_o
+  input  logic                                    clk_i,
+  input  logic                                    rst_ni,
+  input  logic                                    clear_i,
+  input  logic                                    clear_matrix_i,
+  input  logic [NB_ELEMENTS-1:0]                  wr_row_en_i,
+  input  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]  wr_row_data_i [NB_ELEMENTS-1:0],
+  output logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]  rd_data_o     [NB_ELEMENTS-1:0]
 );
 
-  logic [NB_ELEMENTS-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_d, elem_matrix_q;
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_d [NB_ELEMENTS-1:0], elem_matrix_q [NB_ELEMENTS-1:0];
   logic clear_int;
   assign clear_int = clear_i | clear_matrix_i;
 
