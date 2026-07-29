@@ -15,9 +15,9 @@ dependencies:
 
 sources:
   # Level 0
-  - rtl/datamover_package.sv
   - rtl/ctrl/regif/datamover_regif_pkg.sv  # SystemRDL-generated register file package
   # Level 1
+  - rtl/datamover_package.sv               # sizes ctrl_engine_t from the regif field widths
   - rtl/ctrl/regif/datamover_regif.sv      # SystemRDL-generated register file
   - rtl/datamover_buffer.sv
   - rtl/datamover_im2col_ctrl.sv

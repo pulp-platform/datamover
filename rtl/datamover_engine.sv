@@ -50,13 +50,23 @@ module datamover_engine
   localparam int unsigned NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
   localparam int unsigned NB_ELEM_LOG2 = $clog2(NB_ELEMENTS);
 
+  // Counter widths
+  //   TILE_CNT    holds ceil(tensor_size / NB_ELEMENTS)
+  //   ELEM_CNT    holds tensor_size rounded up to a full tile
+  //   ACCESS_CNT  holds the output beats of one job
+  localparam int unsigned TILE_CNT_WIDTH   = TENSOR_SIZE_WIDTH - NB_ELEM_LOG2 + 1;
+  localparam int unsigned ELEM_CNT_WIDTH   = TENSOR_SIZE_WIDTH + 1;
+  localparam int unsigned ACCESS_CNT_BASE  = (TENSOR_SIZE_WIDTH + NB_ELEM_LOG2 > TOTAL_ELEM_WIDTH) ?
+                                             TENSOR_SIZE_WIDTH + NB_ELEM_LOG2 : TOTAL_ELEM_WIDTH;
+  localparam int unsigned ACCESS_CNT_WIDTH = ACCESS_CNT_BASE + 2;
+
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
   datamover_engine_fsm_t                  fsm_d, fsm_q;
   logic                                   clear_elem_matrix;
   logic                                   clear_run;
   logic [NB_ELEM_LOG2-1:0]                cnt_q, cnt_d;
-  logic [17:0]                            tot_cnt_q, tot_cnt_d;
+  logic [ACCESS_CNT_WIDTH-1:0]            tot_cnt_q, tot_cnt_d;
   logic                                   cnt_en;
   logic                                   tot_cnt_incr;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_unrolled;
@@ -66,13 +76,13 @@ module datamover_engine
   logic                                   data_out_valid;
   logic                                   data_out_ready;
   logic [NB_ELEM_LOG2-1:0]                remaining_elems;
-  logic [17:0]                            total_accesses_copy_mode, total_accesses, acc_target;
-  logic [16:0]                            y_elem_cnt_d, y_elem_cnt_q, expanded_y_elems;
+  logic [ACCESS_CNT_WIDTH-1:0]            total_accesses_copy_mode, total_accesses, acc_target;
+  logic [ELEM_CNT_WIDTH-1:0]              y_elem_cnt_d, y_elem_cnt_q, expanded_y_elems;
   logic                                   y_elem_wrap;
-  logic [10:0]                            y_tiles, n_tiles, n_tile_cnt_d, n_tile_cnt_q;
+  logic [TILE_CNT_WIDTH-1:0]              y_tiles, n_tiles, n_tile_cnt_d, n_tile_cnt_q;
   logic [NB_ELEM_LOG2:0]                  leftover_rows, leftover_cols;
   logic                                   last_y_tile, last_n_tile;
-  logic [9:0]                             tile_y_q, tile_y_d, tile_n_q, tile_n_d;
+  logic [TILE_CNT_WIDTH-1:0]              tile_y_q, tile_y_d, tile_n_q, tile_n_d;
   logic [NB_ELEM_LOG2:0]                  write_len, read_len, phase_len;
   logic                                   tile_complete, transpose_done, tp_last_y, tp_last_n;
 
@@ -245,7 +255,7 @@ module datamover_engine
   // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
   // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
   // and those < 8b are not interesting in our use case.
-  localparam MAX_SHIFTING = (NUM_ELEM_WORD > 4) ? NUM_ELEM_WORD : 4;
+  localparam MAX_SHIFTING = (NUM_ELEM_WORD > MAX_TRANSP_STRIDE) ? NUM_ELEM_WORD : MAX_TRANSP_STRIDE;
   // e.g., in a classical configuration (ELEM_WIDTH = 8), MAX_SHIFTING is
   // in bytes, i.e., "4" for 32b transpose (includes shifting by 0 bytes)
   logic [MAX_SHIFTING-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_shifted;

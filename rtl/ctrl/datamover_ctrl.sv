@@ -237,7 +237,7 @@ module datamover_ctrl
   assign engine_ctrl_d.datamover_mode = datamover_mode_e'(job_dep_regs.ctrl_engine.datamover_mode.value);
   // im2col subsamples each beat by the conv stride; all other modes pass through (stride 1).
   assign engine_ctrl_d.conv_stride    = (engine_ctrl_d.datamover_mode == DATAMOVER_IM2COL) ?
-                                        job_dep_regs.ctrl_engine.conv_stride.value : 3'd1;
+                                        job_dep_regs.ctrl_engine.conv_stride.value : 1'b1;
   assign engine_ctrl_d.im2col_pack     = job_dep_regs.ctrl_engine.im2col_pack.value;
   assign engine_ctrl_d.im2col_pad      = job_dep_regs.ctrl_engine.im2col_pad.value;
   assign engine_ctrl_d.pack_log2w      = job_dep_regs.ctrl_engine.pack_log2w.value;

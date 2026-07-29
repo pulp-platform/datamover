@@ -52,7 +52,7 @@ module datamover_im2col_ctrl
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pack_extract
     if (ii < NB_ELEMENTS/2) begin : gen_valid
       logic [NB_ELEM_LOG2-1:0] pack_col, pack_row;
-      assign pack_col = ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1);
+      assign pack_col = ii & ((PACK_W_WIDTH'(1) << ctrl_i.pack_log2w) - PACK_W_WIDTH'(1));
       assign pack_row = ii >> ctrl_i.pack_log2w;
       assign pack_extract[ii] = data_in_unrolled_i[pack_row * ctrl_i.pack_row_stride
                                                   + pack_col * ctrl_i.conv_stride];
@@ -62,41 +62,42 @@ module datamover_im2col_ctrl
   end
 
   logic pad_beat;
-  logic [15:0] pad_oh_base_d, pad_oh_base_q;
-  logic [3:0]  pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
+  logic [TENSOR_SIZE_WIDTH-1:0] pad_oh_base_d, pad_oh_base_q;
+  logic [KERNEL_TAP_WIDTH-1:0]  pad_kw_d, pad_kw_q, pad_kh_d, pad_kh_q;
   logic [NB_ELEM_LOG2:0] pad_P;
   logic pad_oh_wrap, pad_kw_wrap, pad_kh_wrap;
-  logic [3:0] pad_kw_next, pad_kh_next;
+  logic [KERNEL_TAP_WIDTH-1:0] pad_kw_next, pad_kh_next;
   logic [NB_ELEMENTS-1:0] pad_zero;
-  logic [3:0] pad_kw_max, pad_kh_max;
-  assign pad_kw_max = ctrl_i.pack_row_stride[3:0];
-  assign pad_kh_max = ctrl_i.pack_row_stride[7:4];
+  logic [KERNEL_TAP_WIDTH-1:0] pad_kw_max, pad_kh_max;
+  assign pad_kw_max = ctrl_i.pack_row_stride[KERNEL_TAP_WIDTH-1:0];
+  assign pad_kh_max = ctrl_i.pack_row_stride[2*KERNEL_TAP_WIDTH-1:KERNEL_TAP_WIDTH];
 
   assign pad_beat    = ctrl_i.im2col_pad & data_in_valid_i & data_in_ready_i;
   assign pad_P       = NB_ELEMENTS >> ctrl_i.pack_log2w;
   assign pad_oh_wrap = (pad_oh_base_q + pad_P >= ctrl_i.tensor_size_m);
   assign pad_kw_wrap = (pad_kw_q == pad_kw_max - 1);
   assign pad_kh_wrap = (pad_kh_q == pad_kh_max - 1);
-  assign pad_kw_next = pad_kw_wrap ? 4'd0 : pad_kw_q + 4'd1;
-  assign pad_kh_next = pad_kh_wrap ? 4'd0 : pad_kh_q + 4'd1;
+  assign pad_kw_next = pad_kw_wrap ? '0 : pad_kw_q + 1'b1;
+  assign pad_kh_next = pad_kh_wrap ? '0 : pad_kh_q + 1'b1;
 
   assign pad_oh_base_d = pad_beat ? (pad_oh_wrap ? '0 : pad_oh_base_q + pad_P) : pad_oh_base_q;
   assign pad_kw_d      = (pad_beat & pad_oh_wrap)               ? pad_kw_next : pad_kw_q;
   assign pad_kh_d      = (pad_beat & pad_oh_wrap & pad_kw_wrap) ? pad_kh_next : pad_kh_q;
 
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_pad_zero
-    logic [15:0] pad_oh_ii;
+    logic [TENSOR_SIZE_WIDTH-1:0] pad_oh_ii;
     logic [NB_ELEM_LOG2-1:0] pad_col;
     logic pad_col_first, pad_col_last, pad_row_first, pad_row_last;
     assign pad_oh_ii = pad_oh_base_q + (ii >> ctrl_i.pack_log2w);
-    assign pad_col = ii & ((32'd1 << ctrl_i.pack_log2w) - 32'd1);
+    assign pad_col = ii & ((PACK_W_WIDTH'(1) << ctrl_i.pack_log2w) - PACK_W_WIDTH'(1));
     assign pad_col_first = (pad_col == 0);
-    assign pad_col_last  = (pad_col == ((32'd1 << ctrl_i.pack_log2w) - 32'd1));
-    assign pad_row_first = (pad_oh_ii == 16'd0);
-    assign pad_row_last  = (pad_oh_ii == ctrl_i.tensor_size_m - 16'd1);
-    assign pad_zero[ii] = (pad_kw_q == 4'd0           && pad_col_first) ||
+    assign pad_col_last  = (pad_col ==
+                            ((PACK_W_WIDTH'(1) << ctrl_i.pack_log2w) - PACK_W_WIDTH'(1)));
+    assign pad_row_first = (pad_oh_ii == '0);
+    assign pad_row_last  = (pad_oh_ii == ctrl_i.tensor_size_m - 1'b1);
+    assign pad_zero[ii] = (pad_kw_q == '0            && pad_col_first) ||
                           (pad_kw_q == pad_kw_max - 1 && pad_col_last)  ||
-                          (pad_kh_q == 4'd0           && pad_row_first) ||
+                          (pad_kh_q == '0            && pad_row_first) ||
                           (pad_kh_q == pad_kh_max - 1 && pad_row_last);
   end
 
