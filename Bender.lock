@@ -37,7 +37,7 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   hci:
-    revision: 80c37ef85a01151f5c93ca60ce6731f52a0c29a8
+    revision: 8793cf651c9d9fe4f3aa78f53d2dabddaeb56353
     version: null
     source:
       Git: https://github.com/pulp-platform/hci.git
@@ -57,7 +57,7 @@ packages:
     - common_cells
     - tech_cells_generic
   hwpe-stream:
-    revision: eb8f0e03fa39eaa4efa18abf14d6c95742a03b4f
+    revision: 19c68aa49b2d60792f115e939adca72360752f6e
     version: null
     source:
       Git: https://github.com/pulp-platform/hwpe-stream.git
