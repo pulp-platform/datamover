@@ -184,7 +184,7 @@ module datamover_engine
   assign last_y_tile = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD || ctrl_i.datamover_mode == DATAMOVER_FOLD) ?
                        ((y_elem_cnt_q >> NB_ELEM_LOG2) >= (ctrl_i.num_channels >> NB_ELEM_LOG2)) :
                        ((y_elem_cnt_q >> NB_ELEM_LOG2) >= (ctrl_i.tensor_size_m >> NB_ELEM_LOG2));
-  assign last_n_tile = (n_tile_cnt_q >= (ctrl_i.tensor_size_n >> NB_ELEM_LOG2));
+  assign last_n_tile = (n_tile_cnt_q >= n_tiles - 1);
 
   // Partial-tile transpose gating
   assign tp_last_y     = (tile_y_q == y_tiles - 1);
@@ -245,7 +245,10 @@ module datamover_engine
 
   assign y_elem_wrap = (y_elem_cnt_q == expanded_y_elems - 1);
   assign y_elem_cnt_d = tot_cnt_incr ? (y_elem_wrap ? '0 : y_elem_cnt_q + 1) : y_elem_cnt_q;
-  assign n_tile_cnt_d = (tot_cnt_incr & y_elem_wrap) ? n_tile_cnt_q + 1 : n_tile_cnt_q;
+  // n_tile_cnt wraps per row group, so leftover-column masking hits the last
+  // tile of every row, not every tile after the first row.
+  assign n_tile_cnt_d = (tot_cnt_incr & y_elem_wrap) ? (last_n_tile ? '0 : n_tile_cnt_q + 1)
+                                                     : n_tile_cnt_q;
 
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration.
