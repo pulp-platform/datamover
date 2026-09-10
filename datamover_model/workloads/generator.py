@@ -30,6 +30,21 @@ class TaskData:
     out_tensor: np.ndarray
 
 
+# A don't-care output byte holds the canary of the sw/s19tomem.py image fill.
+TB_CANARY = 0xA5
+
+# sw/link.ld dataram budget: golden_in + 2*out must fit.
+TB_MEM_BUDGET = 4_100_000
+
+
+def check_mem_budget(in_tensor, out_tensor) -> None:
+    in_bytes = int(np.prod(np.asarray(in_tensor).shape))
+    out_bytes = int(np.prod(np.asarray(out_tensor).shape))
+    total = in_bytes + 2 * out_bytes
+    if total > TB_MEM_BUDGET:
+        raise ValueError(f"test needs {total} B of TB data memory, budget {TB_MEM_BUDGET} B")
+
+
 def make_input_tensor(params: dict, seed: int) -> np.ndarray:
     c, m, n = params["SIZE_C"], params["SIZE_M"], params["SIZE_N"]
     if params["COUNT"]:
@@ -78,6 +93,11 @@ def golden_for(params: dict, in_tensor: np.ndarray):
 def generate_task_data(entry: dict, seed: int) -> TaskData:
     params = entry["params"]
     in_tensor, out_tensor = golden_for(params, make_input_tensor(params, seed))
+    mask = golden_mask_for(params, in_tensor)
+    if mask is not None:
+        out_tensor = np.asarray(out_tensor).copy()
+        out_tensor.reshape(-1)[np.asarray(mask).reshape(-1) == 0] = TB_CANARY
+    check_mem_budget(in_tensor, out_tensor)
     return TaskData(name=entry["name"], params=params, in_tensor=in_tensor, out_tensor=out_tensor)
 
 

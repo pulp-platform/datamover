@@ -43,8 +43,8 @@ else:
     data_txt  = "stim_data.txt"
 
 instr_mem = np.zeros(INSTR_MEM_SIZE, dtype=np.int64)
-# poison unwritten memory so bytes the DUT fails to write mismatch golden in verify
-data_mem  = np.random.default_rng(0).integers(1 << 32, size=DATA_MEM_SIZE, dtype=np.int64)
+# Canary fill: unwritten and don't-care bytes must hold TB_CANARY (workloads/generator.py).
+data_mem  = np.full(DATA_MEM_SIZE, 0xA5A5A5A5, dtype=np.int64)
 
 # Vectorized parsing: each token is "AAAAAAAA?HHHHHHHHLLLLLLLL" (25 chars).
 tokens = s.split()
