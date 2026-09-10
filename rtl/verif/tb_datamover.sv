@@ -54,9 +54,9 @@ module tb_datamover;
 
   // Must match sw/link.ld and sw/s19tomem.py. tb_dummy_memory storage is
   // 32-bit-wide regardless of bank port width, so MEMORY_SIZE counts 32-bit
-  // entries (1.5 MB / 4).
-  localparam int unsigned INSTR_MEM_SIZE = 16  * 1024;
-  localparam int unsigned MEMORY_SIZE    = 384 * 1024;
+  // entries (4 MB / 4).
+  localparam int unsigned INSTR_MEM_SIZE = 16   * 1024;
+  localparam int unsigned MEMORY_SIZE    = 1024 * 1024;
 
   localparam logic [31:0] INSTR_BASE_ADDR = 32'h1c000000;
   localparam logic [31:0] TCDM_DATA_BASE  = 32'h1c010000;

@@ -17,13 +17,12 @@
 SEARCH_DIR(.)
 __DYNAMIC  =  0;
 
-/* Must match sw/s19tomem.py and rtl/verif/tb_datamover.sv MEMORY_SIZE.
- * Konark workloads need ~1 MB (largest CSV test ~340 KB × 3 buffers). */
+/* Must match sw/s19tomem.py and rtl/verif/tb_datamover.sv MEMORY_SIZE. */
 MEMORY
 {
     instrram    : ORIGIN = 0x1c000000, LENGTH = 0x10000   /*   64 KB */
-    dataram     : ORIGIN = 0x1c010000, LENGTH = 0x178000  /* 1504 KB */
-    stack       : ORIGIN = 0x1c188000, LENGTH = 0x8000    /*   32 KB */
+    dataram     : ORIGIN = 0x1c010000, LENGTH = 0x3F8000  /* 4064 KB */
+    stack       : ORIGIN = 0x1c408000, LENGTH = 0x8000    /*   32 KB */
 }
 
 /* Stack information variables */

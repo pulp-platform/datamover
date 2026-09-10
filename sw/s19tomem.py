@@ -26,7 +26,7 @@ MEM_START  = 0x1c000000
 INSTR_SIZE = 0x10000               # 64KB instruction memory
 INSTR_END  = MEM_START + INSTR_SIZE
 DATA_BASE  = MEM_START + 0x10000
-DATA_SIZE  = 0x180000              # 1.5 MB data memory (1504 KB data + 32 KB stack)
+DATA_SIZE  = 0x400000              # 4 MB data memory (4064 KB data + 32 KB stack)
 DATA_END   = DATA_BASE + DATA_SIZE
 
 INSTR_MEM_SIZE = INSTR_SIZE // 4   # in 32b words
