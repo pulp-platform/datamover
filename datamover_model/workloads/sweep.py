@@ -15,6 +15,15 @@ An axis value-set has one of three forms: an explicit `list`, a random integer r
 `{"min","max"}` (optionally snapped to a multiple with `"multiple_of"`), or a scalar
 constant. The module draws each axis randomly for each candidate.
 
+A `list` axis may also hold objects (a *group* axis). The draw then merges the object
+entries into the candidate, so one draw sets several params together — for example a
+kernel size tied to its stride. The axis name is only a label. The first and the last
+object are the boundary values.
+
+When every axis is finite (a list or a scalar) and the full cross product fits the
+draw budget, the module enumerates the product instead of sampling, so every
+combination is covered exactly once.
+
 A `{"min","max"}` range may also carry `"tile"`. Random draws then stay uniform over
 the full range, unlike `"multiple_of"`, which snaps every draw. In addition, the module
 always emits every multiple of `tile` in the range as a guaranteed corner case (see
@@ -26,6 +35,7 @@ legality check to the layers that already enforce the checks.
 
 import argparse
 import glob
+import itertools
 import json
 import random
 import sys
@@ -164,6 +174,26 @@ def tile_candidates(spec: dict) -> list:
     return cands
 
 
+def expand_groups(cand: dict) -> dict:
+    """Merge group-axis draws: a dict value splats its entries into the candidate."""
+    out = {}
+    for k, v in cand.items():
+        if isinstance(v, dict):
+            out.update(v)
+        else:
+            out[k] = v
+    return out
+
+
+def finite_values(value):
+    """The full value list of a finite axis, or None for a random range."""
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        return None
+    return [value]
+
+
 def iter_candidates(spec: dict):
     """Yield candidate param dicts (the drawn axes only)."""
     axes = spec["axes"]
@@ -175,16 +205,30 @@ def iter_candidates(spec: dict):
     def keep(cand: dict) -> bool:
         return not any(all(cand.get(k) == v for k, v in ex.items()) for ex in excludes)
 
+    finite = [finite_values(axes[n]) for n in names]
+    if all(v is not None for v in finite):
+        total = 1
+        for v in finite:
+            total *= len(v)
+        if total <= budget:
+            for combo in itertools.product(*finite):
+                cand = expand_groups(dict(zip(names, combo)))
+                if keep(cand):
+                    yield cand
+            return
+
     if spec.get("boundaries", True):
         for cand in boundary_candidates(spec):
+            cand = expand_groups(cand)
             if keep(cand):
                 yield cand
         for cand in tile_candidates(spec):
+            cand = expand_groups(cand)
             if keep(cand):
                 yield cand
 
     for _ in range(budget):
-        cand = {n: draw_axis(axes[n], rng) for n in names}
+        cand = expand_groups({n: draw_axis(axes[n], rng) for n in names})
         if keep(cand):
             yield cand
 
