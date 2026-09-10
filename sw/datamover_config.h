@@ -67,6 +67,19 @@ typedef enum {
   DATAMOVER_TRANSP_4ELEM = 0x4
 } datamover_transp_mode_t;
 
+// im2col output: COL makes each patch a column (torch unfold, Surya operand B), ROW makes
+// each patch a row (im2row, Surya operand A), ROW_CIM is ROW in 64-column blocks.
+typedef enum {
+  DATAMOVER_IM2COL_IN_CHW = 0,
+  DATAMOVER_IM2COL_IN_HWC = 1
+} datamover_im2col_in_t;
+
+typedef enum {
+  DATAMOVER_IM2COL_OUT_COL     = 0,  // (Kh*Kw*C, pixels)
+  DATAMOVER_IM2COL_OUT_ROW     = 1,  // (pixels, C*Kh*Kw)
+  DATAMOVER_IM2COL_OUT_ROW_CIM = 2   // (pixels, C*Kh*Kw) in 64-column blocks
+} datamover_im2col_out_t;
+
 typedef enum {
   DATAMOVER_OK = 0,
   DATAMOVER_TO,
@@ -91,6 +104,8 @@ typedef struct {
   uint32_t                kernel_w;
   uint32_t                conv_stride;
   uint32_t                conv_pad;
+  datamover_im2col_in_t   im2col_in;
+  datamover_im2col_out_t  im2col_out;
 } datamover_task_config_t;
 
 //==========================================================================
@@ -517,6 +532,59 @@ static inline __attribute__((always_inline)) uint32_t datamover_build_im2col_lef
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE)
                         | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
   return 1;
+}
+
+// im2row for non-overlapping patches (stride == patch): one row per patch, in CIM layout.
+// HWC with 48-byte patch rows takes three jobs: four rows span three blocks, so
+// rows 1 and 2 split at the block boundary.
+static inline __attribute__((always_inline)) void datamover_build_im2row(datamover_cfg_t *cfg, const void *in, const void *out,
+                                          uint32_t size_c, uint32_t size_h, uint32_t size_w, uint32_t patch,
+                                          datamover_im2col_in_t in_layout, uint32_t job) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t n_w = size_w / patch, n_h = size_h / patch, n_tok = n_w * n_h;
+  uint32_t blk = n_tok * BWE;
+
+  if (in_layout == DATAMOVER_IM2COL_IN_CHW) {
+    uint32_t rpb = BWE / patch;
+    cfg->in_ptr      = (uint32_t)(uintptr_t)in;
+    cfg->out_ptr     = (uint32_t)(uintptr_t)out;
+    cfg->tot_len     = size_c * size_h * size_w / patch;
+    cfg->in_d0       = dm_stride_len(size_w, rpb);
+    cfg->in_d1       = dm_stride_len(rpb * size_w, patch / rpb);
+    cfg->in_d2       = dm_stride_len(patch, n_w);
+    cfg->in_d3       = dm_d3_stride_len(patch * size_w, n_h);
+    cfg->out_d0      = dm_stride_len(patch, rpb);
+    cfg->out_d1      = dm_stride_len(blk, patch / rpb);
+    cfg->out_d2      = dm_stride_len(BWE, n_w);
+    cfg->out_d3      = dm_d3_stride_len(BWE * n_w, n_h);
+    dm_set_d4(cfg, (patch * patch / BWE) * blk, size_h * size_w);
+    cfg->matrix_dim  = dm_matrix_dim(patch, n_tok);
+    cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE);
+  } else {
+    uint32_t pitch = size_w * size_c;
+    uint32_t run, in_off, out_off, d0_in, d0_out;
+    switch (job) {
+      case 0:  run = 48; in_off = 0;          out_off = 0;   d0_in = 3 * pitch;  d0_out = 2 * blk + 16; break;
+      case 1:  run = 16; in_off = pitch;      out_off = 48;  d0_in = pitch + 32; d0_out = 2 * blk - 48; break;
+      default: run = 32; in_off = pitch + 16; out_off = blk; d0_in = pitch - 16; d0_out = 32;           break;
+    }
+    cfg->in_ptr      = (uint32_t)(uintptr_t)in + in_off;
+    cfg->out_ptr     = (uint32_t)(uintptr_t)out + out_off;
+    cfg->tot_len     = 2 * (patch / 4) * n_tok;
+    cfg->in_d0       = dm_stride_len(d0_in, 2);
+    cfg->in_d1       = dm_stride_len(4 * pitch, patch / 4);
+    cfg->in_d2       = dm_stride_len(48, n_w);
+    cfg->in_d3       = dm_d3_stride_len(patch * pitch, n_h);
+    cfg->out_d0      = dm_stride_len(d0_out, 2);
+    cfg->out_d1      = dm_stride_len(3 * blk, patch / 4);
+    cfg->out_d2      = dm_stride_len(BWE, n_w);
+    cfg->out_d3      = dm_d3_stride_len(BWE * n_w, n_h);
+    dm_set_d4(cfg, 0, 0);
+    cfg->matrix_dim  = dm_matrix_dim(run, n_tok);
+    cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE);
+  }
+  cfg->channels     = dm_channels(cfg->tot_len * BWE, size_c);
+  cfg->ctrl_engine |= DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, 1);
 }
 
 #endif // __DATAMOVER_CONFIG_H__

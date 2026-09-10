@@ -81,9 +81,27 @@ def fold(tensor, patch_size, num_channels, height, width):
     return tensor_folded
 
 
-def im2col(tensor, kernel_h, kernel_w, stride=1, padding=0):
-    # (C, H, W) -> (kernel_h*kernel_w*C, H_out*W_out); row = ci*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow.
+def im2col(tensor, kernel_h, kernel_w, stride=1, padding=0, in_layout="CHW", out_layout="COL"):
+    # out_layout COL: each patch is a column, (Kh*Kw*C, H_out*W_out) as torch unfold;
+    #   row = c*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow. Surya operand B.
+    # out_layout ROW: each patch is a row, (H_out*W_out, C*Kh*Kw). Surya operand A.
+    # out_layout ROW_CIM: ROW in 64-column blocks, the CIM layout of mode 2.
+    # in_layout HWC reads the bytes as an HWC image; the A columns are then ordered (kh, kw, c).
     import torch
+    if in_layout == "HWC":
+        c, h, w = tensor.shape
+        tensor = tensor.reshape(h, w, c).transpose(2, 0, 1)
+    c = tensor.shape[0]
     x = torch.from_numpy(tensor.astype(np.float32)).unsqueeze(0)
     cols = torch.nn.functional.unfold(x, (kernel_h, kernel_w), stride=stride, padding=padding)
-    return cols.squeeze(0).to(torch.uint8).numpy()
+    cols = cols.squeeze(0).to(torch.uint8).numpy()
+    if out_layout == "COL":
+        return cols
+    n = cols.shape[1]
+    tokens = cols.T.reshape(n, c, kernel_h, kernel_w)
+    if in_layout == "HWC":
+        tokens = tokens.transpose(0, 2, 3, 1)
+    tokens = np.ascontiguousarray(tokens.reshape(n, -1))
+    if out_layout == "ROW":
+        return tokens
+    return cim_layout(tokens, 64, n, tokens.shape[1])

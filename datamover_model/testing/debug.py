@@ -107,7 +107,8 @@ def write_task_debug(result, output_dir: str, index: int) -> str:
         _save_chw(result.in_tensor, os.path.join(debug_dir, "in_chw_hex.txt"),
                   marker_stride=s if s > 1 else 0)
 
-    if mode == DATAMOVER_IM2COL and result.out_tensor.ndim == 2:
+    if mode == DATAMOVER_IM2COL and result.out_tensor.ndim == 2 and \
+            params.get("IM2COL_OUT", "COL") == "COL":
         kh = int(params["KERNEL_SIZE_H"])
         kw = int(params["KERNEL_SIZE_W"])
         c = int(params["SIZE_C"])

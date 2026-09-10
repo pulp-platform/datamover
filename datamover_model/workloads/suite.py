@@ -24,6 +24,8 @@ PARAM_DEFAULTS = {
     "KERNEL_SIZE_W": 1,
     "CONV_STRIDE": 1,
     "CONV_PAD": 0,
+    "IM2COL_IN": "CHW",   # image layout: CHW or HWC
+    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_CIM: one row per patch, 64-column blocks
 }
 
 
@@ -65,7 +67,9 @@ def normalize_params(raw: dict) -> dict:
     for k, v in raw.items():
         if k not in PARAM_DEFAULTS:
             raise ValueError(f"Unknown param '{k}' (allowed: {list(PARAM_DEFAULTS)})")
-        out[k] = int(v)
+        out[k] = str(v).upper() if k in STR_PARAMS else int(v)
+    if out["IM2COL_IN"] not in IM2COL_IN or out["IM2COL_OUT"] not in IM2COL_OUT:
+        raise ValueError(f"IM2COL_IN must be in {IM2COL_IN} and IM2COL_OUT in {IM2COL_OUT}")
     if out["DATAMOVER_MODE"] not in range(7):
         raise ValueError(f"DATAMOVER_MODE must be in 0..6, got {out['DATAMOVER_MODE']}")
     if out["TRANSP_MODE"] not in (0, 1, 2, 4):
@@ -77,6 +81,22 @@ def normalize_params(raw: dict) -> dict:
     return out
 
 
+STR_PARAMS = ("IM2COL_IN", "IM2COL_OUT")
+IM2COL_IN = ("CHW", "HWC")
+IM2COL_OUT = ("COL", "ROW_CIM")
+
+
+def _validate_im2row_params(params: dict) -> None:
+    """ROW_CIM is a strided copy of patch rows; the checks mirror the HAL builder."""
+    k, s, pad, c = params["KERNEL_SIZE_H"], params["CONV_STRIDE"], params["CONV_PAD"], params["SIZE_C"]
+    if not (k == params["KERNEL_SIZE_W"] == s) or pad != 0:
+        raise ValueError(f"ROW_CIM needs kernel == stride and no pad, got K={k} S={s} pad={pad}")
+    if params["IM2COL_IN"] == "CHW" and (64 % k != 0 or (k * k) % 64 != 0):
+        raise ValueError(f"CHW ROW_CIM needs a kernel side in (8, 16, 32, 64), got {k}")
+    if params["IM2COL_IN"] == "HWC" and k * c != 48:
+        raise ValueError(f"HWC ROW_CIM needs 48-byte patch rows, got {k * c}")
+
+
 IM2COL_MAX_PADDED_KERNEL_SIZE = 15
 IM2COL_PADDED_KERNEL_W = 3
 
@@ -86,6 +106,11 @@ def _validate_im2col_params(params: dict) -> None:
     s, pad = params["CONV_STRIDE"], params["CONV_PAD"]
     if kh < 1 or kw < 1:
         raise ValueError(f"KERNEL_SIZE_H/KERNEL_SIZE_W must be >= 1, got {kh}x{kw}")
+    if params["IM2COL_OUT"] != "COL":
+        _validate_im2row_params(params)
+        return
+    if params["IM2COL_IN"] != "CHW":
+        raise ValueError("IM2COL_IN=HWC needs IM2COL_OUT=ROW_CIM")
     if s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
     if pad not in (0, 1):
@@ -131,6 +156,8 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
         base = f"IM2COL_C{c}_{m}x{n}_K{k_tag}_S{params['CONV_STRIDE']}"
         if params["CONV_PAD"] > 0:
             base += f"_P{params['CONV_PAD']}"
+        if (params["IM2COL_IN"], params["IM2COL_OUT"]) != ("CHW", "COL"):
+            base += f"_{params['IM2COL_IN']}_{params['IM2COL_OUT']}"
     if c > 1 and mode in (0, 1, 2, 3):
         base += f"_C{c}"
     if hw_tag:

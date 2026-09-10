@@ -30,9 +30,6 @@ class TaskData:
     out_tensor: np.ndarray
 
 
-# A don't-care output byte holds the canary of the sw/s19tomem.py image fill.
-TB_CANARY = 0xA5
-
 # sw/link.ld dataram budget: golden_in + 2*out must fit.
 TB_MEM_BUDGET = 4_100_000
 
@@ -86,17 +83,14 @@ def golden_for(params: dict, in_tensor: np.ndarray):
         return unfolded, fold(unfolded, PATCH_SIZE, c, m, n)
     if mode == 6:
         return in_tensor, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"],
-                                  params["CONV_STRIDE"], params["CONV_PAD"])
+                                  params["CONV_STRIDE"], params["CONV_PAD"],
+                                  params["IM2COL_IN"], params["IM2COL_OUT"])
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 
 def generate_task_data(entry: dict, seed: int) -> TaskData:
     params = entry["params"]
     in_tensor, out_tensor = golden_for(params, make_input_tensor(params, seed))
-    mask = golden_mask_for(params, in_tensor)
-    if mask is not None:
-        out_tensor = np.asarray(out_tensor).copy()
-        out_tensor.reshape(-1)[np.asarray(mask).reshape(-1) == 0] = TB_CANARY
     check_mem_budget(in_tensor, out_tensor)
     return TaskData(name=entry["name"], params=params, in_tensor=in_tensor, out_tensor=out_tensor)
 

@@ -70,6 +70,8 @@ DATAMOVER_TASKS(DM_TASK_OUT_BUF)
     .kernel_w      = TASK##i##_KERNEL_SIZE_W,            \
     .conv_stride   = TASK##i##_CONV_STRIDE,              \
     .conv_pad      = TASK##i##_CONV_PAD,                 \
+    .im2col_in     = TASK##i##_IM2COL_IN,                \
+    .im2col_out    = TASK##i##_IM2COL_OUT,               \
   },
 
 static const datamover_task_config_t dm_tasks[NUM_TASKS] = {
