@@ -1,0 +1,13 @@
+{
+  "name": "cim_transpose_sweep",
+  "op": "cim_transpose",
+  "hw_config": "default",
+  "description": "M and N: max 65535 (16-bit matrix_dim and stride/len regs). M*N: max ~1.3 MiB (the 4 MB TB data memory holds 3 buffers per test).",
+  "max_tests": 30,
+  "seed": 1,
+  "axes": {
+    "ROW_TILE_SIZE": [64, 128, 192],
+    "SIZE_M": {"min": 1, "max": 4096},
+    "SIZE_N": {"min": 1, "max": 4096}
+  }
+}

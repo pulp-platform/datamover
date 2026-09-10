@@ -1,0 +1,14 @@
+{
+  "name": "cim_sweep",
+  "op": "cim",
+  "hw_config": "default",
+  "description": "M and N: max 65535 (16-bit matrix_dim and stride/len regs). M*N: max ~1.3 MiB (the 4 MB TB data memory holds 3 buffers per test).",
+  "max_tests": 30,
+  "seed": 1,
+  "axes": {
+    "CIM_MODE": [0, 1],
+    "ROW_TILE_SIZE": [32, 64, 128, 192, 256],
+    "SIZE_M": {"min": 1, "max": 8192},
+    "SIZE_N": {"min": 1, "max": 8192}
+  }
+}

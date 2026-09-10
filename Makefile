@@ -96,6 +96,18 @@ endif
 
 run-test run-all-tests: tests
 
+# Sweep-spec suite generation: tests/specs/*.spec.json -> tests/generated/.
+SPEC_GLOB      ?= tests/specs/*.spec.json
+GENERATED_GLOB ?= tests/generated/*.json
+
+.PHONY: gen-tests tests-generated
+gen-tests:
+	python -u -m datamover_model.workloads.sweep --spec-glob='$(SPEC_GLOB)' --out-dir=tests/generated $(if $(DEEP),--deep,)
+
+# Generate, then run the generated suites through the normal headless runner.
+tests-generated: gen-tests
+	@$(MAKE) tests TEST_JSON_GLOB='$(GENERATED_GLOB)'
+
 # ============================================================================
 # Quick test targets (CLI mode, no JSON). HW from HW_CONFIG (configs/hw_configs.json).
 # Usage:

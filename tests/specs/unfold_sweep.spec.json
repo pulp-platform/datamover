@@ -1,0 +1,12 @@
+{
+  "name": "unfold_sweep",
+  "op": "unfold",
+  "hw_config": "default",
+  "max_tests": 30,
+  "seed": 1,
+  "axes": {
+    "SIZE_C": [1, 2, 3, 48, 64],
+    "SIZE_M": {"min": 2, "max": 64, "multiple_of": 2},
+    "SIZE_N": {"min": 2, "max": 64, "multiple_of": 2}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "im2col_sweep",
+  "op": "im2col",
+  "hw_config": "default",
+  "max_tests": 30,
+  "seed": 1,
+  "axes": {
+    "KERNEL_SIZE_H": {"min": 1, "max": 7},
+    "KERNEL_SIZE_W": {"min": 1, "max": 7},
+    "CONV_STRIDE": [1, 2],
+    "CONV_PAD": [0, 1],
+    "SIZE_C": [1, 2, 3, 8],
+    "SIZE_M": {"min": 8, "max": 64, "multiple_of": 4},
+    "SIZE_N": {"min": 8, "max": 64, "multiple_of": 4}
+  }
+}
