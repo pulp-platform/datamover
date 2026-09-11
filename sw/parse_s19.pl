@@ -95,7 +95,7 @@ while ($i <= $#all){
    $i=$i+1;                # only increment the addresses by one
  }
  else{                     # address was properly aligned
-  $i=$i+2;                 # the next one will be 64 bits (2 index values)
+  $i = exists($m32{$a+4}) ? $i+2 : $i+1;  # the high word is the next index only when it exists
  }
   my $h=int2hex($a);       # determine the hex value for the address
   my $lo="00000000";       # default 0
