@@ -1,0 +1,10 @@
+{
+  "hw_config": "default",
+  "tests": [
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 3, "SIZE_M": 32,  "SIZE_N": 32,  "KERNEL_SIZE_H": 16, "KERNEL_SIZE_W": 16, "CONV_STRIDE": 16, "IM2COL_OUT": "ROW_CIM"}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 3, "SIZE_M": 64,  "SIZE_N": 64,  "KERNEL_SIZE_H": 8,  "KERNEL_SIZE_W": 8,  "CONV_STRIDE": 8,  "IM2COL_OUT": "ROW_CIM"}},
+    {"params": {"DATAMOVER_MODE": 6, "SIZE_C": 3, "SIZE_M": 32,  "SIZE_N": 32,  "KERNEL_SIZE_H": 16, "KERNEL_SIZE_W": 16, "CONV_STRIDE": 16, "IM2COL_IN": "HWC", "IM2COL_OUT": "ROW_CIM"}},
+    {"name": "VIT_S_PATCH_EMBED_CHW", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 3, "SIZE_M": 224, "SIZE_N": 224, "KERNEL_SIZE_H": 16, "KERNEL_SIZE_W": 16, "CONV_STRIDE": 16, "IM2COL_OUT": "ROW_CIM"}},
+    {"name": "VIT_S_PATCH_EMBED_HWC", "params": {"DATAMOVER_MODE": 6, "SIZE_C": 3, "SIZE_M": 224, "SIZE_N": 224, "KERNEL_SIZE_H": 16, "KERNEL_SIZE_W": 16, "CONV_STRIDE": 16, "IM2COL_IN": "HWC", "IM2COL_OUT": "ROW_CIM"}}
+  ]
+}

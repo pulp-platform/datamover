@@ -1,0 +1,27 @@
+{
+  "hw_config": "default",
+  "tests": [
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 128, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 192, "SIZE_M": 16, "SIZE_N": 16, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 256, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 96, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 120, "SIZE_M": 16, "SIZE_N": 16, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 144, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 63, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 65, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 4, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 64, "SIZE_M": 8, "SIZE_N": 64, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 32, "SIZE_M": 4, "SIZE_N": 16, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 128, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 192, "SIZE_M": 16, "SIZE_N": 16, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 256, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 96, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 120, "SIZE_M": 16, "SIZE_N": 16, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 144, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 63, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 65, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 4, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 64, "SIZE_M": 8, "SIZE_N": 64, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 32, "SIZE_M": 4, "SIZE_N": 16, "LAYOUT": "CIM"}}
+  ]
+}
