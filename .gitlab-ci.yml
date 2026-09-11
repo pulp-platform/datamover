@@ -30,30 +30,21 @@ setup:
     - uv sync --frozen --python 3.11
     - source .venv/bin/activate
 
-.test-template:
+# One job per suite and per profile. The default profile runs on VCS with coverage and
+# exports its database; the other profiles run on Questa. HW_CONFIG is the profile of every
+# entry without its own hw_config; a suite that pins hw_config runs that profile only.
+.suite:
   extends: .py-setup
   stage: test
   needs:
     - setup
+  parallel:
+    matrix:
+      - HW_CONFIG: [default, bw128_w32, bw256_w64]
   script:
-    - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG}
-  artifacts:
-    when: always
-    expire_in: 1 year
-    paths:
-      - reports/
-    reports:
-      junit: reports/junit/${SUITE_NAME}.xml
-
-# Coverage suites run on VCS. Only the default HW config gives a merged number.
-.cov-test-template:
-  extends: .test-template
-  variables:
-    ENGINE: vcs
-    COV: "1"
-  script:
-    - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG} || RC=$?
-    - make vcs-cov-export COV_NAME=${SUITE_NAME}
+    - if [ "$HW_CONFIG" = default ]; then export ENGINE=vcs COV=1; fi
+    - make run-test TEST_JSON=${TEST_JSON} HW_CONFIG=${HW_CONFIG} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG} || RC=$?
+    - if [ "$HW_CONFIG" = default ]; then make vcs-cov-export COV_NAME=${SUITE}; fi
     - exit ${RC:-0}
   artifacts:
     when: always
@@ -62,64 +53,106 @@ setup:
       - reports/
       - simulation/vcs/cov_export/
     reports:
-      junit: reports/junit/${SUITE_NAME}.xml
+      junit: reports/junit/*.xml
 
-test:transpose:
-  extends: .test-template
-  variables:
-    TEST_JSON: tests/transpose.json
-    SUITE_NAME: transpose
+# The network suites pin the default profile: the shapes are the point.
+.suite-default:
+  extends: .suite
+  parallel:
+    matrix:
+      - HW_CONFIG: [default]
+
+# A sweep spec expands to one suite per profile; the job generates and runs its own profile.
+.sweep:
+  extends: .suite
+  script:
+    - if [ "$HW_CONFIG" = default ]; then export ENGINE=vcs COV=1; fi
+    - make gen-tests SPEC_GLOB=tests/specs/${SUITE}.spec.json HW_CONFIGS=${HW_CONFIG}
+    - make run-test TEST_JSON=tests/generated/${HW_CONFIG}/${SUITE}.json HW_CONFIG=${HW_CONFIG} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG} || RC=$?
+    - if [ "$HW_CONFIG" = default ]; then make vcs-cov-export COV_NAME=${SUITE}; fi
+    - exit ${RC:-0}
 
 test:copy:
-  extends: .test-template
-  variables:
-    TEST_JSON: tests/copy.json
-    SUITE_NAME: copy
+  extends: .suite
+  variables: {SUITE: copy, TEST_JSON: tests/copy.json}
+
+test:transpose:
+  extends: .suite
+  variables: {SUITE: transpose, TEST_JSON: tests/transpose.json}
 
 test:cim:
-  extends: .test-template
-  variables:
-    TEST_JSON: tests/cim.json
-    SUITE_NAME: cim
-
-test:konark_ci:
-  extends: .cov-test-template
-  variables:
-    TEST_JSON: tests/konark_ci.json
-    SUITE_NAME: konark_ci
+  extends: .suite
+  variables: {SUITE: cim, TEST_JSON: tests/cim.json}
 
 test:chained:
-  extends: .test-template
-  variables:
-    TEST_JSON: tests/chained.json
-    SUITE_NAME: chained
+  extends: .suite
+  variables: {SUITE: chained, TEST_JSON: tests/chained.json}
 
 test:stallability:
-  extends: .test-template
-  variables:
-    TEST_JSON: tests/stallability.json
-    SUITE_NAME: stallability
+  extends: .suite
+  variables: {SUITE: stallability, TEST_JSON: tests/stallability.json}
 
 test:im2col:
-  extends: .cov-test-template
-  variables:
-    TEST_JSON: tests/im2col.json
-    SUITE_NAME: im2col
+  extends: .suite
+  variables: {SUITE: im2col, TEST_JSON: tests/im2col.json}
+
+test:konark_ci:
+  extends: .suite-default
+  variables: {SUITE: konark_ci, TEST_JSON: tests/konark_ci.json}
 
 test:mvit_im2col:
-  extends: .cov-test-template
-  variables:
-    TEST_JSON: tests/mvit_im2col.json
-    SUITE_NAME: mvit_im2col
+  extends: .suite-default
+  variables: {SUITE: mvit_im2col, TEST_JSON: tests/mvit_im2col.json}
 
+test:mvit_unfold:
+  extends: .suite-default
+  variables: {SUITE: mvit_unfold, TEST_JSON: tests/mvit_unfold.json}
+
+test:mvit_stall:
+  extends: .suite-default
+  variables: {SUITE: mvit_stall, TEST_JSON: tests/mvit_stall.json}
+
+test:patch_embed:
+  extends: .suite-default
+  variables: {SUITE: patch_embed, TEST_JSON: tests/patch_embed.json}
+
+test:attention:
+  extends: .suite-default
+  variables: {SUITE: attention, TEST_JSON: tests/attention.json}
+
+sweep:copy:
+  extends: .sweep
+  variables: {SUITE: copy_sweep}
+
+sweep:transpose:
+  extends: .sweep
+  variables: {SUITE: transpose_sweep}
+
+sweep:cim:
+  extends: .sweep
+  variables: {SUITE: cim_sweep}
+
+sweep:cim_transpose:
+  extends: .sweep
+  variables: {SUITE: cim_transpose_sweep}
+
+sweep:unfold:
+  extends: .sweep
+  variables: {SUITE: unfold_sweep}
+
+sweep:fold:
+  extends: .sweep
+  variables: {SUITE: fold_sweep}
+
+sweep:im2col:
+  extends: .sweep
+  variables: {SUITE: im2col_sweep}
+
+# Merges every default-profile database of the test stage into one report.
 coverage-default:
   extends: .py-setup
   stage: coverage
   when: always
-  needs:
-    - test:konark_ci
-    - test:im2col
-    - test:mvit_im2col
   script:
     - make vcs-cov-report COV_NAME=default VCS_COV_DIRS='simulation/vcs/cov_export/*.vdb'
   coverage: '/^Total coverage: (\d+\.\d+)%$/'
