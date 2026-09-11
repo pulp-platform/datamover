@@ -105,7 +105,6 @@ typedef struct {
   datamover_mode_t        mode;
   datamover_transp_mode_t transp_mode;
   uint32_t                cim_mode;       // 0 = row-major->CIM, 1 = CIM->row-major
-  uint32_t                row_tile_size;
   uint32_t                size_c;
   uint32_t                size_m;
   uint32_t                size_n;
@@ -229,124 +228,106 @@ static inline __attribute__((always_inline)) void datamover_build_transpose(data
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_TRANSP, 0x3, 0x1, transp_mode);
 }
 
-// CIM-layout forward (row-major -> CIM), complete tiles in the N dimension.
+// CIM-layout forward (row-major -> CIM), the complete column blocks of one beat each.
 static inline __attribute__((always_inline)) void datamover_build_cim_complete(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
-  uint32_t m_tiles          = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
-  uint32_t complete_n_tiles = size_n / row_tile_size;
-  uint32_t beats_per_row    = row_tile_size / DATAMOVER_BANDWIDTH_ELEMS;
+                                                uint32_t size_m, uint32_t size_n) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t m_tiles  = dm_ceil_div(size_m, BWE);
+  uint32_t n_blocks = size_n / BWE;
 
   cfg->in_ptr  = (uint32_t)(uintptr_t)in;
   cfg->out_ptr = (uint32_t)(uintptr_t)out;
-  cfg->tot_len = m_tiles * complete_n_tiles * row_tile_size;
-  dm_in(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
-  dm_in(cfg, 1, size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-  dm_in(cfg, 2, row_tile_size, 0);
+  cfg->tot_len = m_tiles * n_blocks * BWE;
+  dm_in(cfg, 0, BWE, 1);
+  dm_in(cfg, 1, size_n, m_tiles * BWE);
+  dm_in(cfg, 2, BWE, 0);
   dm_in(cfg, 3, 0, 0);
-  if (beats_per_row > 1) {
-    dm_out(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
-    dm_out(cfg, 1, row_tile_size, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-    dm_out(cfg, 2, row_tile_size * size_m, complete_n_tiles);
-    dm_out(cfg, 3, 0, 0);
-    cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x3, 0x3, DATAMOVER_TRANSP_NONE);
-  } else {
-    dm_out(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
-    dm_out(cfg, 1, row_tile_size * size_m, complete_n_tiles);
-    dm_out(cfg, 2, 0, 0);
-    dm_out(cfg, 3, 0, 0);
-    cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
-  }
-  dm_out(cfg, 4, 0, 0);
   dm_in(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(complete_n_tiles * row_tile_size, size_m);
-  dm_channels(cfg, complete_n_tiles * row_tile_size * size_m, 1);
+  dm_out(cfg, 0, BWE, m_tiles * BWE);
+  dm_out(cfg, 1, BWE * size_m, n_blocks);
+  dm_out(cfg, 2, 0, 0);
+  dm_out(cfg, 3, 0, 0);
+  dm_out(cfg, 4, 0, 0);
+  cfg->matrix_dim = dm_matrix_dim(n_blocks * BWE, size_m);
+  dm_channels(cfg, n_blocks * BWE * size_m, 1);
+  cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
 }
 
-// CIM-layout forward, leftover columns (assumes row_tile_size == BANDWIDTH_ELEMS).
+// CIM-layout forward, the leftover columns after the complete blocks.
 static inline __attribute__((always_inline)) void datamover_build_cim_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
-  uint32_t m_tiles          = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
-  uint32_t complete_n_tiles = size_n / row_tile_size;
-  uint32_t leftover_columns = size_n % DATAMOVER_BANDWIDTH_ELEMS;
-  const uint8_t *in_shifted  = (const uint8_t *)in  + complete_n_tiles * DATAMOVER_BANDWIDTH_ELEMS;
-  const uint8_t *out_shifted = (const uint8_t *)out + complete_n_tiles * size_m * DATAMOVER_BANDWIDTH_ELEMS;
+                                                uint32_t size_m, uint32_t size_n) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t m_tiles  = dm_ceil_div(size_m, BWE);
+  uint32_t n_blocks = size_n / BWE;
+  uint32_t leftover = size_n % BWE;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in_shifted;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out_shifted;
-  cfg->tot_len          = m_tiles * DATAMOVER_BANDWIDTH_ELEMS;
-  dm_in(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, row_tile_size / DATAMOVER_BANDWIDTH_ELEMS);
-  dm_in(cfg, 1, size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
+  cfg->in_ptr  = (uint32_t)(uintptr_t)in  + n_blocks * BWE;
+  cfg->out_ptr = (uint32_t)(uintptr_t)out + n_blocks * size_m * BWE;
+  cfg->tot_len = m_tiles * BWE;
+  dm_in(cfg, 0, BWE, 1);
+  dm_in(cfg, 1, size_n, m_tiles * BWE);
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
-  dm_out(cfg, 0, leftover_columns, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
+  dm_in(cfg, 4, 0, 0);
+  dm_out(cfg, 0, leftover, m_tiles * BWE);
   dm_out(cfg, 1, 0, 0);
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  dm_in(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(leftover_columns, size_m);
-  dm_channels(cfg, leftover_columns * size_m, 1);
-  cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x0, 0x1, DATAMOVER_TRANSP_NONE);
+  cfg->matrix_dim = dm_matrix_dim(leftover, size_m);
+  dm_channels(cfg, leftover * size_m, 1);
+  cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x0, 0x1, DATAMOVER_TRANSP_NONE);
 }
 
-// CIM-layout reverse (CIM -> row-major), complete tiles in the N dimension.
+// CIM-layout reverse (CIM -> row-major), the complete column blocks.
 static inline __attribute__((always_inline)) void datamover_build_cim_rev_complete(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                    uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
-  uint32_t complete_n_tiles   = size_n / row_tile_size;
-  uint32_t cim_layout_m_tiles = dm_ceil_div(size_m * complete_n_tiles, DATAMOVER_BANDWIDTH_ELEMS);
-  uint32_t beats_per_row      = row_tile_size / DATAMOVER_BANDWIDTH_ELEMS;
+                                                    uint32_t size_m, uint32_t size_n) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t n_blocks = size_n / BWE;
+  uint32_t m_tiles  = dm_ceil_div(size_m * n_blocks, BWE);
 
   cfg->in_ptr  = (uint32_t)(uintptr_t)in;
   cfg->out_ptr = (uint32_t)(uintptr_t)out;
-  cfg->tot_len = cim_layout_m_tiles * row_tile_size;
-  dm_in(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, size_m * complete_n_tiles * beats_per_row);
+  cfg->tot_len = m_tiles * BWE;
+  dm_in(cfg, 0, BWE, size_m * n_blocks);
   dm_in(cfg, 1, 0, 0);
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
-  if (beats_per_row > 1) {
-    dm_out(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, beats_per_row);
-    dm_out(cfg, 1, size_n, size_m);
-    dm_out(cfg, 2, row_tile_size, complete_n_tiles);
-    dm_out(cfg, 3, 0, 0);
-    cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x3, 0x0, DATAMOVER_TRANSP_NONE);
-  } else {
-    dm_out(cfg, 0, size_n, size_m);
-    dm_out(cfg, 1, DATAMOVER_BANDWIDTH_ELEMS, complete_n_tiles);
-    dm_out(cfg, 2, 0, 0);
-    dm_out(cfg, 3, 0, 0);
-    cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
-  }
-  dm_out(cfg, 4, 0, 0);
   dm_in(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(row_tile_size, size_m * complete_n_tiles);
-  dm_channels(cfg, row_tile_size * size_m * complete_n_tiles, 1);
+  dm_out(cfg, 0, size_n, size_m);
+  dm_out(cfg, 1, BWE, n_blocks);
+  dm_out(cfg, 2, 0, 0);
+  dm_out(cfg, 3, 0, 0);
+  dm_out(cfg, 4, 0, 0);
+  cfg->matrix_dim = dm_matrix_dim(BWE, size_m * n_blocks);
+  dm_channels(cfg, BWE * size_m * n_blocks, 1);
+  cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
 }
 
-// CIM-layout reverse, leftover columns (assumes row_tile_size == BANDWIDTH_ELEMS).
+// CIM-layout reverse, the leftover columns after the complete blocks.
 static inline __attribute__((always_inline)) void datamover_build_cim_rev_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                    uint32_t size_m, uint32_t size_n, uint32_t row_tile_size) {
-  uint32_t m_tiles          = dm_ceil_div(size_m, DATAMOVER_BANDWIDTH_ELEMS);
-  uint32_t complete_n_tiles = size_n / row_tile_size;
-  uint32_t leftover_columns = size_n % DATAMOVER_BANDWIDTH_ELEMS;
-  const uint8_t *in_shifted  = (const uint8_t *)in  + complete_n_tiles * size_m * DATAMOVER_BANDWIDTH_ELEMS;
-  const uint8_t *out_shifted = (const uint8_t *)out + complete_n_tiles * DATAMOVER_BANDWIDTH_ELEMS;
+                                                    uint32_t size_m, uint32_t size_n) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t m_tiles  = dm_ceil_div(size_m, BWE);
+  uint32_t n_blocks = size_n / BWE;
+  uint32_t leftover = size_n % BWE;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in_shifted;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out_shifted;
-  cfg->tot_len          = m_tiles * DATAMOVER_BANDWIDTH_ELEMS;
-  dm_in(cfg, 0, leftover_columns, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
+  cfg->in_ptr  = (uint32_t)(uintptr_t)in  + n_blocks * size_m * BWE;
+  cfg->out_ptr = (uint32_t)(uintptr_t)out + n_blocks * BWE;
+  cfg->tot_len = m_tiles * BWE;
+  dm_in(cfg, 0, leftover, m_tiles * BWE);
   dm_in(cfg, 1, 0, 0);
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
-  dm_out(cfg, 0, size_n, m_tiles * DATAMOVER_BANDWIDTH_ELEMS);
+  dm_in(cfg, 4, 0, 0);
+  dm_out(cfg, 0, size_n, m_tiles * BWE);
   dm_out(cfg, 1, 0, 0);
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  dm_in(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(leftover_columns, size_m);
-  dm_channels(cfg, leftover_columns * size_m, 1);
-  cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x0, 0x0, DATAMOVER_TRANSP_NONE);
+  cfg->matrix_dim = dm_matrix_dim(leftover, size_m);
+  dm_channels(cfg, leftover * size_m, 1);
+  cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x0, 0x0, DATAMOVER_TRANSP_NONE);
 }
 
 // Tensor (C,H,W) -> unfolded (P, N=(H*W)/P, C); H=size_m, W=size_n.

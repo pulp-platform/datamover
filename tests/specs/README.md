@@ -28,15 +28,14 @@ make tests TEST_JSON=tests/generated/cim_sweep.json  # run one generated suite
   "axes": {                 // an axis name is an exact test param key. Four value forms:
     "SIZE_M": {"min": 1, "max": 256},                     // a random integer in the range
     "SIZE_N": {"min": 8, "max": 64, "multiple_of": 8},    // a random integer, snapped to a multiple
-    "ROW_TILE_SIZE": [32, 64, 128, 256],                  // a random choice from the list
-    "CIM_MODE": [0, 1],
+    "CIM_MODE": [0, 1],                                   // a random choice from the list
     "CONV_STRIDE": 2,                                     // a scalar is a constant on every candidate
     "KERNEL": [                                           // a group axis: one draw sets several
       {"KERNEL_SIZE_H": 2, "KERNEL_SIZE_W": 2},           // params together. The axis name is only
       {"KERNEL_SIZE_H": 4, "KERNEL_SIZE_W": 4}            // a label; the first and the last object
     ]                                                     // are the boundary values
   },
-  "exclude": [{"CIM_MODE": 1, "ROW_TILE_SIZE": 32}]  // optional. The generator prunes matching combos
+  "exclude": [{"CIM_MODE": 1, "TRANSP_MODE": 4}]  // optional. The generator prunes matching combos
 }
 ```
 

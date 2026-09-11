@@ -113,9 +113,9 @@ tests-generated: gen-tests
 # Usage:
 #   riscv make test-copy SIZE_M=64 SIZE_N=64 GUI=0
 #   riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2
-#   riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
-#   riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
-#   riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64
+#   riscv make test-cim-layout SIZE_M=64 SIZE_N=128
+#   riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128
+#   riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128
 #   riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
 #   riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
 #   add HW_CONFIG=bw128_w32, COUNT=1, GUI=0 as needed

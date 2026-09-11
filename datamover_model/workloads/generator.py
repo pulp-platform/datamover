@@ -51,11 +51,10 @@ def make_input_tensor(params: dict, seed: int) -> np.ndarray:
     return rng.integers(0, 256, size=(c, m, n), dtype=np.uint8)
 
 
-def golden_for(params: dict, in_tensor: np.ndarray):
-    """Return (actual_input_tensor, golden_output_tensor)."""
+def golden_for(params: dict, in_tensor: np.ndarray, beat: int):
+    """Return (actual_input_tensor, golden_output_tensor); `beat` is the block width in elements."""
     mode = params["DATAMOVER_MODE"]
     c, m, n = params["SIZE_C"], params["SIZE_M"], params["SIZE_N"]
-    rt = params["ROW_TILE_SIZE"]
     t = params["TRANSP_MODE"]
 
     if mode == 0:
@@ -69,37 +68,37 @@ def golden_for(params: dict, in_tensor: np.ndarray):
         return in_tensor, out
     if mode == 2:
         flat = in_tensor.reshape(m, n)
-        out = cim_layout(flat, rt, m, n) if params["CIM_MODE"] == 0 \
-            else cim_layout_reverse(flat, rt, m, n)
+        out = cim_layout(flat, beat, m, n) if params["CIM_MODE"] == 0 \
+            else cim_layout_reverse(flat, beat, m, n)
         return in_tensor, np.asarray(out).reshape(-1)
     if mode == 3:
         flat = in_tensor.reshape(m, n)
-        out = cim_layout_transpose(flat, rt, m, n)
+        out = cim_layout_transpose(flat, beat, m, n)
         return in_tensor, np.asarray(out).reshape(-1)
     layout = params["LAYOUT"]
     if mode == 4:
-        mem_in = cim_activation(in_tensor) if layout == "CIM" else in_tensor
-        return mem_in, unfold(in_tensor, PATCH_SIZE, layout)
+        mem_in = cim_activation(in_tensor, beat) if layout == "CIM" else in_tensor
+        return mem_in, unfold(in_tensor, PATCH_SIZE, layout, beat)
     if mode == 5:
         # Fold consumes an unfolded tensor; synthesize it so the golden round-trips.
-        unfolded = unfold(in_tensor, PATCH_SIZE, layout)
-        return unfolded, fold(unfolded, PATCH_SIZE, c, m, n, layout)
+        unfolded = unfold(in_tensor, PATCH_SIZE, layout, beat)
+        return unfolded, fold(unfolded, PATCH_SIZE, c, m, n, layout, beat)
     if mode == 6:
-        mem_in = cim_activation(in_tensor) if params["IM2COL_IN"] == "CIM" else in_tensor
+        mem_in = cim_activation(in_tensor, beat) if params["IM2COL_IN"] == "CIM" else in_tensor
         return mem_in, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"],
                               params["CONV_STRIDE"], params["CONV_PAD"],
-                              params["IM2COL_IN"], params["IM2COL_OUT"])
+                              params["IM2COL_IN"], params["IM2COL_OUT"], beat)
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 
-def generate_task_data(entry: dict, seed: int) -> TaskData:
+def generate_task_data(entry: dict, seed: int, beat: int) -> TaskData:
     params = entry["params"]
-    in_tensor, out_tensor = golden_for(params, make_input_tensor(params, seed))
+    in_tensor, out_tensor = golden_for(params, make_input_tensor(params, seed), beat)
     check_mem_budget(in_tensor, out_tensor)
     return TaskData(name=entry["name"], params=params, in_tensor=in_tensor, out_tensor=out_tensor)
 
 
-def generate_chain_data(entry: dict, seed: int):
+def generate_chain_data(entry: dict, seed: int, beat: int):
     """Compose a chain of ops, each consuming the previous output as a flat byte
     sequence. Returns (input_tensor, [(params, out_tensor), ...] per stage)."""
     chain = entry["chain"]
@@ -113,7 +112,7 @@ def generate_chain_data(entry: dict, seed: int):
                 f"chain stage {len(stages)} expects {c}*{m}*{n}={c * m * n} elements "
                 f"but previous stage produced {cur.size}"
             )
-        _, out = golden_for(params, cur.reshape(c, m, n))
+        _, out = golden_for(params, cur.reshape(c, m, n), beat)
         out = np.asarray(out)
         stages.append((params, out))
         cur = out

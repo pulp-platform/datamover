@@ -12,11 +12,7 @@ ideal beat count (full-width reads + writes) against measured busy cycles.
 
 import math
 
-
-def _elems_per_beat(hw: dict) -> int:
-    """Payload elements per beat (misaligned accesses reserve one WORD_WIDTH slice)."""
-    payload_bits = hw["BANDWIDTH"] - (hw["WORD_WIDTH"] if hw["MISALIGNED_ACCESSES"] else 0)
-    return payload_bits // hw["ELEM_WIDTH"]
+from datamover_model.workloads.suite import beat_elems
 
 
 def _axis_referenced(size: int, out: int, k: int, s: int, p: int) -> int:
@@ -42,7 +38,7 @@ def transfer_elems(params: dict) -> tuple:
 
 def ideal_cycles(params: dict, hw: dict) -> int:
     """Minimum shared-port beats: ceil(read / B) + ceil(write / B)."""
-    b = _elems_per_beat(hw)
+    b = beat_elems(hw)
     in_elems, out_elems = transfer_elems(params)
     return math.ceil(in_elems / b) + math.ceil(out_elems / b)
 

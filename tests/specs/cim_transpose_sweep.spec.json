@@ -6,7 +6,6 @@
   "max_tests": 30,
   "seed": 1,
   "axes": {
-    "ROW_TILE_SIZE": [64, 128, 192],
     "SIZE_M": {"min": 1, "max": 4096},
     "SIZE_N": {"min": 1, "max": 4096}
   }

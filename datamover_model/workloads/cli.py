@@ -32,6 +32,7 @@ from datamover_model.workloads.suite import (
     auto_test_name,
     find_test_entry,
     list_tests,
+    beat_elems,
     load_hw_config,
     load_test_suite,
     normalize_params,
@@ -65,11 +66,11 @@ def _resolve(args):
         return entry, load_hw_config(hw_name), hw_name
 
     raw = {k: getattr(args, k) for k in PARAM_DEFAULTS if getattr(args, k) is not None}
-    params = normalize_params(raw)
     missing = [k for k in HW_KEYS if getattr(args, k) is None]
     if missing:
         raise SystemExit("CLI mode requires HW params: " + ", ".join(f"--{k}" for k in missing))
     hw = {k: getattr(args, k) for k in HW_KEYS}
+    params = normalize_params(raw, beat_elems(hw))
     name = args.test_name or auto_test_name(params)
     return {"name": name, "params": params}, hw, "cli"
 
@@ -90,7 +91,7 @@ def main() -> int:
     os.makedirs(args.output_dir, exist_ok=True)
 
     if "chain" in entry:
-        input_tensor, stages = generate_chain_data(entry, seed=args.seed)
+        input_tensor, stages = generate_chain_data(entry, args.seed, beat_elems(hw))
         n = len(stages)
         metas = []
         for i, (params, out) in enumerate(stages):
@@ -111,7 +112,7 @@ def main() -> int:
               f"in={tuple(input_tensor.shape)} out={tuple(stages[-1][1].shape)}")
         return 0
 
-    result = generate_task_data(entry, seed=args.seed)
+    result = generate_task_data(entry, args.seed, beat_elems(hw))
     meta = emit_task_artifacts(result, args.output_dir, index=0)
     write_workload_header([meta], hw, args.output_dir)
     write_test_config_mk(hw, args.output_dir)

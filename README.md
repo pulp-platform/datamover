@@ -51,7 +51,7 @@ Set via `config.mk` defaults or per-test via `configs/hw_configs.json`:
 |------------------|-------------|
 | 0 | **Copy** — straight-through |
 | 1 | **Transpose** — granularity via `TRANSP_MODE` (1/2/4 elements) |
-| 2 | **CIM fwd/rev** — blocked layout (blocks of 64), `CIM_MODE` selects direction, `ROW_TILE_SIZE` controls geometry |
+| 2 | **CIM fwd/rev** — blocked layout, column blocks of one beat, `CIM_MODE` selects the direction |
 | 3 | **CIMT fwd/rev** |
 | 4 | **Unfold** (MobileViT) — `LAYOUT` CHW (row-major) or CIM (64-column blocks on both sides) |
 | 5 | **Fold** (MobileViT) — inverse of unfold, same `LAYOUT` |
@@ -83,16 +83,16 @@ Run a single transform directly from the command line; HW comes from `HW_CONFIG`
 ```bash
 riscv make test-copy SIZE_M=64 SIZE_N=64 GUI=0
 riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2 HW_CONFIG=bw128_w32
-riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
-riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
-riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
+riscv make test-cim-layout SIZE_M=64 SIZE_N=128 HW_CONFIG=bw128_w32
+riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 HW_CONFIG=bw128_w32
+riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 HW_CONFIG=bw128_w32
 riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
 riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
 ```
 
 `TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `GUI=0` for headless.
 
-JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`, `LAYOUT`, `IM2COL_IN`, `IM2COL_OUT`) and an optional per-test `hw_config`; the name is auto-generated when omitted. `datamover_model/workloads/suite.py` lists the defaults and the checks.
+JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`, `LAYOUT`, `IM2COL_IN`, `IM2COL_OUT`) and an optional per-test `hw_config`; the name is auto-generated when omitted. `datamover_model/workloads/suite.py` lists the defaults and the checks.
 
 ## Cleanup
 
