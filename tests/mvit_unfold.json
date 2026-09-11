@@ -1,6 +1,10 @@
 {
   "hw_config": "default",
   "tests": [
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 144, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 240, "SIZE_M": 8,  "SIZE_N": 8,  "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 144, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
+    {"params": {"DATAMOVER_MODE": 5, "SIZE_C": 240, "SIZE_M": 8,  "SIZE_N": 8,  "LAYOUT": "CIM"}},
     {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 128, "SIZE_M": 32, "SIZE_N": 32, "LAYOUT": "CIM"}},
     {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 192, "SIZE_M": 16, "SIZE_N": 16, "LAYOUT": "CIM"}},
     {"params": {"DATAMOVER_MODE": 4, "SIZE_C": 256, "SIZE_M": 8, "SIZE_N": 8, "LAYOUT": "CIM"}},
