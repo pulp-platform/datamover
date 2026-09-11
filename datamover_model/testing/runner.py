@@ -57,10 +57,12 @@ STATUS_PASS = "pass"
 STATUS_MISMATCH = "mismatch"
 STATUS_BUILD = "build"
 STATUS_TIMEOUT = "timeout"
+STATUS_DEADLOCK = "deadlock"
 
 MARK_TB_PASS = "==== TEST PASSED ===="
 MARK_TB_FAIL = "==== TEST FAILED ===="
 MARK_RUNNER_TIMEOUT = "TIMEOUT"
+MARK_TB_DEADLOCK = "==== TEST DEADLOCK ===="
 MARK_RTL_REBUILD = ">>> Building RTL for build:"
 
 _PR_SET_PDEATHSIG = 1
@@ -193,12 +195,16 @@ def run_single_test(test: dict, json_file: str, vsim_flags: str, timeout: int, m
         status = STATUS_TIMEOUT
     elif MARK_TB_PASS in stdout:
         status = STATUS_PASS
+    elif MARK_TB_DEADLOCK in stdout:
+        status = STATUS_DEADLOCK
     elif MARK_TB_FAIL in stdout:
         status = STATUS_MISMATCH
     else:
         status = STATUS_BUILD
     if status == STATUS_TIMEOUT:
         stderr = f"{MARK_RUNNER_TIMEOUT}\n{stderr}" if stderr else MARK_RUNNER_TIMEOUT
+    elif status == STATUS_DEADLOCK:
+        stderr = f"{MARK_TB_DEADLOCK}\n{stderr}" if stderr else MARK_TB_DEADLOCK
     return TestResult(
         name=test_name, passed=(status == STATUS_PASS), time=elapsed,
         stdout=stdout, stderr=stderr,
@@ -298,6 +304,7 @@ _STATUS_PREFIX = {
     STATUS_MISMATCH: "[red]✗[/]",
     STATUS_BUILD:    "[yellow]✗[/]",
     STATUS_TIMEOUT:  "[magenta]✗[/]",
+    STATUS_DEADLOCK: "[red]✗[/]",
 }
 
 
@@ -452,7 +459,8 @@ def run_suite(args, json_file: str, state: "_LiveState", started_q) -> Tuple[int
 
 
 def _print_summary(all_results: List[TestResult], report_dir: str, planned: int, aborted: bool = False) -> None:
-    by_status = {STATUS_PASS: [], STATUS_MISMATCH: [], STATUS_BUILD: [], STATUS_TIMEOUT: []}
+    by_status = {STATUS_PASS: [], STATUS_MISMATCH: [], STATUS_BUILD: [], STATUS_TIMEOUT: [],
+                 STATUS_DEADLOCK: []}
     for r in all_results:
         by_status.setdefault(r.status, []).append(r)
     remaining = max(0, planned - len(all_results))
@@ -465,6 +473,8 @@ def _print_summary(all_results: List[TestResult], report_dir: str, planned: int,
         parts.append(f"[yellow]✗ {len(by_status[STATUS_BUILD])} {STATUS_BUILD}[/]")
     if by_status[STATUS_TIMEOUT]:
         parts.append(f"[magenta]✗ {len(by_status[STATUS_TIMEOUT])} {STATUS_TIMEOUT}[/]")
+    if by_status[STATUS_DEADLOCK]:
+        parts.append(f"[red]✗ {len(by_status[STATUS_DEADLOCK])} {STATUS_DEADLOCK}[/]")
     if remaining:
         parts.append(f"[orange3]{remaining} not run[/]")
     _CONSOLE.print("   ".join(parts) + f"   (of {planned} planned)")
