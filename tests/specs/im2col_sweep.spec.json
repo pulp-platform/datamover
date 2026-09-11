@@ -2,18 +2,11 @@
   "name": "im2col_sweep",
   "op": "im2col",
   "hw_config": "default",
-  "description": "LAYOUTS picks the datapath and holds its hardware relations; the free axes draw the rest. The image is at least one beat; kernels are square.",
-  "max_tests": 80,
+  "description": "LAYOUTS picks the datapath and holds the values it allows; the free axes draw the rest. The image is at least one beat; kernels are square.",
+  "max_tests": 100,
   "seed": 1,
   "constraints": ["SIZE_M * SIZE_N >= 64"],
   "axes": {
-    "_log2_width": {"min": 3, "max": 6},
-    "_log2_patch": {"min": 3, "max": 6},
-    "_log2_patch_hwc": {"min": 2, "max": 4},
-    "_row_blocks": {"min": 1, "max": 64},
-    "_out_blocks": {"min": 1, "max": 4},
-    "_patches_h": {"min": 1, "max": 16},
-    "_patches_w": {"min": 1, "max": 16},
     "KERNEL_SIZE_H": {"min": 1, "max": 7},
     "KERNEL_SIZE_W": "KERNEL_SIZE_H",
     "CONV_STRIDE": [1, 2],
@@ -22,10 +15,10 @@
     "SIZE_N": {"min": 1, "max": 512},
     "LAYOUTS": [
       {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL"},
-      {"IM2COL_IN": "CIM", "IM2COL_OUT": "COL_CIM", "KERNEL_SIZE_H": 3, "KERNEL_SIZE_W": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": "2 ** _log2_width", "SIZE_M": "_row_blocks * 64 // SIZE_N"},
-      {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_CIM", "CONV_STRIDE": 2, "SIZE_N": "128 * _out_blocks + KERNEL_SIZE_H - 2"},
-      {"IM2COL_IN": "CHW", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": "2 ** _log2_patch", "KERNEL_SIZE_W": "2 ** _log2_patch", "CONV_STRIDE": "2 ** _log2_patch", "SIZE_M": "_patches_h * 2 ** _log2_patch", "SIZE_N": "_patches_w * 2 ** _log2_patch"},
-      {"IM2COL_IN": "HWC", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": "2 ** _log2_patch_hwc", "KERNEL_SIZE_W": "2 ** _log2_patch_hwc", "CONV_STRIDE": "2 ** _log2_patch_hwc", "SIZE_C": "48 // 2 ** _log2_patch_hwc", "SIZE_M": "_patches_h * 2 ** _log2_patch_hwc", "SIZE_N": "_patches_w * 2 ** _log2_patch_hwc"}
+      {"IM2COL_IN": "CIM", "IM2COL_OUT": "COL_CIM", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
+      {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_CIM", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % 128, KERNEL_SIZE_H + 126)"},
+      {"IM2COL_IN": "CHW", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": [8, 16, 32, 64], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"},
+      {"IM2COL_IN": "HWC", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": [4, 8, 16], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_C": "48 // KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"}
     ]
   }
 }

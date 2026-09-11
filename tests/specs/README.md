@@ -40,18 +40,17 @@ make tests TEST_JSON=tests/generated/cim_sweep.json  # run one generated suite
 }
 ```
 
-A value may be a string. The generator evaluates the string as a Python expression after the
-draw, with the drawn values as variables, so one param follows from others: `"SIZE_N": "2 ** _LOG2W"`.
-An axis whose name starts with `_` is a helper variable for such expressions and does not become a
-param. A group entry may hold expressions too, so one entry fixes the relations of one datapath and
-the free axes draw the rest. A spec may carry `"constraints"`, a list of expressions that every
-candidate must satisfy, to state a limit that spans several axes:
+A group entry may hold a list or a range in place of a constant; the generator draws it when
+the entry is picked, so one entry states the value set one case allows. A value may be a string.
+The generator evaluates the string as a Python expression after the draw, with the drawn values as
+variables: `"KERNEL_SIZE_W": "KERNEL_SIZE_H"`. The name of the param itself stands for its own
+plain draw, so an expression can snap it: `"SIZE_M": "SIZE_M - SIZE_M % 8"`. A spec may carry
+`"constraints"`, a list of expressions that every candidate must satisfy:
 
 ```jsonc
   "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"CIM\""],
   "axes": {
-    "_LOG2W": {"min": 3, "max": 6},
-    "PATH": [{"IM2COL_IN": "CIM", "SIZE_N": "2 ** _LOG2W", "SIZE_M": "_HB * 64 // SIZE_N"}]
+    "LAYOUTS": [{"IM2COL_IN": "CIM", "SIZE_N": [8, 16, 32, 64], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}}]
   }
 ```
 
