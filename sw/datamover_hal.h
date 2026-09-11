@@ -54,8 +54,7 @@ static inline __attribute__((always_inline)) void datamover_program(const datamo
   r->in_ptr           = cfg->in_ptr;
   r->out_ptr          = cfg->out_ptr;
   r->tot_len          = cfg->tot_len;
-  // Sink beat count defaults to the source count; only transpose splits them (partial tiles).
-  r->out_tot_len      = cfg->out_tot_len ? cfg->out_tot_len : cfg->tot_len;
+  r->out_tot_len      = cfg->out_tot_len;
   r->in_stride0       = cfg->in_stride0;
   r->in_stride1       = cfg->in_stride1;
   r->in_stride2       = cfg->in_stride2;
