@@ -1,5 +1,4 @@
 {
-  "hw_config": "bw128_w32",
   "make_args": "STALL=0.05",
   "tests": [
     {"params": {"DATAMOVER_MODE": 0, "SIZE_M": 64, "SIZE_N": 64}},

@@ -3,7 +3,7 @@
 Each `*.spec.json` file in this directory describes one parameter sweep of a datamover mode.
 
 The generator is [`datamover_model/workloads/sweep.py`](../../datamover_model/workloads/sweep.py).
-The generator expands one spec into a suite in `tests/generated/`. The generator keeps only the
+The generator expands one spec into one suite per profile in `tests/generated/<profile>/`. The generator keeps only the
 combinations that pass `normalize_params` and the golden-model run, which also checks the TB
 memory budget. A spec has no `"tests"` key. Thus the runner ignores the spec file and finds the
 generated suites only.
@@ -11,9 +11,10 @@ generated suites only.
 ## Commands
 
 ```sh
-make gen-tests                                       # all specs -> tests/generated/*.json
-make tests-generated PARALLEL=8 TIMEOUT=300          # generate, then run through the normal runner
-make tests TEST_JSON=tests/generated/cim_sweep.json  # run one generated suite
+make gen-tests                                              # all specs, all profiles -> tests/generated/<profile>/*.json
+make gen-tests HW_CONFIGS=bw128_w32                          # one profile
+make tests-generated PARALLEL=8 TIMEOUT=300                 # generate, then run through the normal runner
+make tests TEST_JSON=tests/generated/default/cim_sweep.json  # run one generated suite
 ```
 
 ## Format of a spec
@@ -22,7 +23,7 @@ make tests TEST_JSON=tests/generated/cim_sweep.json  # run one generated suite
 {
   "name": "cim_sweep",      // the output stem -> tests/generated/cim_sweep.json
   "op": "cim",              // copy | transpose | cim | cim_transpose | unfold | fold | im2col
-  "hw_config": "default",   // a key of configs/hw_configs.json
+  "hw_config": "default",   // optional: pin one profile. Without it, the suite of every profile in HW_CONFIGS
   "max_tests": 30,          // the maximum number of valid tests without duplicates
   "seed": 1,                // the RNG seed. The same seed gives the same suite
   "axes": {                 // an axis name is an exact test param key. Four value forms:
@@ -43,7 +44,10 @@ A group entry may hold a list or a range in place of a constant; the generator d
 the entry is picked, so one entry states the value set one case allows. A value may be a string.
 The generator evaluates the string as a Python expression after the draw, with the drawn values as
 variables: `"KERNEL_SIZE_W": "KERNEL_SIZE_H"`. The name of the param itself stands for its own
-plain draw, so an expression can snap it: `"SIZE_M": "SIZE_M - SIZE_M % 8"`. A spec may carry
+plain draw, so an expression can snap it: `"SIZE_M": "SIZE_M - SIZE_M % 8"`. The constant `BEAT`,
+the elements per beat of the profile, is a variable of every expression, so a size can follow the
+block width: `"SIZE_N": "SIZE_N - SIZE_N % BEAT"`. A group entry that appears more than once gets
+more draws, which balances a path with a low legal rate against the others. A spec may carry
 `"constraints"`, a list of expressions that every candidate must satisfy:
 
 ```jsonc

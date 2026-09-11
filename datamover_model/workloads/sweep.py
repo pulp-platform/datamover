@@ -60,7 +60,15 @@ from pathlib import Path
 # testing package later.
 
 from datamover_model.workloads.generator import generate_task_data
-from datamover_model.workloads.suite import auto_test_name, beat_elems, hw_tag, load_hw_config, normalize_params
+from datamover_model.workloads.suite import (
+    align_elems,
+    auto_test_name,
+    beat_elems,
+    default_hw_config,
+    hw_tag,
+    load_hw_config,
+    normalize_params,
+)
 
 # Spec `op` -> fixed params merged under the drawn axes.
 OP_TO_PARAMS = {
@@ -80,8 +88,16 @@ DEFAULT_MAX_TESTS = 30
 
 
 def load_hw(spec: dict):
-    """Opaque HW context handed to `validate_candidate`; here the config name."""
-    load_hw_config(spec["hw_config"])
+    """Opaque HW context handed to `validate_candidate`; here the config name.
+
+    A spec without `hw_config` takes the HW_CONFIG variable of make. The elements per beat
+    and the row alignment enter the axes as the constants `BEAT` and `ALIGN`, so the
+    expressions can scale a size with the profile.
+    """
+    spec["hw_config"] = spec.get("hw_config") or default_hw_config()
+    cfg = load_hw_config(spec["hw_config"])
+    spec["axes"]["BEAT"] = beat_elems(cfg)
+    spec["axes"]["ALIGN"] = align_elems(cfg)
     return spec["hw_config"]
 
 
@@ -94,17 +110,23 @@ def validate_candidate(op: str, params: dict, hw, deep: bool = False):
     effect here).
     """
     try:
-        beat = beat_elems(load_hw_config(hw))
-        full = normalize_params({**OP_TO_PARAMS[op], **params}, beat)
+        cfg = load_hw_config(hw)
+        beat = beat_elems(cfg)
+        full = normalize_params({**OP_TO_PARAMS[op], **test_params(params)}, beat, align_elems(cfg))
         generate_task_data({"name": "candidate", "params": full}, 0, beat)
         return auto_test_name(full, hw_tag(hw)), None
     except (ValueError, AssertionError, KeyError, TypeError, IndexError, RuntimeError) as e:
         return None, f"{type(e).__name__}: {e}"
 
 
+def test_params(params: dict) -> dict:
+    """The drawn values without the profile constants."""
+    return {k: v for k, v in params.items() if k not in ("BEAT", "ALIGN")}
+
+
 def make_test_entry(op: str, params: dict) -> dict:
     """Suite JSON entry for one accepted candidate."""
-    return {"params": {**OP_TO_PARAMS[op], **params}}
+    return {"params": {**OP_TO_PARAMS[op], **test_params(params)}}
 
 
 def suite_extra_fields(spec: dict) -> dict:

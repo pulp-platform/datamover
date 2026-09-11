@@ -95,11 +95,15 @@ run-test run-all-tests: tests
 
 # Sweep-spec suite generation: tests/specs/*.spec.json -> tests/generated/.
 SPEC_GLOB      ?= tests/specs/*.spec.json
-GENERATED_GLOB ?= tests/generated/*.json
+GENERATED_GLOB ?= tests/generated/*/*.json
+# One generated suite per spec and per profile: tests/generated/<profile>/<name>.json
+HW_CONFIGS     ?= default bw128_w32 bw256_w64
 
 .PHONY: gen-tests tests-generated
 gen-tests:
-	python -u -m datamover_model.workloads.sweep --spec-glob='$(SPEC_GLOB)' --out-dir=tests/generated $(if $(DEEP),--deep,)
+	@for hw in $(HW_CONFIGS); do \
+	  HW_CONFIG=$$hw python -u -m datamover_model.workloads.sweep --spec-glob='$(SPEC_GLOB)' --out-dir=tests/generated/$$hw $(if $(DEEP),--deep,) || exit 1; \
+	done
 
 # Generate, then run the generated suites through the normal headless runner.
 tests-generated: gen-tests

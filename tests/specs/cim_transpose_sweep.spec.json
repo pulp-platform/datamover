@@ -1,12 +1,12 @@
 {
   "name": "cim_transpose_sweep",
   "op": "cim_transpose",
-  "hw_config": "default",
-  "description": "M and N: max 65535 (16-bit matrix_dim and stride/len regs). M*N: max ~1.3 MiB (the 4 MB TB data memory holds 3 buffers per test).",
+  "description": "SNAP rounds M and N down to the row alignment of the profile (a no-op with misaligned accesses). M and N: max 65535 (16-bit matrix_dim and stride/len regs). M*N: max ~1.3 MiB (the 4 MB TB data memory holds 3 buffers per test).",
   "max_tests": 30,
   "seed": 1,
   "axes": {
     "SIZE_M": {"min": 1, "max": 4096},
-    "SIZE_N": {"min": 1, "max": 4096}
+    "SIZE_N": {"min": 1, "max": 4096},
+    "SNAP": [{"SIZE_M": "max(ALIGN, SIZE_M - SIZE_M % ALIGN)", "SIZE_N": "max(ALIGN, SIZE_N - SIZE_N % ALIGN)"}]
   }
 }
