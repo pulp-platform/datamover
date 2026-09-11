@@ -23,7 +23,6 @@ PARAM_KEYS = (
     "DATAMOVER_MODE",
     "TRANSP_MODE",
     "CIM_MODE",
-    "ROW_TILE_SIZE",
     "SIZE_C",
     "SIZE_M",
     "SIZE_N",

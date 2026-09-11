@@ -60,7 +60,7 @@ from pathlib import Path
 # testing package later.
 
 from datamover_model.workloads.generator import generate_task_data
-from datamover_model.workloads.suite import auto_test_name, hw_tag, load_hw_config, normalize_params
+from datamover_model.workloads.suite import auto_test_name, beat_elems, hw_tag, load_hw_config, normalize_params
 
 # Spec `op` -> fixed params merged under the drawn axes.
 OP_TO_PARAMS = {
@@ -94,8 +94,9 @@ def validate_candidate(op: str, params: dict, hw, deep: bool = False):
     effect here).
     """
     try:
-        full = normalize_params({**OP_TO_PARAMS[op], **params})
-        generate_task_data({"name": "candidate", "params": full}, seed=0)
+        beat = beat_elems(load_hw_config(hw))
+        full = normalize_params({**OP_TO_PARAMS[op], **params}, beat)
+        generate_task_data({"name": "candidate", "params": full}, 0, beat)
         return auto_test_name(full, hw_tag(hw)), None
     except (ValueError, AssertionError, KeyError, TypeError, IndexError, RuntimeError) as e:
         return None, f"{type(e).__name__}: {e}"

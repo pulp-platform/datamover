@@ -39,7 +39,7 @@ ifeq ($(strip $(TEST_JSON)),)
 # CLI mode: build a single task from Make variables (test-<mode> quick targets)
 GEN_HEADERS_ARGS := --test_name $(TEST_NAME) \
                     --DATAMOVER_MODE $(DATAMOVER_MODE) --TRANSP_MODE $(TRANSP_MODE) \
-                    --CIM_MODE $(CIM_MODE) --ROW_TILE_SIZE $(ROW_TILE_SIZE) \
+                    --CIM_MODE $(CIM_MODE) \
                     --SIZE_C $(SIZE_C) --SIZE_M $(SIZE_M) --SIZE_N $(SIZE_N) --COUNT $(COUNT) \
                     --BANDWIDTH $(BANDWIDTH) --WORD_WIDTH $(WORD_WIDTH) \
                     --ELEM_WIDTH $(ELEM_WIDTH) --MISALIGNED_ACCESSES $(MISALIGNED_ACCESSES)

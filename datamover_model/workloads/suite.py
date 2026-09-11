@@ -15,7 +15,6 @@ PARAM_DEFAULTS = {
     "DATAMOVER_MODE": 0,
     "TRANSP_MODE": 1,
     "CIM_MODE": 0,
-    "ROW_TILE_SIZE": 64,
     "SIZE_C": 1,
     "SIZE_M": 1,
     "SIZE_N": 1,
@@ -63,7 +62,14 @@ def load_hw_config(name: str) -> dict:
     return {k: cfg[k] for k in HW_KEYS}
 
 
-def normalize_params(raw: dict) -> dict:
+def beat_elems(hw: dict) -> int:
+    """Payload elements per beat, the block width; misaligned accesses reserve one word."""
+    payload_bits = hw["BANDWIDTH"] - (hw["WORD_WIDTH"] if hw["MISALIGNED_ACCESSES"] else 0)
+    return payload_bits // hw["ELEM_WIDTH"]
+
+
+def normalize_params(raw: dict, beat: int = 64) -> dict:
+    """Defaults, types, and the checks of the HAL paths; `beat` is the block width in elements."""
     out = dict(PARAM_DEFAULTS)
     for k, v in raw.items():
         if k not in PARAM_DEFAULTS:
@@ -80,9 +86,9 @@ def normalize_params(raw: dict) -> dict:
     if out["CIM_MODE"] not in (0, 1):
         raise ValueError(f"CIM_MODE must be 0 or 1, got {out['CIM_MODE']}")
     if out["DATAMOVER_MODE"] == 6:
-        _validate_im2col_params(out)
+        _validate_im2col_params(out, beat)
     if out["DATAMOVER_MODE"] in (4, 5):
-        _validate_unfold_params(out)
+        _validate_unfold_params(out, beat)
     return out
 
 
@@ -90,30 +96,35 @@ STR_PARAMS = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
 LAYOUTS = ("CHW", "CIM")
 IM2COL_IN = ("CHW", "HWC", "CIM")
 IM2COL_OUT = ("COL", "ROW_CIM", "COL_CIM")
-IM2COL_UNIT_WIDTHS = (8, 16, 32, 64)
+IM2COL_UNIT_MIN_WIDTH = 8
 
 
-def _validate_unfold_params(params: dict) -> None:
-    """Even H and W; the CIM layout needs whole 64-pixel blocks."""
+def im2col_unit_widths(beat: int) -> tuple:
+    """Image row widths the im2col unit supports: powers of two from 8 to the beat."""
+    return tuple(w for w in (8, 16, 32, 64, 128, 256) if IM2COL_UNIT_MIN_WIDTH <= w <= beat)
+
+
+def _validate_unfold_params(params: dict, beat: int) -> None:
+    """Even H and W; the CIM layout needs whole blocks."""
     m, n = params["SIZE_M"], params["SIZE_N"]
     if m % 2 != 0 or n % 2 != 0:
         raise ValueError(f"unfold and fold need even H and W, got {m}x{n}")
-    if params["LAYOUT"] == "CIM" and (m * n) % 64 != 0:
-        raise ValueError(f"LAYOUT=CIM needs H*W a multiple of 64, got {m}x{n}")
+    if params["LAYOUT"] == "CIM" and (m * n) % beat != 0:
+        raise ValueError(f"LAYOUT=CIM needs H*W a multiple of {beat}, got {m}x{n}")
 
 
-def _validate_im2row_params(params: dict) -> None:
+def _validate_im2row_params(params: dict, beat: int) -> None:
     """ROW_CIM is a strided copy of patch rows, one run per patch row."""
     k, s, pad, c = params["KERNEL_SIZE_H"], params["CONV_STRIDE"], params["CONV_PAD"], params["SIZE_C"]
     if not (k == params["KERNEL_SIZE_W"] == s) or pad != 0:
         raise ValueError(f"ROW_CIM needs kernel == stride and no pad, got K={k} S={s} pad={pad}")
-    if params["IM2COL_IN"] == "CHW" and (64 % k != 0 or (k * k) % 64 != 0):
-        raise ValueError(f"CHW ROW_CIM needs a kernel side in (8, 16, 32, 64), got {k}")
+    if params["IM2COL_IN"] == "CHW" and (beat % k != 0 or (k * k) % beat != 0):
+        raise ValueError(f"CHW ROW_CIM needs a kernel side that divides {beat} with K*K a multiple of it, got {k}")
     if params["IM2COL_IN"] == "HWC" and (k * c != 48 or k % 4 != 0):
         raise ValueError(f"HWC ROW_CIM needs 48-byte patch rows and a kernel side that is a multiple of 4, got K={k} C={c}")
 
 
-def _validate_im2col_params(params: dict) -> None:
+def _validate_im2col_params(params: dict, beat: int) -> None:
     """The relations of the HAL paths."""
     kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
     s, pad = params["CONV_STRIDE"], params["CONV_PAD"]
@@ -122,19 +133,19 @@ def _validate_im2col_params(params: dict) -> None:
     if kh < 1 or kw < 1:
         raise ValueError(f"KERNEL_SIZE_H/KERNEL_SIZE_W must be >= 1, got {kh}x{kw}")
     if params["IM2COL_OUT"] == "ROW_CIM":
-        _validate_im2row_params(params)
+        _validate_im2row_params(params, beat)
         return
     if s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
     if layout == ("CIM", "COL_CIM"):
         if (kh, kw, s, pad) != (3, 3, 1, 1):
             raise ValueError(f"CIM im2col is 3x3, stride 1, pad 1, got K={kh}x{kw} S={s} pad={pad}")
-        if n not in IM2COL_UNIT_WIDTHS or (m * n) % 64 != 0:
-            raise ValueError(f"CIM im2col needs W in {IM2COL_UNIT_WIDTHS} and H*W a multiple of 64, got {m}x{n}")
+        if n not in im2col_unit_widths(beat) or (m * n) % beat != 0:
+            raise ValueError(f"CIM im2col needs W in {im2col_unit_widths(beat)} and H*W a multiple of {beat}, got {m}x{n}")
     elif layout == ("CHW", "COL_CIM"):
         w_out = (n - kw) // s + 1
-        if s != 2 or pad != 0 or w_out % 64 != 0:
-            raise ValueError(f"CHW to COL_CIM needs stride 2, no pad, and w_out a multiple of 64, got S={s} pad={pad} w_out={w_out}")
+        if s != 2 or pad != 0 or w_out % beat != 0:
+            raise ValueError(f"CHW to COL_CIM needs stride 2, no pad, and w_out a multiple of {beat}, got S={s} pad={pad} w_out={w_out}")
     elif layout == ("CHW", "COL"):
         if pad != 0:
             raise ValueError("CONV_PAD needs IM2COL_IN=CIM and IM2COL_OUT=COL_CIM")
@@ -157,9 +168,9 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
         base = f"TRANSP{params['TRANSP_MODE']}_{m}x{n}"
     elif mode == 2:
         tag = "FWD" if params["CIM_MODE"] == 0 else "REV"
-        base = f"CIM{tag}_{m}x{n}_RT{params['ROW_TILE_SIZE']}"
+        base = f"CIM{tag}_{m}x{n}"
     elif mode == 3:
-        base = f"CIMTR{params['TRANSP_MODE']}_{m}x{n}_RT{params['ROW_TILE_SIZE']}"
+        base = f"CIMTR{params['TRANSP_MODE']}_{m}x{n}"
     elif mode == 4:
         base = f"UNFOLD_C{c}_{m}x{n}" + ("_CIM" if params["LAYOUT"] == "CIM" else "")
     elif mode == 5:
@@ -179,12 +190,16 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
     return base
 
 
+def entry_beat(entry: dict, suite_hw: str = "") -> int:
+    return beat_elems(load_hw_config(entry.get("hw_config") or suite_hw or "default"))
+
+
 def _entry_name(entry: dict, suite_hw: str = "") -> str:
     if entry.get("name"):
         return entry["name"]
     if "chain" in entry:
         raise ValueError("Chained tests require a 'name' field")
-    params = normalize_params(entry.get("params", {}))
+    params = normalize_params(entry.get("params", {}), entry_beat(entry, suite_hw))
     hw = entry.get("hw_config") or suite_hw
     return auto_test_name(params, hw_tag(hw))
 
@@ -208,10 +223,11 @@ def find_test_entry(json_path: str, test_name: str) -> dict:
             out = dict(entry)
             out["name"] = test_name
             out["hw_config"] = entry.get("hw_config") or suite_hw
+            beat = entry_beat(entry, suite_hw)
             if "chain" in entry:
-                out["chain"] = [normalize_params(p) for p in entry["chain"]]
+                out["chain"] = [normalize_params(p, beat) for p in entry["chain"]]
             else:
-                out["params"] = normalize_params(entry.get("params", {}))
+                out["params"] = normalize_params(entry.get("params", {}), beat)
             return out
     available = ", ".join(_entry_name(e, suite_hw) for e in suite.get("tests", []))
     raise ValueError(f"Test '{test_name}' not found in {json_path}. Available: {available}")

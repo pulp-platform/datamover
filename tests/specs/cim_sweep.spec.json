@@ -7,7 +7,6 @@
   "seed": 1,
   "axes": {
     "CIM_MODE": [0, 1],
-    "ROW_TILE_SIZE": [32, 64, 128, 192, 256],
     "SIZE_M": {"min": 1, "max": 8192},
     "SIZE_N": {"min": 1, "max": 8192}
   }
