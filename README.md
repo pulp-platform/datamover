@@ -5,6 +5,7 @@
 [![License HW](https://img.shields.io/badge/License%20HW-SHL--0.51-green)](https://solderpad.org/licenses/SHL-0.51/)
 [![License SW](https://img.shields.io/badge/License%20SW-Apache--2.0-orange)](https://www.apache.org/licenses/LICENSE-2.0)
 [![CI status](https://github.com/pulp-platform/datamover/actions/workflows/gitlab-ci.yml/badge.svg?branch=lkesting/konark)](https://github.com/pulp-platform/datamover/actions/workflows/gitlab-ci.yml?query=branch%3Alkesting%2Fkonark)
+[![RTL coverage](https://iis-git.ee.ethz.ch/github-mirror/datamover/badges/lkesting%2Fkonark/coverage.svg?job=coverage-default&key_text=coverage+default&key_width=110)](https://iis-git.ee.ethz.ch/github-mirror/datamover/-/jobs/artifacts/lkesting%2Fkonark/browse/simulation/vcs/cov/default/urgReport?job=coverage-default)
 
 **Ratha** (formerly Datamover) is a parameterizable HWPE that operates on tensors stored in TCDM, reading from one region and writing back the transformed result to another. Supported transformations are element-wise transpose, mapping a tensor to 'CIM layout', a blocked layout with 64 elements consumed by the Surya accelerator, and unfold/fold for MobileViT-style convolutions. This repository contains the SystemVerilog RTL, a Python golden model, and a RISC-V core driven testbench with JSON-defined test suites.
 
@@ -29,8 +30,8 @@ make run-all-tests
 - `datamover_model/` — Python package: `golden_model/` (transforms), `headers/` (C header emit), `workloads/` (suite parsing + `cli`), `testing/` (`runner`, `validate`, reports)
 - `configs/` — `hw_configs.json`
 - `tests/` — JSON test suites
-- `mk/config.mk` — HW config, workload defaults
-- `modelsim/` — simulation infra; RTL is compiled once per HW tag into `builds/<BUILD_TAG>/` and shared by every test, while per-test stimuli live in `tests/<TEST_NAME>/`
+- `mk/` — `config.mk` (HW config, workload defaults, build tag), `questa.mk` and `vcs.mk` (one simulation engine each; `vcs.mk` also holds the coverage targets)
+- `simulation/` — simulation infra and output. `questa/` holds `run_sim.tcl` and one compiled `builds/<BUILD_TAG>/` per HW tag; `vcs/` holds `cov.cfg`, one `builds/<BUILD_TAG>[_cov]/simv` per HW tag, and the coverage databases and reports (`cov_export/`, `cov/`). The SW build and the stimuli of each test live in `tests/<TEST_NAME>/`
 
 ## Hardware Parameters
 
@@ -92,7 +93,7 @@ riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
 
 `TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `GUI=0` for headless.
 
-JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`, `LAYOUT`, `IM2COL_IN`, `IM2COL_OUT`) and an optional per-test `hw_config`; the name is auto-generated when omitted. `datamover_model/workloads/suite.py` lists the defaults and the checks.
+JUnit/JSON/CSV reports land in `reports/`; each test runs in `simulation/tests/<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`, `LAYOUT`, `IM2COL_IN`, `IM2COL_OUT`) and an optional per-test `hw_config`; the name is auto-generated when omitted. `datamover_model/workloads/suite.py` lists the defaults and the checks.
 
 ## Cleanup
 

@@ -46,19 +46,24 @@ _NAME_ARGS := --DATAMOVER_MODE $(DATAMOVER_MODE) --TRANSP_MODE $(TRANSP_MODE) \
               --HW_CONFIG $(HW_CONFIG)
 TEST_NAME := $(or $(TEST_NAME),$(shell python -m datamover_model.workloads.name $(_NAME_ARGS)))
 
-MODELSIM_TEST_DIR := $(MODELSIM_DIR)/tests/$(TEST_NAME)
+SIM_DIR      := $(ROOT_DIR)/simulation
+SIM_TEST_DIR := $(SIM_DIR)/tests/$(TEST_NAME)
 
 # JSON-mode per-test HW params (written by sw-gen); overrides the HW_CONFIG defaults.
--include $(MODELSIM_TEST_DIR)/test_config.mk
+# The test dir carries them, so it cannot carry the build tag as well.
+-include $(SIM_TEST_DIR)/test_config.mk
 
 # ============================================================================
-# Build tag + shared build dir 
+# Build tag + simulation engine
 # ============================================================================
 BUILD_TAG := $(shell python -c "from datamover_model.workloads.suite import build_tag; print(build_tag({'BANDWIDTH':$(BANDWIDTH),'WORD_WIDTH':$(WORD_WIDTH),'ELEM_WIDTH':$(ELEM_WIDTH),'MISALIGNED_ACCESSES':$(MISALIGNED_ACCESSES)}, '$(strip $(STALL))'))")
-MODELSIM_BUILDS_DIR := $(MODELSIM_DIR)/builds/$(BUILD_TAG)
-BUILD_SENTINEL      := $(MODELSIM_BUILDS_DIR)/.built
 
 TOP_MODULE ?= tb_datamover
+
+# Engine for simulation can be questa (default) or vcs (e.g. for coverage report)
+ENGINE ?= questa
+COV    ?= 0
+export ENGINE COV
 
 # ============================================================================
 # Simulation defines
@@ -76,34 +81,25 @@ VLOG_DEFS  += $(SIM_DEFINES)
 RTL_DEPS := $(shell find rtl .bender/git/checkouts -type f \( -name '*.sv' -o -name '*.svh' -o -name '*.v' -o -name '*.vh' \) 2>/dev/null) \
             Bender.yml Bender.lock
 
-BUILD_FINGERPRINT := $(strip $(VLOG_DEFS)) | $(strip $(VLOG_FLAGS))
-ifneq ($(wildcard $(BUILD_SENTINEL)),)
-ifneq ($(strip $(file < $(BUILD_SENTINEL))),$(strip $(BUILD_FINGERPRINT)))
-$(info >>> Build flags changed for build $(BUILD_TAG); forcing rebuild)
-$(shell rm -f $(BUILD_SENTINEL))
-endif
-endif
-
+# See mk/questa.mk and mk/vcs.mk for actual commands
 .PHONY: build-sim force-build-sim run-sim
-build-sim: bender-checkout
-	@mkdir -p $(MODELSIM_BUILDS_DIR)
-	@flock -x $(MODELSIM_BUILDS_DIR)/.build.lock $(MAKE) --no-print-directory $(BUILD_SENTINEL)
+build-sim:       $(ENGINE)-build
+force-build-sim: $(ENGINE)-force-build
+run-sim:         $(ENGINE)-run
 
-force-build-sim:
-	@rm -f $(BUILD_SENTINEL) $(MODELSIM_BUILDS_DIR)/compile.tcl
-	@rm -rf $(MODELSIM_BUILDS_DIR)/work
-	@$(MAKE) build-sim
+# ============================================================================
+# Clean targets
+# ============================================================================
+.PHONY: clean-test clean-tests clean-builds clean-all-sim
 
-$(BUILD_SENTINEL): $(RTL_DEPS)
-	@echo ">>> Building RTL for build: $(BUILD_TAG)"
-	@mkdir -p $(MODELSIM_BUILDS_DIR)
-	@rm -f $(MODELSIM_BUILDS_DIR)/compile.tcl
-	$(BENDER_VERSION) script vsim --vlog-arg="$(VLOG_FLAGS)" $(VLOG_DEFS) >> $(MODELSIM_BUILDS_DIR)/compile.tcl
-	cd $(MODELSIM_DIR) && $(MAKE) BUILDPATH=builds/$(BUILD_TAG) TOP_MODULE=$(TOP_MODULE) lib build
-	@printf '%s\n' '$(BUILD_FINGERPRINT)' > $@
+clean-test:
+	rm -rf $(SIM_TEST_DIR)
 
-run-sim:
-	@mkdir -p $(MODELSIM_BUILDS_DIR)
-	@flock -s $(MODELSIM_BUILDS_DIR)/.build.lock \
-		$(MAKE) -C $(MODELSIM_DIR) TEST_NAME=$(TEST_NAME) BUILDPATH=builds/$(BUILD_TAG) \
-		TESTPATH=tests/$(TEST_NAME) VSIM_FLAGS="$(VSIM_FLAGS)" TOP_MODULE="$(TOP_MODULE)" run
+clean-tests:
+	rm -rf $(SIM_DIR)/tests
+
+clean-builds:
+	rm -rf $(SIM_DIR)/questa/builds $(SIM_DIR)/vcs/builds
+
+clean-all-sim: clean-tests clean-builds
+	rm -rf $(SIM_DIR)/vcs/cov $(SIM_DIR)/vcs/cov_export

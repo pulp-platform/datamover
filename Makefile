@@ -6,7 +6,6 @@ SHELL = /usr/bin/env bash
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 BENDER_VERSION  = bender-0.31.0
-MODELSIM_DIR        ?= $(ROOT_DIR)/modelsim
 
 VLOG_FLAGS += -svinputport=compat
 VLOG_FLAGS += -timescale 1ns/1fs
@@ -23,6 +22,10 @@ bender-checkout:
 # (build-sim / run-sim / BUILD_TAG / SIM_DEFINES live here).
 include mk/config.mk
 
+# Simulation engines: questa (default) and vcs, which also gives the coverage.
+include mk/questa.mk
+include mk/vcs.mk
+
 include sw/sw.mk
 
 .PHONY: validate-pipeline-inputs
@@ -35,25 +38,19 @@ ifndef TEST_NAME
 endif
 	@test -f "$(TEST_JSON)" || (echo "ERROR: TEST_JSON file not found: $(TEST_JSON)" >&2; exit 1)
 
-# build-sim / force-build-sim / run-sim live in mk/config.mk (build-once per BUILD_TAG).
-
-clean-sim:
-	rm -rf $(MODELSIM_TEST_DIR)
-
-clean-all-sim:
-	rm -rf $(MODELSIM_DIR)/builds $(MODELSIM_DIR)/tests
+# build-sim / force-build-sim / run-sim dispatch on ENGINE; see mk/config.mk.
 
 .PHONY: run-sim-generate run-sim-execute run-sim-pipeline
 run-sim-generate:
 	@$(MAKE) validate-pipeline-inputs TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)"
-	$(MAKE) TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)" clean-sim sw-gen
+	$(MAKE) TEST_JSON="$(TEST_JSON)" TEST_NAME="$(TEST_NAME)" clean-test sw-gen
 
 run-sim-execute:
 ifndef TEST_NAME
 	$(error TEST_NAME is required)
 endif
-	@test -f "$(MODELSIM_TEST_DIR)/test_config.mk" || \
-	    (echo "ERROR: missing $(MODELSIM_TEST_DIR)/test_config.mk; run run-sim-generate first" >&2; exit 1)
+	@test -f "$(SIM_TEST_DIR)/test_config.mk" || \
+	    (echo "ERROR: missing $(SIM_TEST_DIR)/test_config.mk; run run-sim-generate first" >&2; exit 1)
 	$(MAKE) TEST_NAME="$(TEST_NAME)" VSIM_FLAGS="$(VSIM_FLAGS)" build-sim sw-compile run-sim
 
 run-sim-pipeline:
@@ -133,7 +130,7 @@ test-fold:                 ; @$(MAKE) DATAMOVER_MODE=5 _quick-test
 
 _quick-test:
 	@echo "Test: $(TEST_NAME)  [HW_CONFIG=$(HW_CONFIG): BW=$(BANDWIDTH) WW=$(WORD_WIDTH) EW=$(ELEM_WIDTH) MA=$(MISALIGNED_ACCESSES)]"
-	$(MAKE) TEST_NAME="$(TEST_NAME)" clean-sim sw-gen
+	$(MAKE) TEST_NAME="$(TEST_NAME)" clean-test sw-gen
 	$(MAKE) TEST_NAME="$(TEST_NAME)" run-sim-execute
 
 REGIF_RDL     := rtl/ctrl/datamover_regif.rdl

@@ -9,6 +9,7 @@ variables:
 stages:
   - setup
   - test
+  - coverage
 
 setup:
   stage: setup
@@ -22,15 +23,18 @@ setup:
     paths:
       - .bender/
 
-.test-template:
-  stage: test
-  needs:
-    - setup
+.py-setup:
   before_script:
     - unset VIRTUAL_ENV
     - export UV_LINK_MODE=hardlink
     - uv sync --frozen --python 3.11
     - source .venv/bin/activate
+
+.test-template:
+  extends: .py-setup
+  stage: test
+  needs:
+    - setup
   script:
     - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG}
   artifacts:
@@ -38,6 +42,25 @@ setup:
     expire_in: 1 year
     paths:
       - reports/
+    reports:
+      junit: reports/junit/${SUITE_NAME}.xml
+
+# Coverage suites run on VCS. Only the default HW config gives a merged number.
+.cov-test-template:
+  extends: .test-template
+  variables:
+    ENGINE: vcs
+    COV: "1"
+  script:
+    - make run-test TEST_JSON=${TEST_JSON} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG} || RC=$?
+    - make vcs-cov-export COV_NAME=${SUITE_NAME}
+    - exit ${RC:-0}
+  artifacts:
+    when: always
+    expire_in: 1 year
+    paths:
+      - reports/
+      - simulation/vcs/cov_export/
     reports:
       junit: reports/junit/${SUITE_NAME}.xml
 
@@ -60,7 +83,7 @@ test:cim:
     SUITE_NAME: cim
 
 test:konark_ci:
-  extends: .test-template
+  extends: .cov-test-template
   variables:
     TEST_JSON: tests/konark_ci.json
     SUITE_NAME: konark_ci
@@ -78,13 +101,30 @@ test:stallability:
     SUITE_NAME: stallability
 
 test:im2col:
-  extends: .test-template
+  extends: .cov-test-template
   variables:
     TEST_JSON: tests/im2col.json
     SUITE_NAME: im2col
 
 test:mvit_im2col:
-  extends: .test-template
+  extends: .cov-test-template
   variables:
     TEST_JSON: tests/mvit_im2col.json
     SUITE_NAME: mvit_im2col
+
+coverage-default:
+  extends: .py-setup
+  stage: coverage
+  when: always
+  needs:
+    - test:konark_ci
+    - test:im2col
+    - test:mvit_im2col
+  script:
+    - make vcs-cov-report COV_NAME=default VCS_COV_DIRS='simulation/vcs/cov_export/*.vdb'
+  coverage: '/^Total coverage: (\d+\.\d+)%$/'
+  artifacts:
+    when: always
+    expire_in: 1 year
+    paths:
+      - simulation/vcs/cov/default/
