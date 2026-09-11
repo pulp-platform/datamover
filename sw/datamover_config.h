@@ -443,7 +443,7 @@ static inline __attribute__((always_inline)) void datamover_build_fold_cim(datam
 // Tensor (C,H,W) -> im2col matrix (Kh*Kw*C, H_out*W_out); row = ci*Kh*Kw+kh*Kw+kw, col = oh*W_out+ow.
 // conv_stride applies to both spatial dims. Three paths:
 // - CIM in, COL_CIM out: the im2col unit, 3x3 with a 1-pixel border, stride 1, W in 8..64.
-// - CHW in, stride 2, w_out >= 64: the im2col unit merges two half beats; COL_CIM needs
+// - CHW in, stride 2, w_out above 32: the im2col unit merges two half beats; COL_CIM needs
 //   w_out a multiple of 64, COL takes the leftover columns in a second job.
 // - CHW in, COL out: pass-through, beats of w_out pixels, no pad.
 static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
@@ -483,8 +483,8 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
     return;
   }
 
-  if (S == 2 && w_out >= BWE) {
-    uint32_t w_blocks = w_out / BWE;
+  if (S == 2 && w_out > BWE / 2) {
+    uint32_t w_blocks = (w_out < BWE) ? 1 : w_out / BWE;
     cfg->tot_len          = 2 * w_blocks * h_out * Kh * Kw * size_c;
     cfg->out_tot_len      = w_blocks * h_out * Kh * Kw * size_c;
     cfg->in_d0            = dm_stride_len(BWE, 2 * w_blocks);
@@ -563,6 +563,25 @@ static inline __attribute__((always_inline)) uint32_t datamover_build_im2col_lef
 
   cfg->in_ptr           = (uint32_t)(uintptr_t)in  + w_full * S;
   cfg->out_ptr          = (uint32_t)(uintptr_t)out + w_full;
+  if (S == 2 && w_len > BWE / 2) {
+    cfg->tot_len          = 2 * tot_len;
+    cfg->out_tot_len      = tot_len;
+    cfg->in_d0            = dm_stride_len(BWE, 2);
+    cfg->in_d1            = dm_stride_len(S * size_w, h_out);
+    cfg->in_d2            = dm_stride_len(1, Kw);
+    cfg->in_d3            = dm_d3_stride_len(size_w, Kh);
+    cfg->out_d0           = dm_stride_len(w_out, h_out);
+    cfg->out_d1           = dm_stride_len(row_bytes, Kw);
+    cfg->out_d2           = dm_stride_len(Kw * row_bytes, Kh);
+    cfg->out_d3           = dm_d3_stride_len(Kh * Kw * row_bytes, size_c);
+    dm_set_d4(cfg, 0, size_h * size_w);
+    cfg->matrix_dim       = dm_matrix_dim(w_len, h_out);
+    cfg->channels         = dm_channels(tot_len * BWE, size_c);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
+                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PACK, 1);
+    return 1;
+  }
   cfg->tot_len          = tot_len;
   cfg->in_d0            = dm_stride_len(S * size_w, h_out);
   cfg->in_d1            = dm_stride_len(1, Kw);

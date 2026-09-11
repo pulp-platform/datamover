@@ -202,8 +202,8 @@ module datamover_engine
   // Transpose drains write_len valid rows of the last tile
   assign strb_transpose = (STRB_ONE << write_len) - 1;
 
-  // The im2col unit fills every beat; pass-through beats hold tensor_size_n elements.
-  assign strb_im2col = im2col_unit ? '1 :
+  // The 3x3 unit fills every beat; other im2col beats hold tensor_size_n elements.
+  assign strb_im2col = (im2col_unit && ctrl_i.conv_stride == 1) ? '1 :
                        (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
   assign strb_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
