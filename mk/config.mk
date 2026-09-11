@@ -11,6 +11,7 @@
 # (test-copy, test-transpose, ...). JSON suites carry their own hw_config.
 # Example: make test-transpose HW_CONFIG=bw128_w32
 HW_CONFIG ?= default
+export HW_CONFIG
 
 define load_hw_config
 $(shell python -c "import json,sys;c=json.load(open('configs/hw_configs.json'));n='$(1)';d=c.get(n);d or (print(f'ERROR: HW config {n!r} not found. Available: {list(c.keys())}',file=sys.stderr),sys.exit(1));print(' '.join(f'{k}={v}' for k,v in d.items()))")

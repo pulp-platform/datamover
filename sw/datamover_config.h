@@ -67,7 +67,7 @@ typedef enum {
   DATAMOVER_TRANSP_4ELEM = 0x4
 } datamover_transp_mode_t;
 
-// Tensor layouts. CHW is row-major. CIM is the 64-column block layout of mode 2: an
+// Tensor layouts. CHW is row-major. CIM is the block layout of mode 2, one beat per column block: an
 // activation is the (C, pixels) matrix, a token matrix is (4N, C).
 typedef enum {
   DATAMOVER_LAYOUT_CHW = 0,
@@ -75,18 +75,18 @@ typedef enum {
 } datamover_layout_t;
 
 // im2col output: COL makes each patch a column (torch unfold, Surya operand B), ROW makes
-// each patch a row (im2row, Surya operand A), *_CIM is the same in 64-column blocks.
+// each patch a row (im2row, Surya operand A), *_CIM is the same in column blocks of one beat.
 typedef enum {
   DATAMOVER_IM2COL_IN_CHW = 0,
   DATAMOVER_IM2COL_IN_HWC = 1,
-  DATAMOVER_IM2COL_IN_CIM = 2   // (C, pixels) in 64-pixel blocks
+  DATAMOVER_IM2COL_IN_CIM = 2   // (C, pixels) in pixel blocks of one beat
 } datamover_im2col_in_t;
 
 typedef enum {
   DATAMOVER_IM2COL_OUT_COL     = 0,  // (Kh*Kw*C, pixels)
   DATAMOVER_IM2COL_OUT_ROW     = 1,  // (pixels, C*Kh*Kw)
-  DATAMOVER_IM2COL_OUT_ROW_CIM = 2,  // (pixels, C*Kh*Kw) in 64-column blocks
-  DATAMOVER_IM2COL_OUT_COL_CIM = 3   // (Kh*Kw*C, pixels) in 64-pixel blocks
+  DATAMOVER_IM2COL_OUT_ROW_CIM = 2,  // (pixels, C*Kh*Kw) in column blocks of one beat
+  DATAMOVER_IM2COL_OUT_COL_CIM = 3   // (Kh*Kw*C, pixels) in pixel blocks of one beat
 } datamover_im2col_out_t;
 
 typedef enum {
@@ -393,7 +393,7 @@ static inline __attribute__((always_inline)) void datamover_build_fold(datamover
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_FOLD, 0x3, 0xF, DATAMOVER_TRANSP_1ELEM);
 }
 
-// CIM layout: (C, pixels) in 64-pixel blocks -> (4N, C) in 64-column blocks, channels
+// CIM layout: (C, pixels) in pixel blocks of one beat -> (4N, C) in column blocks of one beat, channels
 // [c_off, c_off + c_len). c_len is a multiple of BANDWIDTH_ELEMS, or the leftover below it:
 // the last block then has a row pitch of c_len.
 static inline __attribute__((always_inline)) void datamover_build_unfold_cim(datamover_cfg_t *cfg, const void *in, const void *out,
@@ -455,9 +455,9 @@ static inline __attribute__((always_inline)) void datamover_build_fold_cim(datam
 
 // Tensor (C,H,W) -> im2col matrix (Kh*Kw*C, H_out*W_out); row = ci*Kh*Kw+kh*Kw+kw, col = oh*W_out+ow.
 // conv_stride applies to both spatial dims. Three paths:
-// - CIM in, COL_CIM out: the im2col unit, 3x3 with a 1-pixel border, stride 1, W in 8..64.
+// - CIM in, COL_CIM out: the im2col unit, 3x3 with a 1-pixel border, stride 1, W a power of two from 8 to the beat.
 // - CHW in, stride 2, w_out above 32: the im2col unit merges two half beats; COL_CIM needs
-//   w_out a multiple of 64, COL takes the leftover columns in a second job.
+//   w_out a multiple of the beat, COL takes the leftover columns in a second job.
 // - CHW in, COL out: pass-through, beats of w_out pixels, no pad.
 static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w,

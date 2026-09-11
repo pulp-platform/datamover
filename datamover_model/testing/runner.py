@@ -50,6 +50,7 @@ from datamover_model.workloads.suite import (
     build_tag,
     find_test_entry,
     list_tests,
+    default_hw_config,
     load_hw_config,
 )
 
@@ -242,8 +243,13 @@ def _filter_tests(tests: List[dict], only: Optional[str], skip: Optional[str]) -
     return tests
 
 
-def _suite_tests(json_file: str) -> List[dict]:
-    return [{"name": n} for n in list_tests(json_file)]
+def _suite_tests(json_file: str, report_skips: bool = True) -> List[dict]:
+    """The runnable entries; an entry that the profile rejects is skipped, and printed when `report_skips`."""
+    skipped: list = []
+    tests = [{"name": n} for n in list_tests(json_file, skipped)]
+    for entry, reason in skipped if report_skips else ():
+        _CONSOLE.print(f"[yellow]skip[/] {json.dumps(entry.get('params') or entry.get('chain'))}: {reason}")
+    return tests
 
 
 def _suite_make_args(json_file: str) -> str:
@@ -448,7 +454,8 @@ def run_suite(args, json_file: str, state: "_LiveState", started_q) -> Tuple[int
     results.sort(key=lambda r: r.name)
 
     if not args.no_report:
-        rp = build_default_report_paths(json_file, args.test, args.report_dir)
+        hw = _suite_meta(json_file).get("hw_config") or default_hw_config()
+        rp = build_default_report_paths(json_file, args.test, args.report_dir, hw)
         generate_junit_report(results, rp["junit"])
         generate_json_report(results, rp["json"])
         generate_metrics_csv(results, rp["csv"])
@@ -490,7 +497,7 @@ def _print_summary(all_results: List[TestResult], report_dir: str, planned: int,
 def _count_planned(args, suites: List[str]) -> int:
     total = 0
     for s in suites:
-        tests = _suite_tests(s)
+        tests = _suite_tests(s, report_skips=False)
         if args.test:
             tests = [t for t in tests if t["name"] == args.test]
         tests = _filter_tests(tests, args.only, args.skip)
@@ -511,7 +518,7 @@ def prebuild_hw_configs(suites: List[str], parallel: int = 1) -> int:
     builds: List[Tuple[str, str, str]] = []
     for suite in suites:
         cfg = _suite_meta(suite)
-        suite_hw = cfg.get("hw_config") or "default"
+        suite_hw = cfg.get("hw_config") or default_hw_config()
         make_args = cfg.get("make_args", "") or ""
         stall = next((t.split("=", 1)[1] for t in make_args.split() if t.startswith("STALL=")), "0.0")
         for test in cfg.get("tests", []):

@@ -84,8 +84,9 @@ def generate_metrics_csv(results: List[TestResult], output_file: str):
             )
 
 
-def build_default_report_paths(json_file: str, test: Optional[str], report_dir: str) -> dict:
-    suite_name = Path(json_file).stem
+def build_default_report_paths(json_file: str, test: Optional[str], report_dir: str, hw: str = "") -> dict:
+    """Report stem `<suite>[_<hw>][__<test>]`; `hw` is the profile when it is not `default`."""
+    suite_name = Path(json_file).stem + (f"_{hw}" if hw and hw != "default" else "")
     suffix = f"__{test}" if test else ""
     return {
         "junit": os.path.join(report_dir, "junit", f"{suite_name}{suffix}.xml"),

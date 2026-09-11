@@ -49,7 +49,7 @@ def cim_activation(tensor, block):
     return np.asarray(cim_layout(tensor.reshape(c, -1), block, c, tensor.size // c)).reshape(-1)
 
 
-def unfold(tensor, patch_size, layout="CHW", block=64):
+def unfold(tensor, patch_size, block, layout="CHW"):
     # (C, H, W) -> (PATCH_SIZE, NUM_PATCHES, C); layout CIM returns the (PATCH_SIZE*NUM_PATCHES, C)
     # token matrix in CIM layout with column blocks of `block`, flat.
     channels, height, width = tensor.shape
@@ -73,7 +73,7 @@ def unfold(tensor, patch_size, layout="CHW", block=64):
     return tensor_unfolded
 
 
-def fold(tensor, patch_size, num_channels, height, width, layout="CHW", block=64):
+def fold(tensor, patch_size, num_channels, height, width, block, layout="CHW"):
     # (PATCH_SIZE, NUM_PATCHES, C) -> (C, H, W); folded dims are num_channels, height, width.
     # layout CIM takes and returns the CIM layouts of unfold and cim_activation.
     patch_sidelength = int(math.sqrt(patch_size))
@@ -97,7 +97,7 @@ def fold(tensor, patch_size, num_channels, height, width, layout="CHW", block=64
     return tensor_folded
 
 
-def im2col(tensor, kernel_h, kernel_w, stride=1, padding=0, in_layout="CHW", out_layout="COL", block=64):
+def im2col(tensor, kernel_h, kernel_w, block, stride=1, padding=0, in_layout="CHW", out_layout="COL"):
     # out_layout COL: each patch is a column, (Kh*Kw*C, H_out*W_out) as torch unfold;
     #   row = c*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow. Surya operand B.
     # out_layout ROW: each patch is a row, (H_out*W_out, C*Kh*Kw). Surya operand A.

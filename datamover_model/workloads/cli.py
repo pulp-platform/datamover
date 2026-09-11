@@ -32,7 +32,9 @@ from datamover_model.workloads.suite import (
     auto_test_name,
     find_test_entry,
     list_tests,
+    align_elems,
     beat_elems,
+    default_hw_config,
     load_hw_config,
     load_test_suite,
     normalize_params,
@@ -60,7 +62,7 @@ def _resolve(args):
         if not args.test_name:
             return None, None, None
         entry = find_test_entry(args.json, args.test_name)
-        hw_name = entry.get("hw_config") or load_test_suite(args.json).get("hw_config")
+        hw_name = entry.get("hw_config") or load_test_suite(args.json).get("hw_config") or default_hw_config()
         if not hw_name:
             raise ValueError(f"Test '{args.test_name}' has no 'hw_config' (and no default in {args.json})")
         return entry, load_hw_config(hw_name), hw_name
@@ -70,7 +72,7 @@ def _resolve(args):
     if missing:
         raise SystemExit("CLI mode requires HW params: " + ", ".join(f"--{k}" for k in missing))
     hw = {k: getattr(args, k) for k in HW_KEYS}
-    params = normalize_params(raw, beat_elems(hw))
+    params = normalize_params(raw, beat_elems(hw), align_elems(hw))
     name = args.test_name or auto_test_name(params)
     return {"name": name, "params": params}, hw, "cli"
 

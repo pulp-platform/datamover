@@ -15,7 +15,15 @@ suite.auto_test_name.
 import argparse
 import sys
 
-from datamover_model.workloads.suite import PARAM_DEFAULTS, auto_test_name, hw_tag, normalize_params
+from datamover_model.workloads.suite import (
+    PARAM_DEFAULTS,
+    align_elems,
+    auto_test_name,
+    beat_elems,
+    hw_tag,
+    load_hw_config,
+    normalize_params,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,7 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     raw = {k: getattr(args, k) for k in PARAM_DEFAULTS if getattr(args, k) is not None}
-    print(auto_test_name(normalize_params(raw), hw_tag(args.HW_CONFIG)))
+    hw = load_hw_config(args.HW_CONFIG or "default")
+    print(auto_test_name(normalize_params(raw, beat_elems(hw), align_elems(hw)), hw_tag(args.HW_CONFIG)))
     return 0
 
 

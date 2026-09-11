@@ -78,16 +78,16 @@ def golden_for(params: dict, in_tensor: np.ndarray, beat: int):
     layout = params["LAYOUT"]
     if mode == 4:
         mem_in = cim_activation(in_tensor, beat) if layout == "CIM" else in_tensor
-        return mem_in, unfold(in_tensor, PATCH_SIZE, layout, beat)
+        return mem_in, unfold(in_tensor, PATCH_SIZE, beat, layout)
     if mode == 5:
         # Fold consumes an unfolded tensor; synthesize it so the golden round-trips.
-        unfolded = unfold(in_tensor, PATCH_SIZE, layout, beat)
-        return unfolded, fold(unfolded, PATCH_SIZE, c, m, n, layout, beat)
+        unfolded = unfold(in_tensor, PATCH_SIZE, beat, layout)
+        return unfolded, fold(unfolded, PATCH_SIZE, c, m, n, beat, layout)
     if mode == 6:
         mem_in = cim_activation(in_tensor, beat) if params["IM2COL_IN"] == "CIM" else in_tensor
-        return mem_in, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"],
+        return mem_in, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"], beat,
                               params["CONV_STRIDE"], params["CONV_PAD"],
-                              params["IM2COL_IN"], params["IM2COL_OUT"], beat)
+                              params["IM2COL_IN"], params["IM2COL_OUT"])
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 

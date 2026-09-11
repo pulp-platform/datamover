@@ -7,6 +7,7 @@
 """JSON suite loading, parameter defaults, and test-name resolution."""
 
 import json
+import os
 from pathlib import Path
 
 HW_KEYS = ("BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MISALIGNED_ACCESSES")
@@ -23,9 +24,9 @@ PARAM_DEFAULTS = {
     "KERNEL_SIZE_W": 1,
     "CONV_STRIDE": 1,
     "CONV_PAD": 0,
-    "LAYOUT": "CHW",      # unfold and fold: CHW row-major, or CIM 64-column blocks on both sides
-    "IM2COL_IN": "CHW",   # image layout: CHW, HWC, or CIM ((C, pixels) in 64-pixel blocks)
-    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_CIM: one row per patch; COL_CIM: COL in 64-pixel blocks
+    "LAYOUT": "CHW",      # unfold and fold: CHW row-major, or CIM column blocks of one beat on both sides
+    "IM2COL_IN": "CHW",   # image layout: CHW, HWC, or CIM ((C, pixels) in pixel blocks of one beat)
+    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_CIM: one row per patch; COL_CIM: COL in pixel blocks of one beat
 }
 
 
@@ -68,8 +69,18 @@ def beat_elems(hw: dict) -> int:
     return payload_bits // hw["ELEM_WIDTH"]
 
 
-def normalize_params(raw: dict, beat: int = 64) -> dict:
-    """Defaults, types, and the checks of the HAL paths; `beat` is the block width in elements."""
+def align_elems(hw: dict) -> int:
+    """Elements per aligned access: one word without misaligned accesses, else one element."""
+    return 1 if hw["MISALIGNED_ACCESSES"] else hw["WORD_WIDTH"] // hw["ELEM_WIDTH"]
+
+
+def normalize_params(raw: dict, beat: int, align: int = 1) -> dict:
+    """Defaults, types, and the checks of the HAL paths.
+
+    `beat` is the block width in elements. `align` is the row alignment the streamer needs:
+    a row of a strided access starts and ends on a word when the profile has no misaligned
+    accesses.
+    """
     out = dict(PARAM_DEFAULTS)
     for k, v in raw.items():
         if k not in PARAM_DEFAULTS:
@@ -89,7 +100,29 @@ def normalize_params(raw: dict, beat: int = 64) -> dict:
         _validate_im2col_params(out, beat)
     if out["DATAMOVER_MODE"] in (4, 5):
         _validate_unfold_params(out, beat)
+    _validate_alignment(out, align)
     return out
+
+
+def _validate_alignment(params: dict, align: int) -> None:
+    """Every row of a strided access is a whole number of words without misaligned accesses."""
+    if align == 1:
+        return
+    mode, m, n = params["DATAMOVER_MODE"], params["SIZE_M"], params["SIZE_N"]
+    t = params["TRANSP_MODE"]
+    rows = {1: (n, m * t), 2: (n,), 3: (n, m * t)}.get(mode, ())  # a transposed row holds m groups of t
+    if mode in (4, 5):
+        # The token matrix has rows of SIZE_C; the row-major image has rows of W.
+        rows = (params["SIZE_C"],) + ((n,) if params["LAYOUT"] == "CHW" else ())
+    if mode == 6 and params["IM2COL_IN"] != "CIM" and params["IM2COL_OUT"] != "ROW_CIM":
+        # The pass-through and the stride-2 paths read a beat at every kernel column offset.
+        kw, s = params["KERNEL_SIZE_W"], params["CONV_STRIDE"]
+        if kw != 1:
+            raise ValueError(f"row-major im2col needs KERNEL_SIZE_W 1 without misaligned accesses, got {kw}")
+        rows = (n, (n - kw) // s + 1)
+    for r in rows:
+        if r % align != 0:
+            raise ValueError(f"a row of {r} elements needs a multiple of {align} without misaligned accesses")
 
 
 STR_PARAMS = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
@@ -120,8 +153,9 @@ def _validate_im2row_params(params: dict, beat: int) -> None:
         raise ValueError(f"ROW_CIM needs kernel == stride and no pad, got K={k} S={s} pad={pad}")
     if params["IM2COL_IN"] == "CHW" and (beat % k != 0 or (k * k) % beat != 0):
         raise ValueError(f"CHW ROW_CIM needs a kernel side that divides {beat} with K*K a multiple of it, got {k}")
-    if params["IM2COL_IN"] == "HWC" and (k * c != 48 or k % 4 != 0):
-        raise ValueError(f"HWC ROW_CIM needs 48-byte patch rows and a kernel side that is a multiple of 4, got K={k} C={c}")
+    if params["IM2COL_IN"] == "HWC" and (k * c != 48 or k % 4 != 0 or beat != 64):
+        # TODO the HWC builder packs four 48-byte patch rows into three 64-element blocks; other beats need a generic scheme (B15)
+        raise ValueError(f"HWC ROW_CIM needs a 64-element beat, 48-byte patch rows and a kernel side that is a multiple of 4, got beat={beat} K={k} C={c}")
 
 
 def _validate_im2col_params(params: dict, beat: int) -> None:
@@ -190,18 +224,42 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
     return base
 
 
+def default_hw_config() -> str:
+    """The profile of an entry without `hw_config`: the HW_CONFIG variable of make, else `default`."""
+    return os.environ.get("HW_CONFIG") or "default"
+
+
+def entry_hw_config(entry: dict, suite_hw: str = "") -> str:
+    return entry.get("hw_config") or suite_hw or default_hw_config()
+
+
+def entry_geometry(entry: dict, suite_hw: str = "") -> tuple:
+    """(beat, align) of the profile of the entry."""
+    hw = load_hw_config(entry_hw_config(entry, suite_hw))
+    return beat_elems(hw), align_elems(hw)
+
+
 def entry_beat(entry: dict, suite_hw: str = "") -> int:
-    return beat_elems(load_hw_config(entry.get("hw_config") or suite_hw or "default"))
+    return entry_geometry(entry, suite_hw)[0]
 
 
 def _entry_name(entry: dict, suite_hw: str = "") -> str:
-    if entry.get("name"):
-        return entry["name"]
+    """The test name; every entry, named or not, passes the checks of its profile.
+
+    An explicit name gets the profile tag like an auto name, so two profiles never share a test dir.
+    """
+    beat, align = entry_geometry(entry, suite_hw)
+    tag = hw_tag(entry_hw_config(entry, suite_hw))
     if "chain" in entry:
-        raise ValueError("Chained tests require a 'name' field")
-    params = normalize_params(entry.get("params", {}), entry_beat(entry, suite_hw))
-    hw = entry.get("hw_config") or suite_hw
-    return auto_test_name(params, hw_tag(hw))
+        if not entry.get("name"):
+            raise ValueError("Chained tests require a 'name' field")
+        for p in entry["chain"]:
+            normalize_params(p, beat, align)
+        return entry["name"] + (f"_{tag}" if tag else "")
+    params = normalize_params(entry.get("params", {}), beat, align)
+    if entry.get("name"):
+        return entry["name"] + (f"_{tag}" if tag else "")
+    return auto_test_name(params, tag)
 
 
 def load_test_suite(json_path: str) -> dict:
@@ -209,25 +267,39 @@ def load_test_suite(json_path: str) -> dict:
         return json.load(f)
 
 
-def list_tests(json_path: str) -> list:
+def list_tests(json_path: str, skipped: list = None) -> list:
+    """Test names. An entry that the profile rejects goes to `skipped` as (entry, reason) when
+    the caller passes a list, else the error propagates."""
     suite = load_test_suite(json_path)
     suite_hw = suite.get("hw_config", "")
-    return [_entry_name(e, suite_hw) for e in suite.get("tests", [])]
+    names = []
+    for e in suite.get("tests", []):
+        try:
+            names.append(_entry_name(e, suite_hw))
+        except ValueError as err:
+            if skipped is None:
+                raise
+            skipped.append((e, str(err)))
+    return names
 
 
 def find_test_entry(json_path: str, test_name: str) -> dict:
     suite = load_test_suite(json_path)
     suite_hw = suite.get("hw_config", "")
     for entry in suite.get("tests", []):
-        if _entry_name(entry, suite_hw) == test_name:
+        try:
+            name = _entry_name(entry, suite_hw)
+        except ValueError:
+            continue  # the profile rejects this entry; list_tests reports it
+        if name == test_name:
             out = dict(entry)
             out["name"] = test_name
-            out["hw_config"] = entry.get("hw_config") or suite_hw
-            beat = entry_beat(entry, suite_hw)
+            out["hw_config"] = entry_hw_config(entry, suite_hw)
+            beat, align = entry_geometry(entry, suite_hw)
             if "chain" in entry:
-                out["chain"] = [normalize_params(p, beat) for p in entry["chain"]]
+                out["chain"] = [normalize_params(p, beat, align) for p in entry["chain"]]
             else:
-                out["params"] = normalize_params(entry.get("params", {}), beat)
+                out["params"] = normalize_params(entry.get("params", {}), beat, align)
             return out
-    available = ", ".join(_entry_name(e, suite_hw) for e in suite.get("tests", []))
+    available = ", ".join(list_tests(json_path, []))
     raise ValueError(f"Test '{test_name}' not found in {json_path}. Available: {available}")
