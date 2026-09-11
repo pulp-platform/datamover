@@ -40,6 +40,21 @@ make tests TEST_JSON=tests/generated/cim_sweep.json  # run one generated suite
 }
 ```
 
+A value may be a string. The generator evaluates the string as a Python expression after the
+draw, with the drawn values as variables, so one param follows from others: `"SIZE_N": "2 ** _LOG2W"`.
+An axis whose name starts with `_` is a helper variable for such expressions and does not become a
+param. A group entry may hold expressions too, so one entry fixes the relations of one datapath and
+the free axes draw the rest. A spec may carry `"constraints"`, a list of expressions that every
+candidate must satisfy, to state a limit that spans several axes:
+
+```jsonc
+  "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"CIM\""],
+  "axes": {
+    "_LOG2W": {"min": 3, "max": 6},
+    "PATH": [{"IM2COL_IN": "CIM", "SIZE_N": "2 ** _LOG2W", "SIZE_M": "_HB * 64 // SIZE_N"}]
+  }
+```
+
 The `op` key sets `DATAMOVER_MODE`; the axes set the other params. The sweep validation rejects a
 combination for the same reason the normal test generation rejects it, so the counts the generator
 prints document the legal envelope of each mode.

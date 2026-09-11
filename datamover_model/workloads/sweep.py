@@ -29,8 +29,14 @@ the full range, unlike `"multiple_of"`, which snaps every draw. In addition, the
 always emits every multiple of `tile` in the range as a guaranteed corner case (see
 `tile_candidates`), so the exact-tile sizes always get exercised.
 
-This module does not re-encode any constraint. `validate_candidate` delegates every
-legality check to the layers that already enforce the checks.
+A value may be a string. The module evaluates the string as a Python expression after
+the draw, with the drawn values as variables, so one param can follow from others:
+`"SIZE_N": "2 ** _LOG2W"`. An axis whose name starts with `_` is a helper variable for
+such expressions; the module drops it from the candidate. A spec may also carry
+`"constraints"`, a list of expressions that every candidate must satisfy.
+
+This module does not re-encode any constraint of the target. `validate_candidate`
+delegates every legality check to the layers that already enforce the checks.
 """
 
 import argparse
@@ -64,6 +70,8 @@ OP_TO_PARAMS = {
 }
 
 OPS = tuple(sorted(OP_TO_PARAMS))
+# String-valued params that are values, not expressions.
+STR_KEEP = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
 DEFAULT_MAX_TESTS = 30
 
 
@@ -185,6 +193,33 @@ def expand_groups(cand: dict) -> dict:
     return out
 
 
+def evaluate(expr: str, cand: dict):
+    """One expression over the candidate values."""
+    return eval(expr, {"__builtins__": {}}, dict(cand))
+
+
+def derive(cand: dict) -> dict:
+    """Evaluate string values against the other values, then drop the `_` helpers.
+
+    A string may name another string value, so the pass repeats until no string is left.
+    """
+    out = dict(cand)
+    for _ in range(len(out)):
+        pending = {k: v for k, v in out.items() if isinstance(v, str) and k not in STR_KEEP}
+        if not pending:
+            break
+        for k, v in pending.items():
+            try:
+                out[k] = evaluate(v, out)
+            except (NameError, TypeError):
+                pass
+    return {k: v for k, v in out.items() if not k.startswith("_")}
+
+
+def satisfies(cand: dict, constraints: list) -> bool:
+    return all(evaluate(c, cand) for c in constraints)
+
+
 def finite_values(value):
     """The full value list of a finite axis, or None for a random range."""
     if isinstance(value, list):
@@ -199,11 +234,13 @@ def iter_candidates(spec: dict):
     axes = spec["axes"]
     names = list(axes)
     excludes = spec.get("exclude", [])
+    constraints = spec.get("constraints", [])
     rng = random.Random(spec.get("seed", 0))
     budget = spec.get("max_tests", DEFAULT_MAX_TESTS) * OVERSAMPLE
 
     def keep(cand: dict) -> bool:
-        return not any(all(cand.get(k) == v for k, v in ex.items()) for ex in excludes)
+        excluded = any(all(cand.get(k) == v for k, v in ex.items()) for ex in excludes)
+        return not excluded and satisfies(cand, constraints)
 
     finite = [finite_values(axes[n]) for n in names]
     if all(v is not None for v in finite):
@@ -212,23 +249,23 @@ def iter_candidates(spec: dict):
             total *= len(v)
         if total <= budget:
             for combo in itertools.product(*finite):
-                cand = expand_groups(dict(zip(names, combo)))
+                cand = derive(expand_groups(dict(zip(names, combo))))
                 if keep(cand):
                     yield cand
             return
 
     if spec.get("boundaries", True):
         for cand in boundary_candidates(spec):
-            cand = expand_groups(cand)
+            cand = derive(expand_groups(cand))
             if keep(cand):
                 yield cand
         for cand in tile_candidates(spec):
-            cand = expand_groups(cand)
+            cand = derive(expand_groups(cand))
             if keep(cand):
                 yield cand
 
     for _ in range(budget):
-        cand = expand_groups({n: draw_axis(axes[n], rng) for n in names})
+        cand = derive(expand_groups({n: draw_axis(axes[n], rng) for n in names}))
         if keep(cand):
             yield cand
 

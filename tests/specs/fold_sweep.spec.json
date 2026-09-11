@@ -2,11 +2,14 @@
   "name": "fold_sweep",
   "op": "fold",
   "hw_config": "default",
-  "max_tests": 30,
+  "description": "Fold of 2x2 patches in the row-major or the 64-column block layout. The constraint is the 16-bit d0 stride of the row-major output.",
+  "max_tests": 50,
   "seed": 1,
+  "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"CIM\""],
   "axes": {
-    "SIZE_C": [1, 2, 3, 48, 64],
-    "SIZE_M": {"min": 2, "max": 64, "multiple_of": 2},
-    "SIZE_N": {"min": 2, "max": 64, "multiple_of": 2}
+    "LAYOUT": ["CHW", "CIM"],
+    "SIZE_C": {"min": 1, "max": 256},
+    "SIZE_M": {"min": 2, "max": 128, "multiple_of": 2},
+    "SIZE_N": {"min": 2, "max": 128, "multiple_of": 2}
   }
 }
