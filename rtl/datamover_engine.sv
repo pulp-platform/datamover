@@ -54,7 +54,8 @@ module datamover_engine
   // Counter widths
   //   TILE_CNT    holds ceil(tensor_size / NB_ELEMENTS)
   //   ACCESS_CNT  holds the output beats of one job
-  localparam int unsigned TILE_CNT_WIDTH   = TENSOR_SIZE_WIDTH - NB_ELEM_LOG2 + 1;
+  // A 4-element transpose holds NB_ELEMENTS / 4 rows per tile, so the tile count needs two more bits.
+  localparam int unsigned TILE_CNT_WIDTH   = TENSOR_SIZE_WIDTH - NB_ELEM_LOG2 + 3;
   localparam int unsigned ACCESS_CNT_BASE  = (TENSOR_SIZE_WIDTH + NB_ELEM_LOG2 > TOTAL_ELEM_WIDTH) ?
                                              TENSOR_SIZE_WIDTH + NB_ELEM_LOG2 : TOTAL_ELEM_WIDTH;
   localparam int unsigned ACCESS_CNT_WIDTH = ACCESS_CNT_BASE + 2;
@@ -78,6 +79,9 @@ module datamover_engine
   logic [ACCESS_CNT_WIDTH-1:0]            total_accesses_copy_mode, total_accesses_cim, acc_target;
   logic [TILE_CNT_WIDTH-1:0]              inner_tiles, outer_tiles;
   logic [NB_ELEM_LOG2:0]                  inner_leftover, outer_leftover;
+  logic [1:0]                             group_log2;
+  logic [$clog2(NB_ELEM_LOG2+1)-1:0]      inner_rows_log2;
+  logic [TENSOR_SIZE_WIDTH-1:0]           inner_size;
   logic [TILE_CNT_WIDTH-1:0]              inner_tile_q, inner_tile_d, outer_tile_q, outer_tile_d;
   logic [TENSOR_SIZE_WIDTH-1:0]           pass_cnt_q, pass_cnt_d, num_passes;
   logic [NB_ELEM_LOG2:0]                  inner_len, outer_len, fill_len, drain_len, phase_len;
@@ -172,12 +176,18 @@ module datamover_engine
   // The buffer modes walk a grid of NB_ELEMENTS tiles, inner dimension first, num_passes times.
   // The inner dimension is the channel count of unfold and fold, the m size of the other modes.
   // The outer dimension is the n size. A pass repeats the grid for one image row (unfold, fold).
+  // A transpose of t-element groups fills t buffer rows per input row, so a tile holds
+  // NB_ELEMENTS / t input rows and the leftover of the inner dimension counts t buffer rows per row.
   assign buffer_mode     = ctrl_i.transp_mode != TRANSP_NONE;
   assign unfold_fold     = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD) || (ctrl_i.datamover_mode == DATAMOVER_FOLD);
-  assign inner_tiles     = unfold_fold ? (ctrl_i.num_channels + NB_ELEMENTS - 1) >> NB_ELEM_LOG2 :
-                                         (ctrl_i.tensor_size_m + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;
+  assign group_log2      = unfold_fold                    ? 2'd0 :
+                           ctrl_i.transp_stride == 3'd4   ? 2'd2 :
+                           ctrl_i.transp_stride == 3'd2   ? 2'd1 : 2'd0;
+  assign inner_rows_log2 = NB_ELEM_LOG2 - group_log2;
+  assign inner_size      = unfold_fold ? ctrl_i.num_channels : ctrl_i.tensor_size_m;
+  assign inner_tiles     = (inner_size + (TENSOR_SIZE_WIDTH'(1) << inner_rows_log2) - 1) >> inner_rows_log2;
   assign outer_tiles     = (ctrl_i.tensor_size_n + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;
-  assign inner_leftover  = unfold_fold ? ctrl_i.num_channels & (NB_ELEMENTS - 1) : ctrl_i.tensor_size_m & (NB_ELEMENTS - 1);
+  assign inner_leftover  = (inner_size & ((TENSOR_SIZE_WIDTH'(1) << inner_rows_log2) - 1)) << group_log2;
   assign outer_leftover  = ctrl_i.tensor_size_n & (NB_ELEMENTS - 1);
   assign num_passes      = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? TENSOR_SIZE_WIDTH'(1) : ctrl_i.tensor_size_m;
   assign last_inner_tile = (inner_tile_q == inner_tiles - 1);

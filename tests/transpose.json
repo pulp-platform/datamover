@@ -39,6 +39,8 @@
     {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "SIZE_M": 2, "SIZE_N": 64}},
     {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "SIZE_M": 6, "SIZE_N": 64}},
     {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 4, "SIZE_M": 200, "SIZE_N": 96}},
-    {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "SIZE_M": 130, "SIZE_N": 64}}
+    {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "SIZE_M": 130, "SIZE_N": 64}},
+    {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "SIZE_M": 102, "SIZE_N": 120}},
+    {"params": {"DATAMOVER_MODE": 1, "TRANSP_MODE": 2, "SIZE_M": 581, "SIZE_N": 616}}
   ]
 }

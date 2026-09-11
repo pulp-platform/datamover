@@ -203,25 +203,29 @@ static inline __attribute__((always_inline)) void datamover_build_copy(datamover
 }
 
 // Transpose columns [col_start, col_start+band_cols) into output rows [col_start, ...).
+// Transpose of the column band [col_start, col_start + band_cols) of a size_m x size_n matrix, in
+// units of transp_mode elements. The engine tiles the rows in groups of BWE / t input rows; every
+// tile drains cols_per_tile / t output rows of one beat, so an output row is a chain of one-beat
+// chunks and the last chunk holds the leftover rows.
 static inline __attribute__((always_inline)) void datamover_build_transpose(datamover_cfg_t *cfg, const void *in, const void *out,
                                              uint32_t size_m, uint32_t size_n, uint32_t col_start,
                                              uint32_t band_cols, datamover_transp_mode_t transp_mode) {
   uint32_t t = (uint32_t)transp_mode;
   uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t m_tiles = dm_ceil_div(size_m, BWE);
+  uint32_t chunks  = dm_ceil_div(size_m * t, BWE);
   uint32_t n_tiles = dm_ceil_div(band_cols, BWE);
   uint32_t cols_per_tile = (band_cols >= BWE) ? BWE : band_cols;
 
   cfg->in_ptr           = (uint32_t)(uintptr_t)in + col_start;
   cfg->out_ptr          = (uint32_t)(uintptr_t)out + col_start * size_m;
   cfg->tot_len          = size_m * n_tiles;
-  cfg->out_tot_len      = band_cols * m_tiles;
+  cfg->out_tot_len      = n_tiles * (cols_per_tile / t) * chunks;
   dm_in(cfg, 0, size_n, size_m);
   dm_in(cfg, 1, BWE, n_tiles);
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
   dm_out(cfg, 0, size_m * t, cols_per_tile / t);
-  dm_out(cfg, 1, BWE, m_tiles * t);
+  dm_out(cfg, 1, BWE, chunks);
   dm_out(cfg, 2, size_m * BWE, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
