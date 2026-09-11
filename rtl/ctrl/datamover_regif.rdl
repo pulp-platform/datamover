@@ -184,27 +184,17 @@ addrmap datamover_regif {
 
     reg dm_ctrl_engine {
         field {
-            desc = "im2col padding: synthesize a 1-pixel zero border from an unpadded input.";
+            desc = "im2col unit: log2 of the image row width W, 3 to 6.";
             hw = r;
             sw = rw;
-        } im2col_pad[31:31] = 0;
+        } im2col_log2w[22:20] = 0;
         field {
-            desc = "im2col packing: input row width W_pad; in padding mode carries the kernel size K.";
-            hw = r;
-            sw = rw;
-        } pack_row_stride[30:23] = 0;
-        field {
-            desc = "im2col packing: log2 of the output row width w_out.";
-            hw = r;
-            sw = rw;
-        } pack_log2w[22:20] = 0;
-        field {
-            desc = "im2col packing: enable dense-store row gather (sub-BW).";
+            desc = "im2col unit: 3x3 taps with a zero border from 64-pixel block rows (conv_stride 1), or two stride-2 half beats merged into one (conv_stride 2).";
             hw = r;
             sw = rw;
         } im2col_pack[19:19] = 0;
         field {
-            desc = "im2col convolution stride (column subsample factor).";
+            desc = "im2col column subsample factor, 1 or 2.";
             hw = r;
             sw = rw;
         } conv_stride[18:16] = 0;
@@ -219,7 +209,7 @@ addrmap datamover_regif {
             sw = rw;
         } read_dim_en[11:8] = 0;
         field {
-            desc = "0=copy, 1=transpose, 2=CIM layout, 3=CIM transpose, 4=unfold, 5=fold.";
+            desc = "0=copy, 1=transpose, 2=CIM layout, 3=CIM transpose, 4=unfold, 5=fold, 6=im2col.";
             hw = r;
             sw = rw;
         } datamover_mode[7:3] = 0;

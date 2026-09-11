@@ -41,6 +41,7 @@ module datamover_top_wrap
   parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
   parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
   parameter int unsigned MISALIGNED_ACCESSES = 1, // enable misaligned accesses on TCDM interface
+  parameter bit          EnableIm2col = ENABLE_IM2COL, // instantiate the im2col unit
   // Dependent parameters: do not modify!
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
   localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH // TCDM interface width in number of words

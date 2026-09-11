@@ -32,6 +32,7 @@ PARAM_KEYS = (
     "KERNEL_SIZE_W",
     "CONV_STRIDE",
     "CONV_PAD",
+    "LAYOUT",
     "IM2COL_IN",
     "IM2COL_OUT",
 )
@@ -86,7 +87,7 @@ def write_workload_header(tasks_metadata: list, hw: dict, output_dir: str) -> st
         i = m["index"]
         for k in PARAM_KEYS:
             v = m["params"][k]
-            if k in ("IM2COL_IN", "IM2COL_OUT"):
+            if k in ("LAYOUT", "IM2COL_IN", "IM2COL_OUT"):
                 v = f"DATAMOVER_{k}_{v}"      # C enum identifier
             defines.append((f"TASK{i}_{k}", v))
         defines.append((f"TASK{i}_TOT_SIZE", f"(TASK{i}_SIZE_C * TASK{i}_SIZE_M * TASK{i}_SIZE_N)"))

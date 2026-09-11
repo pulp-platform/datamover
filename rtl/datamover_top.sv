@@ -32,6 +32,7 @@ module datamover_top
   parameter int unsigned N_CORES   = 2,           // number of cores for event inputs
   parameter int unsigned N_CONTEXT = 2,           // depth of the control target job queue
   parameter int unsigned MISALIGNED_ACCESSES = 0, // enable misaligned accesses on TCDM interface
+  parameter bit          EnableIm2col = ENABLE_IM2COL, // instantiate the im2col unit
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
   localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
@@ -109,10 +110,11 @@ module datamover_top
   );
 
   // The engine transforms the data_in stream into data_out. Supported modes:
-  // copy, transpose, CIM layout conversion, unfold, and fold.
+  // copy, transpose, CIM layout conversion, unfold, fold, and im2col.
   // An internal buffer (elem_matrix) of size BWxBW is used to reshuffle the data.
   datamover_engine #(
-    .FIFO_DEPTH ( 4          ),
+    .FIFO_DEPTH ( 2          ),
+    .EnableIm2col ( EnableIm2col ),
     .BANDWIDTH_ALIGNED ( BANDWIDTH_ALIGNED ),
     .NUM_ELEM_WORD ( NUM_ELEM_WORD ),
     .ELEM_WIDTH ( ELEM_WIDTH )

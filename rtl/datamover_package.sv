@@ -41,14 +41,11 @@ package datamover_package;
     $bits(datamover_regif_pkg::datamover_regif__dm_channels__num_channels__out_t);
   parameter int unsigned CONV_STRIDE_WIDTH =
     $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__conv_stride__out_t);
-  parameter int unsigned PACK_LOG2W_WIDTH =
-    $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__pack_log2w__out_t);
-  parameter int unsigned PACK_ROW_STRIDE_WIDTH =
-    $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__pack_row_stride__out_t);
+  parameter int unsigned IM2COL_LOG2W_WIDTH =
+    $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__im2col_log2w__out_t);
 
-  // im2col padding
-  parameter int unsigned KERNEL_TAP_WIDTH      = PACK_ROW_STRIDE_WIDTH / 2;
-  parameter int unsigned PACK_W_WIDTH          = 1 << PACK_LOG2W_WIDTH;
+  // The im2col unit is instantiated when EnableIm2col is set on datamover_top.
+  parameter bit ENABLE_IM2COL = 1'b1;
   // Element-granularity transpose steps by 1, 2 or 4 elements
   parameter int unsigned MAX_TRANSP_STRIDE     = 4;
   parameter int unsigned TRANSP_STRIDE_WIDTH   = $clog2(MAX_TRANSP_STRIDE) + 1;
@@ -64,12 +61,10 @@ package datamover_package;
     transp_mode_e                     transp_mode;
     logic [TRANSP_LEN_WIDTH-1:0]      transp_len;
     logic [TRANSP_STRIDE_WIDTH-1:0]   transp_stride;  // 1, 2, or 4 elements
-    logic [CONV_STRIDE_WIDTH-1:0]     conv_stride;    // im2col column subsample factor (stride S)
-    logic                             im2col_pack;    // im2col: pack sub-BW rows into dense beats
-    logic                             im2col_pad;     // im2col: synthesize a 1-pixel zero border
-    logic [PACK_LOG2W_WIDTH-1:0]      pack_log2w;     // im2col packing: log2(w_out)
-    logic [PACK_ROW_STRIDE_WIDTH-1:0] pack_row_stride;// im2col packing: input row width W_pad
-    datamover_mode_e                  datamover_mode; // 0: copy, 1: transpose, 2: CIM layout
+    logic [CONV_STRIDE_WIDTH-1:0]     conv_stride;    // im2col column subsample, 1 or 2
+    logic                             im2col_pack;    // im2col: run the im2col unit
+    logic [IM2COL_LOG2W_WIDTH-1:0]    im2col_log2w;   // im2col unit: log2 of the image row width
+    datamover_mode_e                  datamover_mode;
     logic [TENSOR_SIZE_WIDTH-1:0]     tensor_size_m;
     logic [TENSOR_SIZE_WIDTH-1:0]     tensor_size_n;
     logic [TOTAL_ELEM_WIDTH-1:0]      total_elements; // num_channels * size_m * size_n (from HAL)

@@ -21,7 +21,7 @@ make run-all-tests
 
 ## Repository Structure
 
-- `rtl/` — `datamover_top{_wrap}.sv`, `datamover_engine.sv`, `datamover_streamer.sv`, `datamover_package.sv`
+- `rtl/` — `datamover_top{_wrap}.sv`, `datamover_engine.sv`, `datamover_im2col.sv`, `datamover_buffer.sv`, `datamover_streamer.sv`, `datamover_package.sv`
 - `rtl/ctrl/` — SystemRDL register map (`datamover_regif.rdl`), control wrapper around `hwpe_ctrl_target` + regif + job FSM (`datamover_ctrl.sv`), and the generated register file (`regif/`)
 - `rtl/verif/` — Ibex-driven SystemVerilog testbench (`tb_datamover.sv`, `tb_dummy_memory.sv`)
 - `scripts/` — register-interface generation from the RDL (`gen_regif.sh`)
@@ -53,9 +53,9 @@ Set via `config.mk` defaults or per-test via `configs/hw_configs.json`:
 | 1 | **Transpose** — granularity via `TRANSP_MODE` (1/2/4 elements) |
 | 2 | **CIM fwd/rev** — blocked layout (blocks of 64), `CIM_MODE` selects direction, `ROW_TILE_SIZE` controls geometry |
 | 3 | **CIMT fwd/rev** |
-| 4 | **Unfold** (MobileViT) |
-| 5 | **Fold** (MobileViT) |
-| 6 | **im2col** — convolution unfold; `KERNEL_SIZE_H/W`, `CONV_STRIDE`, `CONV_PAD` |
+| 4 | **Unfold** (MobileViT) — `LAYOUT` CHW (row-major) or CIM (64-column blocks on both sides) |
+| 5 | **Fold** (MobileViT) — inverse of unfold, same `LAYOUT` |
+| 6 | **im2col** — `KERNEL_SIZE_H/W`, `CONV_STRIDE`, `CONV_PAD`, `IM2COL_IN`, `IM2COL_OUT`. The im2col unit (`EnableIm2col`) writes 64-pixel block rows: 3x3, stride 1, pad 1 from a CIM input, or stride 2 from a row-major image. Other kernels pass through with beats of `W_out` pixels. `ROW_CIM` is im2row for kernel == stride |
 
 For register layout, see [datamover_package.sv](rtl/datamover_package.sv).
 
@@ -92,7 +92,7 @@ riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
 
 `TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `GUI=0` for headless.
 
-JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`) and an optional per-test `hw_config`; the name is auto-generated when omitted.
+JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`, `LAYOUT`, `IM2COL_IN`, `IM2COL_OUT`) and an optional per-test `hw_config`; the name is auto-generated when omitted. `datamover_model/workloads/suite.py` lists the defaults and the checks.
 
 ## Cleanup
 

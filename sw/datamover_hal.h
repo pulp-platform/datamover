@@ -135,18 +135,47 @@ static inline __attribute__((always_inline)) void datamover_cim_layout_reverse(u
   }
 }
 
+// CIM layout: one job for the complete channel tiles, one for the leftover channels.
 static inline __attribute__((always_inline)) void datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
-                                    uint32_t size_c, uint32_t size_h, uint32_t size_w) {
+                                    uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                    datamover_layout_t layout) {
   datamover_cfg_t cfg = {0};
-  datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
-  datamover_launch(&cfg);
+  uint32_t leftover = size_c % DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t c_full   = size_c - leftover;
+  if (layout == DATAMOVER_LAYOUT_CHW) {
+    datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
+    datamover_launch(&cfg);
+    return;
+  }
+  if (c_full > 0) {
+    datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, 0, c_full);
+    datamover_launch(&cfg);
+  }
+  if (leftover > 0) {
+    datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
+    datamover_launch(&cfg);
+  }
 }
 
 static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
-                                  uint32_t size_c, uint32_t size_h, uint32_t size_w) {
+                                  uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                  datamover_layout_t layout) {
   datamover_cfg_t cfg = {0};
-  datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
-  datamover_launch(&cfg);
+  uint32_t leftover = size_c % DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t c_full   = size_c - leftover;
+  if (layout == DATAMOVER_LAYOUT_CHW) {
+    datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
+    datamover_launch(&cfg);
+    return;
+  }
+  if (c_full > 0) {
+    datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, 0, c_full);
+    datamover_launch(&cfg);
+  }
+  if (leftover > 0) {
+    datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
+    datamover_launch(&cfg);
+  }
 }
 
 static inline __attribute__((always_inline)) void datamover_im2col(uint8_t *tensor_in, uint8_t *matrix_out,
@@ -162,8 +191,10 @@ static inline __attribute__((always_inline)) void datamover_im2col(uint8_t *tens
     }
     return;
   }
-  datamover_build_im2col(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_h, kernel_w, conv_stride, conv_pad);
+  datamover_build_im2col(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_h, kernel_w,
+                         conv_stride, conv_pad, in_layout, out_layout);
   datamover_launch(&cfg);
+  if (out_layout != DATAMOVER_IM2COL_OUT_COL) return;
 
   //TODO Fix to do leftover in same job using adapted addressgen
   datamover_cfg_t leftover_cfg = {0};
@@ -213,10 +244,10 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
                                      t->row_tile_size, t->transp_mode);
       return DATAMOVER_OK;
     case DATAMOVER_UNFOLD:
-      datamover_unfold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n);
+      datamover_unfold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);
       return DATAMOVER_OK;
     case DATAMOVER_FOLD:
-      datamover_fold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n);
+      datamover_fold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);
       return DATAMOVER_OK;
     case DATAMOVER_IM2COL:
       datamover_im2col(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n,

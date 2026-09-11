@@ -24,8 +24,9 @@ PARAM_DEFAULTS = {
     "KERNEL_SIZE_W": 1,
     "CONV_STRIDE": 1,
     "CONV_PAD": 0,
-    "IM2COL_IN": "CHW",   # image layout: CHW or HWC
-    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_CIM: one row per patch, 64-column blocks
+    "LAYOUT": "CHW",      # unfold and fold: CHW row-major, or CIM 64-column blocks on both sides
+    "IM2COL_IN": "CHW",   # image layout: CHW, HWC, or CIM ((C, pixels) in 64-pixel blocks)
+    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_CIM: one row per patch; COL_CIM: COL in 64-pixel blocks
 }
 
 
@@ -70,6 +71,8 @@ def normalize_params(raw: dict) -> dict:
         out[k] = str(v).upper() if k in STR_PARAMS else int(v)
     if out["IM2COL_IN"] not in IM2COL_IN or out["IM2COL_OUT"] not in IM2COL_OUT:
         raise ValueError(f"IM2COL_IN must be in {IM2COL_IN} and IM2COL_OUT in {IM2COL_OUT}")
+    if out["LAYOUT"] not in LAYOUTS:
+        raise ValueError(f"LAYOUT must be in {LAYOUTS}")
     if out["DATAMOVER_MODE"] not in range(7):
         raise ValueError(f"DATAMOVER_MODE must be in 0..6, got {out['DATAMOVER_MODE']}")
     if out["TRANSP_MODE"] not in (0, 1, 2, 4):
@@ -78,12 +81,25 @@ def normalize_params(raw: dict) -> dict:
         raise ValueError(f"CIM_MODE must be 0 or 1, got {out['CIM_MODE']}")
     if out["DATAMOVER_MODE"] == 6:
         _validate_im2col_params(out)
+    if out["DATAMOVER_MODE"] in (4, 5) and out["LAYOUT"] == "CIM":
+        _validate_unfold_cim_params(out)
     return out
 
 
-STR_PARAMS = ("IM2COL_IN", "IM2COL_OUT")
-IM2COL_IN = ("CHW", "HWC")
-IM2COL_OUT = ("COL", "ROW_CIM")
+STR_PARAMS = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
+LAYOUTS = ("CHW", "CIM")
+IM2COL_IN = ("CHW", "HWC", "CIM")
+IM2COL_OUT = ("COL", "ROW_CIM", "COL_CIM")
+IM2COL_UNIT_WIDTHS = (8, 16, 32, 64)
+
+
+def _validate_unfold_cim_params(params: dict) -> None:
+    """CIM unfold and fold walk 64-pixel blocks of even image rows; the strides fit 16 bits."""
+    m, n = params["SIZE_M"], params["SIZE_N"]
+    if (m * n) % 64 != 0 or m % 2 != 0 or n % 2 != 0:
+        raise ValueError(f"LAYOUT=CIM needs H*W a multiple of 64 and even H, W, got {m}x{n}")
+    if m * n // 4 > 511:
+        raise ValueError(f"LAYOUT=CIM needs at most 511 tokens, got {m * n // 4}")
 
 
 def _validate_im2row_params(params: dict) -> None:
@@ -97,35 +113,34 @@ def _validate_im2row_params(params: dict) -> None:
         raise ValueError(f"HWC ROW_CIM needs 48-byte patch rows, got {k * c}")
 
 
-IM2COL_MAX_PADDED_KERNEL_SIZE = 15
-IM2COL_PADDED_KERNEL_W = 3
-
-
 def _validate_im2col_params(params: dict) -> None:
+    """The checks mirror the three paths of the HAL builder."""
     kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
     s, pad = params["CONV_STRIDE"], params["CONV_PAD"]
+    c, m, n = params["SIZE_C"], params["SIZE_M"], params["SIZE_N"]
+    layout = (params["IM2COL_IN"], params["IM2COL_OUT"])
     if kh < 1 or kw < 1:
         raise ValueError(f"KERNEL_SIZE_H/KERNEL_SIZE_W must be >= 1, got {kh}x{kw}")
-    if params["IM2COL_OUT"] != "COL":
+    if params["IM2COL_OUT"] == "ROW_CIM":
         _validate_im2row_params(params)
-        return
-    if params["IM2COL_IN"] != "CHW":
-        raise ValueError("IM2COL_IN=HWC needs IM2COL_OUT=ROW_CIM")
-    if s not in (1, 2):
+    elif s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
-    if pad not in (0, 1):
-        raise ValueError(f"im2col CONV_PAD must be 0 or 1, got {pad}")
-    if pad != 0 and s != 1:
-        raise ValueError(f"im2col CONV_PAD requires CONV_STRIDE == 1, got CONV_STRIDE={s}")
-    if pad != 0 and kw != IM2COL_PADDED_KERNEL_W:
-        raise ValueError(
-            f"im2col CONV_PAD requires KERNEL_SIZE_W == {IM2COL_PADDED_KERNEL_W} "
-            f"(the fixed 1-pixel border only preserves row width at kw=3), got KERNEL_SIZE_W={kw}"
-        )
-    if pad != 0 and kh > IM2COL_MAX_PADDED_KERNEL_SIZE:
-        raise ValueError(
-            f"im2col CONV_PAD requires KERNEL_SIZE_H <= {IM2COL_MAX_PADDED_KERNEL_SIZE}, got {kh}"
-        )
+    elif layout == ("CIM", "COL_CIM"):
+        if (kh, kw, s, pad) != (3, 3, 1, 1):
+            raise ValueError(f"CIM im2col is 3x3, stride 1, pad 1, got K={kh}x{kw} S={s} pad={pad}")
+        if n not in IM2COL_UNIT_WIDTHS or (m * n) % 64 != 0:
+            raise ValueError(f"CIM im2col needs W in {IM2COL_UNIT_WIDTHS} and H*W a multiple of 64, got {m}x{n}")
+        if kh * kw * c * m * n >= 1 << 21:
+            raise ValueError(f"CIM im2col output of {kh * kw * c * m * n} elements exceeds the 21-bit count")
+    elif layout == ("CHW", "COL_CIM"):
+        w_out = (n - kw) // s + 1
+        if s != 2 or pad != 0 or w_out % 64 != 0:
+            raise ValueError(f"CHW to COL_CIM needs stride 2, no pad, and w_out a multiple of 64, got S={s} pad={pad} w_out={w_out}")
+    elif layout == ("CHW", "COL"):
+        if pad != 0:
+            raise ValueError("CONV_PAD needs IM2COL_IN=CIM and IM2COL_OUT=COL_CIM")
+    else:
+        raise ValueError(f"unsupported im2col layouts {layout}")
 
 
 def hw_tag(name: str) -> str:
@@ -147,9 +162,9 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
     elif mode == 3:
         base = f"CIMTR{params['TRANSP_MODE']}_{m}x{n}_RT{params['ROW_TILE_SIZE']}"
     elif mode == 4:
-        base = f"UNFOLD_C{c}_{m}x{n}"
+        base = f"UNFOLD_C{c}_{m}x{n}" + ("_CIM" if params["LAYOUT"] == "CIM" else "")
     elif mode == 5:
-        base = f"FOLD_C{c}_{m}x{n}"
+        base = f"FOLD_C{c}_{m}x{n}" + ("_CIM" if params["LAYOUT"] == "CIM" else "")
     else:
         kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
         k_tag = f"{kh}" if kh == kw else f"{kh}x{kw}"

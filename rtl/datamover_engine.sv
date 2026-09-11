@@ -25,6 +25,7 @@ module datamover_engine
   import datamover_package::*;
 #(
   parameter int unsigned FIFO_DEPTH = 2,
+  parameter bit          EnableIm2col = 1'b1,
   parameter int unsigned BANDWIDTH_ALIGNED = 512,
   parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
   parameter int unsigned ELEM_WIDTH = 8,     // element width (in bits)
@@ -88,13 +89,11 @@ module datamover_engine
 
   logic                                   execution_done;
 
-  logic                                   im2col_pack, im2col_pad;
-  logic                                   pack_wr_lo, pack_half_q;
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] pack_extract;
-  logic [NB_ELEMENTS-1:0]                 pad_zero;
+  logic                                   im2col_unit;
+  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] im2col_data;
+  logic                                   im2col_valid, im2col_ready;
 
-  assign im2col_pack = ctrl_i.im2col_pack;
-  assign im2col_pad  = ctrl_i.im2col_pad;
+  assign im2col_unit = EnableIm2col && (ctrl_i.datamover_mode == DATAMOVER_IM2COL) && ctrl_i.im2col_pack;
 
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
@@ -203,8 +202,8 @@ module datamover_engine
   // Transpose drains write_len valid rows of the last tile
   assign strb_transpose = (STRB_ONE << write_len) - 1;
 
-  // Sub-BW im2col rows (tensor_size_n = W_out < NB_ELEMENTS); packed/padded stores are full.
-  assign strb_im2col = (im2col_pack || im2col_pad) ? '1 :
+  // The im2col unit fills every beat; pass-through beats hold tensor_size_n elements.
+  assign strb_im2col = im2col_unit ? '1 :
                        (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
   assign strb_unfold = ((last_y_tile && leftover_rows != 0) && (last_n_tile && leftover_cols != 0)) ? (((y_elem_cnt_q & (NB_ELEMENTS - 1)) < leftover_cols) ? ((STRB_ONE << leftover_rows) - 1) : '0) :
@@ -239,7 +238,7 @@ module datamover_engine
   assign execution_done = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? transpose_done :
                           (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
 
-  assign tot_cnt_incr = (im2col_pack ? 1'b1 : cnt_en) & (data_out_prefifo.valid & data_out_prefifo.ready);
+  assign tot_cnt_incr = data_out_prefifo.valid & data_out_prefifo.ready;
   // count total number of write accesses
   assign tot_cnt_d = tot_cnt_incr ? tot_cnt_q + 1 : tot_cnt_q;
 
@@ -276,22 +275,27 @@ module datamover_engine
     end // gen_data_shifting_y
   end // gen_data_shifting_x
 
-  datamover_im2col_ctrl #(
-    .NB_ELEMENTS ( NB_ELEMENTS ),
-    .ELEM_WIDTH  ( ELEM_WIDTH  )
-  ) i_im2col_ctrl (
-    .clk_i              ( clk_i            ),
-    .rst_ni             ( rst_ni           ),
-    .clear_run_i        ( clear_run        ),
-    .ctrl_i             ( ctrl_i           ),
-    .data_in_unrolled_i ( data_in_unrolled ),
-    .data_in_valid_i    ( data_in_valid    ),
-    .data_in_ready_i    ( data_in_ready    ),
-    .pack_extract_o     ( pack_extract     ),
-    .pack_wr_lo_o       ( pack_wr_lo       ),
-    .pack_half_q_o      ( pack_half_q      ),
-    .pad_zero_o         ( pad_zero         )
-  );
+  if (EnableIm2col) begin : gen_im2col
+    datamover_im2col #(
+      .NB_ELEMENTS ( NB_ELEMENTS ),
+      .ELEM_WIDTH  ( ELEM_WIDTH  )
+    ) i_im2col (
+      .clk_i   ( clk_i                       ),
+      .rst_ni  ( rst_ni                      ),
+      .clear_i ( clear_run                   ),
+      .ctrl_i  ( ctrl_i                      ),
+      .data_i  ( data_in_unrolled            ),
+      .valid_i ( data_in_valid & im2col_unit ),
+      .ready_o ( im2col_ready                ),
+      .data_o  ( im2col_data                 ),
+      .valid_o ( im2col_valid                ),
+      .ready_i ( data_out_ready              )
+    );
+  end else begin : gen_no_im2col
+    assign im2col_ready = 1'b0;
+    assign im2col_data  = '0;
+    assign im2col_valid = 1'b0;
+  end
 
   logic [NB_ELEMENTS-1:0]                     wr_row_en;
   logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]     wr_row_data   [NB_ELEMENTS-1:0];
@@ -309,8 +313,8 @@ module datamover_engine
                               ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] :
                                                                    data_in_shifted[0];
 
-    assign wr_row_en[ii]   = (im2col_pack && (ii == 0)) ? pack_wr_lo : buffer_enable;
-    assign wr_row_data[ii] = (im2col_pack && (ii == 0)) ? pack_extract : data_in_selected;
+    assign wr_row_en[ii]   = buffer_enable;
+    assign wr_row_data[ii] = data_in_selected;
   end // gen_buffer_write
 
   datamover_buffer #(
@@ -330,16 +334,15 @@ module datamover_engine
   for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
     assign data_out_unrolled[ii] =
         ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
-      : im2col_pack ? (ii < NB_ELEMENTS/2 ? elem_matrix_q[0][ii]
-                                          : pack_extract[(ii+NB_ELEMENTS/2) % NB_ELEMENTS])
-      : (im2col_pad && pad_zero[ii]) ? '0
-      : data_in_unrolled[NB_ELEM_LOG2'(ii*ctrl_i.conv_stride)];
+      : im2col_unit                       ? im2col_data[ii]
+      : ctrl_i.conv_stride == 2           ? data_in_unrolled[(ii < NB_ELEMENTS/2) ? 2*ii : 2*ii - NB_ELEMENTS]
+                                          : data_in_unrolled[ii];
   end // gen_output
 
   assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE :
-                          im2col_pack ? (pack_half_q == 1'b0 ? 1'b1 : data_out_ready) : data_out_ready;
+                          im2col_unit ? im2col_ready : data_out_ready;
   assign data_out_valid = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == READ  :
-                          im2col_pack ? (pack_half_q == 1'b1 && data_in_valid)         : data_in_valid;
+                          im2col_unit ? im2col_valid : data_in_valid;
 
   // Sequential logic
 

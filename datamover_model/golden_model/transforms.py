@@ -43,8 +43,15 @@ def cim_layout_transpose(tensor, row_tile_size, size_m, size_n):
     return cim_layout(np.transpose(row_major), row_tile_size, size_n, size_m)
 
 
-def unfold(tensor, patch_size):
-    # (C, H, W) -> (PATCH_SIZE, NUM_PATCHES, C).
+def cim_activation(tensor):
+    # (C, H, W) -> the (C, H*W) matrix in CIM layout with 64-pixel blocks, flat.
+    c = tensor.shape[0]
+    return np.asarray(cim_layout(tensor.reshape(c, -1), 64, c, tensor.size // c)).reshape(-1)
+
+
+def unfold(tensor, patch_size, layout="CHW"):
+    # (C, H, W) -> (PATCH_SIZE, NUM_PATCHES, C); layout CIM returns the (PATCH_SIZE*NUM_PATCHES, C)
+    # token matrix in CIM layout with 64-column blocks, flat.
     channels, height, width = tensor.shape
     patch_sidelength = int(math.sqrt(patch_size))
     assert (height % patch_sidelength == 0) and (width % patch_sidelength == 0), \
@@ -60,12 +67,19 @@ def unfold(tensor, patch_size):
                 h_idx = h * patch_sidelength + (p // patch_sidelength)
                 w_idx = w * patch_sidelength + (p % patch_sidelength)
                 tensor_unfolded[p, n, :] = tensor[:, h_idx, w_idx]
+    if layout == "CIM":
+        rows = patch_size * num_patches
+        return np.asarray(cim_layout(tensor_unfolded.reshape(rows, channels), 64, rows, channels)).reshape(-1)
     return tensor_unfolded
 
 
-def fold(tensor, patch_size, num_channels, height, width):
+def fold(tensor, patch_size, num_channels, height, width, layout="CHW"):
     # (PATCH_SIZE, NUM_PATCHES, C) -> (C, H, W); folded dims are num_channels, height, width.
+    # layout CIM takes and returns the CIM layouts of unfold and cim_activation.
     patch_sidelength = int(math.sqrt(patch_size))
+    if layout == "CIM":
+        rows = patch_size * (height // patch_sidelength) * (width // patch_sidelength)
+        tensor = cim_layout_reverse(tensor, 64, rows, num_channels).reshape(patch_size, -1, num_channels)
     assert (height % patch_sidelength == 0) and (width % patch_sidelength == 0), \
         "Height and Width must be divisible by patch sidelength"
     num_patches_h = height // patch_sidelength
@@ -78,6 +92,8 @@ def fold(tensor, patch_size, num_channels, height, width):
                 h_idx = h * patch_sidelength + (p // patch_sidelength)
                 w_idx = w * patch_sidelength + (p % patch_sidelength)
                 tensor_folded[:, h_idx, w_idx] = tensor[p, n, :]
+    if layout == "CIM":
+        return cim_activation(tensor_folded)
     return tensor_folded
 
 
@@ -85,8 +101,9 @@ def im2col(tensor, kernel_h, kernel_w, stride=1, padding=0, in_layout="CHW", out
     # out_layout COL: each patch is a column, (Kh*Kw*C, H_out*W_out) as torch unfold;
     #   row = c*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow. Surya operand B.
     # out_layout ROW: each patch is a row, (H_out*W_out, C*Kh*Kw). Surya operand A.
-    # out_layout ROW_CIM: ROW in 64-column blocks, the CIM layout of mode 2.
+    # out_layout ROW_CIM and COL_CIM: ROW or COL in 64-column blocks, the CIM layout of mode 2.
     # in_layout HWC reads the bytes as an HWC image; the A columns are then ordered (kh, kw, c).
+    # in_layout CIM is the (C, H*W) matrix in 64-pixel blocks; the tensor passed here stays CHW.
     import torch
     if in_layout == "HWC":
         c, h, w = tensor.shape
@@ -97,6 +114,8 @@ def im2col(tensor, kernel_h, kernel_w, stride=1, padding=0, in_layout="CHW", out
     cols = cols.squeeze(0).to(torch.uint8).numpy()
     if out_layout == "COL":
         return cols
+    if out_layout == "COL_CIM":
+        return np.asarray(cim_layout(cols, 64, cols.shape[0], cols.shape[1])).reshape(-1)
     n = cols.shape[1]
     tokens = cols.T.reshape(n, c, kernel_h, kernel_w)
     if in_layout == "HWC":

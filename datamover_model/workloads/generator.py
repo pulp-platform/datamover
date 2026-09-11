@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from datamover_model.golden_model.transforms import (
+    cim_activation,
     cim_layout,
     cim_layout_reverse,
     cim_layout_transpose,
@@ -75,16 +76,19 @@ def golden_for(params: dict, in_tensor: np.ndarray):
         flat = in_tensor.reshape(m, n)
         out = cim_layout_transpose(flat, rt, m, n)
         return in_tensor, np.asarray(out).reshape(-1)
+    layout = params["LAYOUT"]
     if mode == 4:
-        return in_tensor, unfold(in_tensor, PATCH_SIZE)
+        mem_in = cim_activation(in_tensor) if layout == "CIM" else in_tensor
+        return mem_in, unfold(in_tensor, PATCH_SIZE, layout)
     if mode == 5:
         # Fold consumes an unfolded tensor; synthesize it so the golden round-trips.
-        unfolded = unfold(in_tensor, PATCH_SIZE)
-        return unfolded, fold(unfolded, PATCH_SIZE, c, m, n)
+        unfolded = unfold(in_tensor, PATCH_SIZE, layout)
+        return unfolded, fold(unfolded, PATCH_SIZE, c, m, n, layout)
     if mode == 6:
-        return in_tensor, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"],
-                                  params["CONV_STRIDE"], params["CONV_PAD"],
-                                  params["IM2COL_IN"], params["IM2COL_OUT"])
+        mem_in = cim_activation(in_tensor) if params["IM2COL_IN"] == "CIM" else in_tensor
+        return mem_in, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"],
+                              params["CONV_STRIDE"], params["CONV_PAD"],
+                              params["IM2COL_IN"], params["IM2COL_OUT"])
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 
