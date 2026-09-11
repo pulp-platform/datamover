@@ -205,25 +205,25 @@ module datamover_ctrl
   assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.tot_len   = job_dep_regs.tot_len.value.value;
   assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.tot_len    = job_dep_regs.out_tot_len.value.value;
   // Source (input) per-dimension stride/length.
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d0_len    = job_dep_regs.in_d0.length.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d0_stride = job_dep_regs.in_d0.stride.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d1_len    = job_dep_regs.in_d1.length.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d1_stride = job_dep_regs.in_d1.stride.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d2_len    = job_dep_regs.in_d2.length.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d2_stride = job_dep_regs.in_d2.stride.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d3_len    = job_dep_regs.in_d3.length.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d3_stride = job_dep_regs.in_d3.stride.value;
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d4_stride = job_dep_regs.in_d4_stride.value.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d0_len    = job_dep_regs.in_len_d0_d1.d0.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d0_stride = job_dep_regs.in_stride0.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d1_len    = job_dep_regs.in_len_d0_d1.d1.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d1_stride = job_dep_regs.in_stride1.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d2_len    = job_dep_regs.in_len_d2_d3.d2.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d2_stride = job_dep_regs.in_stride2.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d3_len    = job_dep_regs.in_len_d2_d3.d3.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d3_stride = job_dep_regs.in_stride3.stride.value;
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.d4_stride = job_dep_regs.in_stride4.stride.value;
   // Sink (output) per-dimension stride/length.
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d0_len     = job_dep_regs.out_d0.length.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = job_dep_regs.out_d0.stride.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d1_len     = job_dep_regs.out_d1.length.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = job_dep_regs.out_d1.stride.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d2_len     = job_dep_regs.out_d2.length.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = job_dep_regs.out_d2.stride.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d3_len     = job_dep_regs.out_d3.length.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d3_stride  = job_dep_regs.out_d3.stride.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = job_dep_regs.out_d4_stride.value.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d0_len     = job_dep_regs.out_len_d0_d1.d0.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d0_stride  = job_dep_regs.out_stride0.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d1_len     = job_dep_regs.out_len_d0_d1.d1.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d1_stride  = job_dep_regs.out_stride1.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d2_len     = job_dep_regs.out_len_d2_d3.d2.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d2_stride  = job_dep_regs.out_stride2.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d3_len     = job_dep_regs.out_len_d2_d3.d3.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d3_stride  = job_dep_regs.out_stride3.stride.value;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.d4_stride  = job_dep_regs.out_stride4.stride.value;
 
   // ----------------------------------------------------------------------
   // Engine configuration from the typed job-dependent registers

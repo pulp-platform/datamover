@@ -130,30 +130,38 @@ addrmap datamover_regif {
         } value[31:0] = 0;
     };
 
-    reg dm_stride_len {
+    reg dm_stride {
         field {
-            desc = "Stride in elements.";
+            desc = "Stride in elements. 21 bits cover a 2 MiB tensor.";
             hw = r;
             sw = rw;
-        } stride[31:16] = 0;
-        field {
-            desc = "Length in iterations.";
-            hw = r;
-            sw = rw;
-        } length[15:0] = 0;
+        } stride[20:0] = 0;
     };
 
-    reg dm_d3_stride_len {
+    reg dm_len_d0_d1 {
         field {
-            desc = "Stride in elements (widened: d3 carries channel-plane strides).";
+            desc = "Length of d1 in iterations.";
             hw = r;
             sw = rw;
-        } stride[31:11] = 0;
+        } d1[31:16] = 0;
         field {
-            desc = "Length in iterations.";
+            desc = "Length of d0 in iterations.";
             hw = r;
             sw = rw;
-        } length[10:0] = 0;
+        } d0[15:0] = 0;
+    };
+
+    reg dm_len_d2_d3 {
+        field {
+            desc = "Length of d3 in iterations.";
+            hw = r;
+            sw = rw;
+        } d3[31:16] = 0;
+        field {
+            desc = "Length of d2 in iterations.";
+            hw = r;
+            sw = rw;
+        } d2[15:0] = 0;
     };
 
     reg dm_matrix_dim {
@@ -171,7 +179,7 @@ addrmap datamover_regif {
 
     reg dm_channels {
         field {
-            desc = "num_channels * size_m * size_n.";
+            desc = "num_channels * size_m * size_n, up to 2 MiB.";
             hw = r;
             sw = rw;
         } total_elements[31:11] = 0;
@@ -227,23 +235,27 @@ addrmap datamover_regif {
 
     // Job-dependent regfile
     regfile hwpe_ctrl_job_dep {
-        dm_value32     in_ptr            @ 0x00;  // idx 0
-        dm_value32     out_ptr           @ 0x04;  // idx 1
-        dm_value32     tot_len           @ 0x08;  // idx 2
-        dm_stride_len  in_d0             @ 0x0c;  // idx 3
-        dm_stride_len  in_d1             @ 0x10;  // idx 4
-        dm_stride_len  in_d2             @ 0x14;  // idx 5
-        dm_d3_stride_len in_d3           @ 0x18;  // idx 6
-        dm_stride_len  out_d0            @ 0x1c;  // idx 7
-        dm_stride_len  out_d1            @ 0x20;  // idx 8
-        dm_stride_len  out_d2            @ 0x24;  // idx 9
-        dm_d3_stride_len out_d3          @ 0x28;  // idx 10
-        dm_value32     in_d4_stride      @ 0x2c;  // idx 11 (full 32-bit: large channel strides)
-        dm_value32     out_d4_stride     @ 0x30;  // idx 12
-        dm_matrix_dim  matrix_dim        @ 0x34;  // idx 13
-        dm_channels    channels          @ 0x38;  // idx 14
-        dm_ctrl_engine ctrl_engine       @ 0x3c;  // idx 15
-        dm_out_tot_len out_tot_len       @ 0x40;  // idx 16
+        dm_value32     in_ptr        @ 0x00;  // idx 0
+        dm_value32     out_ptr       @ 0x04;  // idx 1
+        dm_value32     tot_len       @ 0x08;  // idx 2
+        dm_out_tot_len out_tot_len   @ 0x0c;  // idx 3
+        dm_stride      in_stride0    @ 0x10;  // idx 4
+        dm_stride      in_stride1    @ 0x14;  // idx 5
+        dm_stride      in_stride2    @ 0x18;  // idx 6
+        dm_stride      in_stride3    @ 0x1c;  // idx 7
+        dm_stride      in_stride4    @ 0x20;  // idx 8
+        dm_len_d0_d1   in_len_d0_d1  @ 0x24;  // idx 9
+        dm_len_d2_d3   in_len_d2_d3  @ 0x28;  // idx 10
+        dm_stride      out_stride0   @ 0x2c;  // idx 11
+        dm_stride      out_stride1   @ 0x30;  // idx 12
+        dm_stride      out_stride2   @ 0x34;  // idx 13
+        dm_stride      out_stride3   @ 0x38;  // idx 14
+        dm_stride      out_stride4   @ 0x3c;  // idx 15
+        dm_len_d0_d1   out_len_d0_d1 @ 0x40;  // idx 16
+        dm_len_d2_d3   out_len_d2_d3 @ 0x44;  // idx 17
+        dm_matrix_dim  matrix_dim    @ 0x48;  // idx 18
+        dm_channels    channels      @ 0x4c;  // idx 19
+        dm_ctrl_engine ctrl_engine   @ 0x50;  // idx 20
     };
 
     // Top-level address map: mandatory ctrl regs at 0x00, job-indep at 0x20,

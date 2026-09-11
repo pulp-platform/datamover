@@ -29,11 +29,15 @@ the full range, unlike `"multiple_of"`, which snaps every draw. In addition, the
 always emits every multiple of `tile` in the range as a guaranteed corner case (see
 `tile_candidates`), so the exact-tile sizes always get exercised.
 
+A group entry may hold an axis value, a list or a range, in place of a constant. The
+module draws that value when the entry is picked, so the entry states the value set
+one case allows: `{"IM2COL_IN": "CIM", "SIZE_N": [8, 16, 32, 64]}`.
+
 A value may be a string. The module evaluates the string as a Python expression after
 the draw, with the drawn values as variables, so one param can follow from others:
-`"SIZE_N": "2 ** _LOG2W"`. An axis whose name starts with `_` is a helper variable for
-such expressions; the module drops it from the candidate. A spec may also carry
-`"constraints"`, a list of expressions that every candidate must satisfy.
+`"KERNEL_SIZE_W": "KERNEL_SIZE_H"`. The name of the param itself stands for its own
+drawn value, so an expression can snap it: `"SIZE_M": "SIZE_M - SIZE_M % 8"`. A spec
+may also carry `"constraints"`, a list of expressions that every candidate must satisfy.
 
 This module does not re-encode any constraint of the target. `validate_candidate`
 delegates every legality check to the layers that already enforce the checks.
@@ -121,7 +125,7 @@ def draw_axis(value, rng: random.Random):
     """Draw one random value for an axis."""
     if isinstance(value, list):
         return rng.choice(value)
-    if isinstance(value, dict):
+    if isinstance(value, dict) and "min" in value:
         lo, hi = value["min"], value["max"]
         k = value.get("multiple_of")
         if k:
@@ -136,7 +140,7 @@ def axis_bounds(value) -> tuple:
         if all(isinstance(v, (int, float)) for v in value):
             return min(value), max(value)
         return value[0], value[-1]
-    if isinstance(value, dict):
+    if isinstance(value, dict) and "min" in value:
         lo, hi, k = value["min"], value["max"], value.get("multiple_of")
         if k:
             return lo + (-lo % k), hi - (hi % k)
@@ -182,26 +186,33 @@ def tile_candidates(spec: dict) -> list:
     return cands
 
 
-def expand_groups(cand: dict) -> dict:
-    """Merge group-axis draws: a dict value splats its entries into the candidate."""
-    out = {}
+def expand_groups(cand: dict, rng: random.Random) -> dict:
+    """Merge group-axis draws: a dict value splats its entries into the candidate.
+
+    An entry value that is itself an axis, a list or a range, is drawn here. A string
+    entry sees the plain draw of its own param, so `derive` can snap that draw.
+    """
+    out, base = {}, {}
     for k, v in cand.items():
-        if isinstance(v, dict):
-            out.update(v)
+        if isinstance(v, dict) and "min" not in v:
+            for gk, gv in v.items():
+                base[gk] = out.get(gk)
+                out[gk] = draw_axis(gv, rng) if isinstance(gv, (list, dict)) else gv
         else:
             out[k] = v
-    return out
+    return derive(out, base)
 
 
 def evaluate(expr: str, cand: dict):
     """One expression over the candidate values."""
-    return eval(expr, {"__builtins__": {}}, dict(cand))
+    return eval(expr, {"__builtins__": {"max": max, "min": min}}, dict(cand))
 
 
-def derive(cand: dict) -> dict:
-    """Evaluate string values against the other values, then drop the `_` helpers.
+def derive(cand: dict, base: dict) -> dict:
+    """Evaluate string values against the other values.
 
     A string may name another string value, so the pass repeats until no string is left.
+    The param's own name stands for its plain draw in `base`.
     """
     out = dict(cand)
     for _ in range(len(out)):
@@ -210,10 +221,10 @@ def derive(cand: dict) -> dict:
             break
         for k, v in pending.items():
             try:
-                out[k] = evaluate(v, out)
+                out[k] = evaluate(v, {**out, k: base.get(k, out[k])})
             except (NameError, TypeError):
                 pass
-    return {k: v for k, v in out.items() if not k.startswith("_")}
+    return out
 
 
 def satisfies(cand: dict, constraints: list) -> bool:
@@ -225,7 +236,7 @@ def finite_values(value):
     if isinstance(value, list):
         return value
     if isinstance(value, dict):
-        return None
+        return None if "min" in value else [value]
     return [value]
 
 
@@ -249,23 +260,23 @@ def iter_candidates(spec: dict):
             total *= len(v)
         if total <= budget:
             for combo in itertools.product(*finite):
-                cand = derive(expand_groups(dict(zip(names, combo))))
+                cand = expand_groups(dict(zip(names, combo)), rng)
                 if keep(cand):
                     yield cand
             return
 
     if spec.get("boundaries", True):
         for cand in boundary_candidates(spec):
-            cand = derive(expand_groups(cand))
+            cand = expand_groups(cand, rng)
             if keep(cand):
                 yield cand
         for cand in tile_candidates(spec):
-            cand = derive(expand_groups(cand))
+            cand = expand_groups(cand, rng)
             if keep(cand):
                 yield cand
 
     for _ in range(budget):
-        cand = derive(expand_groups({n: draw_axis(axes[n], rng) for n in names}))
+        cand = expand_groups({n: draw_axis(axes[n], rng) for n in names}, rng)
         if keep(cand):
             yield cand
 

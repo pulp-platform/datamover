@@ -83,20 +83,24 @@ module datamover_regif (
             logic in_ptr;
             logic out_ptr;
             logic tot_len;
-            logic in_d0;
-            logic in_d1;
-            logic in_d2;
-            logic in_d3;
-            logic out_d0;
-            logic out_d1;
-            logic out_d2;
-            logic out_d3;
-            logic in_d4_stride;
-            logic out_d4_stride;
+            logic out_tot_len;
+            logic in_stride0;
+            logic in_stride1;
+            logic in_stride2;
+            logic in_stride3;
+            logic in_stride4;
+            logic in_len_d0_d1;
+            logic in_len_d2_d3;
+            logic out_stride0;
+            logic out_stride1;
+            logic out_stride2;
+            logic out_stride3;
+            logic out_stride4;
+            logic out_len_d0_d1;
+            logic out_len_d2_d3;
             logic matrix_dim;
             logic channels;
             logic ctrl_engine;
-            logic out_tot_len;
         } hwpe_job_dep;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -124,20 +128,24 @@ module datamover_regif (
         decoded_reg_strb.hwpe_job_dep.in_ptr = cpuif_req_masked & (cpuif_addr == 32'h40);
         decoded_reg_strb.hwpe_job_dep.out_ptr = cpuif_req_masked & (cpuif_addr == 32'h44);
         decoded_reg_strb.hwpe_job_dep.tot_len = cpuif_req_masked & (cpuif_addr == 32'h48);
-        decoded_reg_strb.hwpe_job_dep.in_d0 = cpuif_req_masked & (cpuif_addr == 32'h4c);
-        decoded_reg_strb.hwpe_job_dep.in_d1 = cpuif_req_masked & (cpuif_addr == 32'h50);
-        decoded_reg_strb.hwpe_job_dep.in_d2 = cpuif_req_masked & (cpuif_addr == 32'h54);
-        decoded_reg_strb.hwpe_job_dep.in_d3 = cpuif_req_masked & (cpuif_addr == 32'h58);
-        decoded_reg_strb.hwpe_job_dep.out_d0 = cpuif_req_masked & (cpuif_addr == 32'h5c);
-        decoded_reg_strb.hwpe_job_dep.out_d1 = cpuif_req_masked & (cpuif_addr == 32'h60);
-        decoded_reg_strb.hwpe_job_dep.out_d2 = cpuif_req_masked & (cpuif_addr == 32'h64);
-        decoded_reg_strb.hwpe_job_dep.out_d3 = cpuif_req_masked & (cpuif_addr == 32'h68);
-        decoded_reg_strb.hwpe_job_dep.in_d4_stride = cpuif_req_masked & (cpuif_addr == 32'h6c);
-        decoded_reg_strb.hwpe_job_dep.out_d4_stride = cpuif_req_masked & (cpuif_addr == 32'h70);
-        decoded_reg_strb.hwpe_job_dep.matrix_dim = cpuif_req_masked & (cpuif_addr == 32'h74);
-        decoded_reg_strb.hwpe_job_dep.channels = cpuif_req_masked & (cpuif_addr == 32'h78);
-        decoded_reg_strb.hwpe_job_dep.ctrl_engine = cpuif_req_masked & (cpuif_addr == 32'h7c);
-        decoded_reg_strb.hwpe_job_dep.out_tot_len = cpuif_req_masked & (cpuif_addr == 32'h80);
+        decoded_reg_strb.hwpe_job_dep.out_tot_len = cpuif_req_masked & (cpuif_addr == 32'h4c);
+        decoded_reg_strb.hwpe_job_dep.in_stride0 = cpuif_req_masked & (cpuif_addr == 32'h50);
+        decoded_reg_strb.hwpe_job_dep.in_stride1 = cpuif_req_masked & (cpuif_addr == 32'h54);
+        decoded_reg_strb.hwpe_job_dep.in_stride2 = cpuif_req_masked & (cpuif_addr == 32'h58);
+        decoded_reg_strb.hwpe_job_dep.in_stride3 = cpuif_req_masked & (cpuif_addr == 32'h5c);
+        decoded_reg_strb.hwpe_job_dep.in_stride4 = cpuif_req_masked & (cpuif_addr == 32'h60);
+        decoded_reg_strb.hwpe_job_dep.in_len_d0_d1 = cpuif_req_masked & (cpuif_addr == 32'h64);
+        decoded_reg_strb.hwpe_job_dep.in_len_d2_d3 = cpuif_req_masked & (cpuif_addr == 32'h68);
+        decoded_reg_strb.hwpe_job_dep.out_stride0 = cpuif_req_masked & (cpuif_addr == 32'h6c);
+        decoded_reg_strb.hwpe_job_dep.out_stride1 = cpuif_req_masked & (cpuif_addr == 32'h70);
+        decoded_reg_strb.hwpe_job_dep.out_stride2 = cpuif_req_masked & (cpuif_addr == 32'h74);
+        decoded_reg_strb.hwpe_job_dep.out_stride3 = cpuif_req_masked & (cpuif_addr == 32'h78);
+        decoded_reg_strb.hwpe_job_dep.out_stride4 = cpuif_req_masked & (cpuif_addr == 32'h7c);
+        decoded_reg_strb.hwpe_job_dep.out_len_d0_d1 = cpuif_req_masked & (cpuif_addr == 32'h80);
+        decoded_reg_strb.hwpe_job_dep.out_len_d2_d3 = cpuif_req_masked & (cpuif_addr == 32'h84);
+        decoded_reg_strb.hwpe_job_dep.matrix_dim = cpuif_req_masked & (cpuif_addr == 32'h88);
+        decoded_reg_strb.hwpe_job_dep.channels = cpuif_req_masked & (cpuif_addr == 32'h8c);
+        decoded_reg_strb.hwpe_job_dep.ctrl_engine = cpuif_req_masked & (cpuif_addr == 32'h90);
         decoded_err = '0;
     end
 
@@ -193,96 +201,110 @@ module datamover_regif (
             } tot_len;
             struct {
                 struct {
-                    logic [15:0] next;
+                    logic [31:0] next;
                     logic load_next;
-                } length;
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } stride;
-            } in_d0;
+                } value;
+            } out_tot_len;
             struct {
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } length;
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } stride;
-            } in_d1;
-            struct {
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } length;
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } stride;
-            } in_d2;
-            struct {
-                struct {
-                    logic [10:0] next;
-                    logic load_next;
-                } length;
                 struct {
                     logic [20:0] next;
                     logic load_next;
                 } stride;
-            } in_d3;
+            } in_stride0;
             struct {
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } length;
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } stride;
-            } out_d0;
-            struct {
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } length;
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } stride;
-            } out_d1;
-            struct {
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } length;
-                struct {
-                    logic [15:0] next;
-                    logic load_next;
-                } stride;
-            } out_d2;
-            struct {
-                struct {
-                    logic [10:0] next;
-                    logic load_next;
-                } length;
                 struct {
                     logic [20:0] next;
                     logic load_next;
                 } stride;
-            } out_d3;
+            } in_stride1;
             struct {
                 struct {
-                    logic [31:0] next;
+                    logic [20:0] next;
                     logic load_next;
-                } value;
-            } in_d4_stride;
+                } stride;
+            } in_stride2;
             struct {
                 struct {
-                    logic [31:0] next;
+                    logic [20:0] next;
                     logic load_next;
-                } value;
-            } out_d4_stride;
+                } stride;
+            } in_stride3;
+            struct {
+                struct {
+                    logic [20:0] next;
+                    logic load_next;
+                } stride;
+            } in_stride4;
+            struct {
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d0;
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d1;
+            } in_len_d0_d1;
+            struct {
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d2;
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d3;
+            } in_len_d2_d3;
+            struct {
+                struct {
+                    logic [20:0] next;
+                    logic load_next;
+                } stride;
+            } out_stride0;
+            struct {
+                struct {
+                    logic [20:0] next;
+                    logic load_next;
+                } stride;
+            } out_stride1;
+            struct {
+                struct {
+                    logic [20:0] next;
+                    logic load_next;
+                } stride;
+            } out_stride2;
+            struct {
+                struct {
+                    logic [20:0] next;
+                    logic load_next;
+                } stride;
+            } out_stride3;
+            struct {
+                struct {
+                    logic [20:0] next;
+                    logic load_next;
+                } stride;
+            } out_stride4;
+            struct {
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d0;
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d1;
+            } out_len_d0_d1;
+            struct {
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d2;
+                struct {
+                    logic [15:0] next;
+                    logic load_next;
+                } d3;
+            } out_len_d2_d3;
             struct {
                 struct {
                     logic [15:0] next;
@@ -333,12 +355,6 @@ module datamover_regif (
                     logic load_next;
                 } im2col_log2w;
             } ctrl_engine;
-            struct {
-                struct {
-                    logic [31:0] next;
-                    logic load_next;
-                } value;
-            } out_tot_len;
         } hwpe_job_dep;
     } field_combo_t;
     field_combo_t field_combo;
@@ -379,78 +395,91 @@ module datamover_regif (
             } tot_len;
             struct {
                 struct {
-                    logic [15:0] value;
-                } length;
-                struct {
-                    logic [15:0] value;
-                } stride;
-            } in_d0;
+                    logic [31:0] value;
+                } value;
+            } out_tot_len;
             struct {
-                struct {
-                    logic [15:0] value;
-                } length;
-                struct {
-                    logic [15:0] value;
-                } stride;
-            } in_d1;
-            struct {
-                struct {
-                    logic [15:0] value;
-                } length;
-                struct {
-                    logic [15:0] value;
-                } stride;
-            } in_d2;
-            struct {
-                struct {
-                    logic [10:0] value;
-                } length;
                 struct {
                     logic [20:0] value;
                 } stride;
-            } in_d3;
+            } in_stride0;
             struct {
-                struct {
-                    logic [15:0] value;
-                } length;
-                struct {
-                    logic [15:0] value;
-                } stride;
-            } out_d0;
-            struct {
-                struct {
-                    logic [15:0] value;
-                } length;
-                struct {
-                    logic [15:0] value;
-                } stride;
-            } out_d1;
-            struct {
-                struct {
-                    logic [15:0] value;
-                } length;
-                struct {
-                    logic [15:0] value;
-                } stride;
-            } out_d2;
-            struct {
-                struct {
-                    logic [10:0] value;
-                } length;
                 struct {
                     logic [20:0] value;
                 } stride;
-            } out_d3;
+            } in_stride1;
             struct {
                 struct {
-                    logic [31:0] value;
-                } value;
-            } in_d4_stride;
+                    logic [20:0] value;
+                } stride;
+            } in_stride2;
             struct {
                 struct {
-                    logic [31:0] value;
-                } value;
-            } out_d4_stride;
+                    logic [20:0] value;
+                } stride;
+            } in_stride3;
+            struct {
+                struct {
+                    logic [20:0] value;
+                } stride;
+            } in_stride4;
+            struct {
+                struct {
+                    logic [15:0] value;
+                } d0;
+                struct {
+                    logic [15:0] value;
+                } d1;
+            } in_len_d0_d1;
+            struct {
+                struct {
+                    logic [15:0] value;
+                } d2;
+                struct {
+                    logic [15:0] value;
+                } d3;
+            } in_len_d2_d3;
+            struct {
+                struct {
+                    logic [20:0] value;
+                } stride;
+            } out_stride0;
+            struct {
+                struct {
+                    logic [20:0] value;
+                } stride;
+            } out_stride1;
+            struct {
+                struct {
+                    logic [20:0] value;
+                } stride;
+            } out_stride2;
+            struct {
+                struct {
+                    logic [20:0] value;
+                } stride;
+            } out_stride3;
+            struct {
+                struct {
+                    logic [20:0] value;
+                } stride;
+            } out_stride4;
+            struct {
+                struct {
+                    logic [15:0] value;
+                } d0;
+                struct {
+                    logic [15:0] value;
+                } d1;
+            } out_len_d0_d1;
+            struct {
+                struct {
+                    logic [15:0] value;
+                } d2;
+                struct {
+                    logic [15:0] value;
+                } d3;
+            } out_len_d2_d3;
             struct {
                 struct {
                     logic [15:0] value;
@@ -490,11 +519,6 @@ module datamover_regif (
                     logic [2:0] value;
                 } im2col_log2w;
             } ctrl_engine;
-            struct {
-                struct {
-                    logic [31:0] value;
-                } value;
-            } out_tot_len;
         } hwpe_job_dep;
     } field_storage_t;
     field_storage_t field_storage;
@@ -647,420 +671,443 @@ module datamover_regif (
         end
     end
     assign hwif_out.hwpe_job_dep.tot_len.value.value = field_storage.hwpe_job_dep.tot_len.value.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d0.length
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d0.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d0 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d0.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d0.length.next = next_c;
-        field_combo.hwpe_job_dep.in_d0.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d0.length.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d0.length.load_next) begin
-                field_storage.hwpe_job_dep.in_d0.length.value <= field_combo.hwpe_job_dep.in_d0.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d0.length.value = field_storage.hwpe_job_dep.in_d0.length.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d0.stride
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d0.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d0 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d0.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d0.stride.next = next_c;
-        field_combo.hwpe_job_dep.in_d0.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d0.stride.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d0.stride.load_next) begin
-                field_storage.hwpe_job_dep.in_d0.stride.value <= field_combo.hwpe_job_dep.in_d0.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d0.stride.value = field_storage.hwpe_job_dep.in_d0.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d1.length
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d1.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d1 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d1.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d1.length.next = next_c;
-        field_combo.hwpe_job_dep.in_d1.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d1.length.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d1.length.load_next) begin
-                field_storage.hwpe_job_dep.in_d1.length.value <= field_combo.hwpe_job_dep.in_d1.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d1.length.value = field_storage.hwpe_job_dep.in_d1.length.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d1.stride
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d1.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d1 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d1.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d1.stride.next = next_c;
-        field_combo.hwpe_job_dep.in_d1.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d1.stride.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d1.stride.load_next) begin
-                field_storage.hwpe_job_dep.in_d1.stride.value <= field_combo.hwpe_job_dep.in_d1.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d1.stride.value = field_storage.hwpe_job_dep.in_d1.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d2.length
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d2.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d2 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d2.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d2.length.next = next_c;
-        field_combo.hwpe_job_dep.in_d2.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d2.length.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d2.length.load_next) begin
-                field_storage.hwpe_job_dep.in_d2.length.value <= field_combo.hwpe_job_dep.in_d2.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d2.length.value = field_storage.hwpe_job_dep.in_d2.length.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d2.stride
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d2.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d2 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d2.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d2.stride.next = next_c;
-        field_combo.hwpe_job_dep.in_d2.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d2.stride.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d2.stride.load_next) begin
-                field_storage.hwpe_job_dep.in_d2.stride.value <= field_combo.hwpe_job_dep.in_d2.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d2.stride.value = field_storage.hwpe_job_dep.in_d2.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d3.length
-    always_comb begin
-        automatic logic [10:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d3.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d3.length.value & ~decoded_wr_biten[10:0]) | (decoded_wr_data[10:0] & decoded_wr_biten[10:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d3.length.next = next_c;
-        field_combo.hwpe_job_dep.in_d3.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d3.length.value <= 11'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d3.length.load_next) begin
-                field_storage.hwpe_job_dep.in_d3.length.value <= field_combo.hwpe_job_dep.in_d3.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d3.length.value = field_storage.hwpe_job_dep.in_d3.length.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d3.stride
-    always_comb begin
-        automatic logic [20:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d3.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d3.stride.value & ~decoded_wr_biten[31:11]) | (decoded_wr_data[31:11] & decoded_wr_biten[31:11]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.in_d3.stride.next = next_c;
-        field_combo.hwpe_job_dep.in_d3.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d3.stride.value <= 21'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.in_d3.stride.load_next) begin
-                field_storage.hwpe_job_dep.in_d3.stride.value <= field_combo.hwpe_job_dep.in_d3.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.in_d3.stride.value = field_storage.hwpe_job_dep.in_d3.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d0.length
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d0.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d0 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d0.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d0.length.next = next_c;
-        field_combo.hwpe_job_dep.out_d0.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d0.length.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d0.length.load_next) begin
-                field_storage.hwpe_job_dep.out_d0.length.value <= field_combo.hwpe_job_dep.out_d0.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d0.length.value = field_storage.hwpe_job_dep.out_d0.length.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d0.stride
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d0.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d0 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d0.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d0.stride.next = next_c;
-        field_combo.hwpe_job_dep.out_d0.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d0.stride.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d0.stride.load_next) begin
-                field_storage.hwpe_job_dep.out_d0.stride.value <= field_combo.hwpe_job_dep.out_d0.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d0.stride.value = field_storage.hwpe_job_dep.out_d0.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d1.length
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d1.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d1 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d1.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d1.length.next = next_c;
-        field_combo.hwpe_job_dep.out_d1.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d1.length.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d1.length.load_next) begin
-                field_storage.hwpe_job_dep.out_d1.length.value <= field_combo.hwpe_job_dep.out_d1.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d1.length.value = field_storage.hwpe_job_dep.out_d1.length.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d1.stride
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d1.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d1 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d1.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d1.stride.next = next_c;
-        field_combo.hwpe_job_dep.out_d1.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d1.stride.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d1.stride.load_next) begin
-                field_storage.hwpe_job_dep.out_d1.stride.value <= field_combo.hwpe_job_dep.out_d1.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d1.stride.value = field_storage.hwpe_job_dep.out_d1.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d2.length
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d2.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d2 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d2.length.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d2.length.next = next_c;
-        field_combo.hwpe_job_dep.out_d2.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d2.length.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d2.length.load_next) begin
-                field_storage.hwpe_job_dep.out_d2.length.value <= field_combo.hwpe_job_dep.out_d2.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d2.length.value = field_storage.hwpe_job_dep.out_d2.length.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d2.stride
-    always_comb begin
-        automatic logic [15:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d2.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d2 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d2.stride.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d2.stride.next = next_c;
-        field_combo.hwpe_job_dep.out_d2.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d2.stride.value <= 16'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d2.stride.load_next) begin
-                field_storage.hwpe_job_dep.out_d2.stride.value <= field_combo.hwpe_job_dep.out_d2.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d2.stride.value = field_storage.hwpe_job_dep.out_d2.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d3.length
-    always_comb begin
-        automatic logic [10:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d3.length.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d3.length.value & ~decoded_wr_biten[10:0]) | (decoded_wr_data[10:0] & decoded_wr_biten[10:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d3.length.next = next_c;
-        field_combo.hwpe_job_dep.out_d3.length.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d3.length.value <= 11'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d3.length.load_next) begin
-                field_storage.hwpe_job_dep.out_d3.length.value <= field_combo.hwpe_job_dep.out_d3.length.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d3.length.value = field_storage.hwpe_job_dep.out_d3.length.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d3.stride
-    always_comb begin
-        automatic logic [20:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d3.stride.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d3 && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d3.stride.value & ~decoded_wr_biten[31:11]) | (decoded_wr_data[31:11] & decoded_wr_biten[31:11]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_d3.stride.next = next_c;
-        field_combo.hwpe_job_dep.out_d3.stride.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d3.stride.value <= 21'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_d3.stride.load_next) begin
-                field_storage.hwpe_job_dep.out_d3.stride.value <= field_combo.hwpe_job_dep.out_d3.stride.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_d3.stride.value = field_storage.hwpe_job_dep.out_d3.stride.value;
-    // Field: datamover_regif.hwpe_job_dep.in_d4_stride.value
+    // Field: datamover_regif.hwpe_job_dep.out_tot_len.value
     always_comb begin
         automatic logic [31:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.in_d4_stride.value.value;
+        next_c = field_storage.hwpe_job_dep.out_tot_len.value.value;
         load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.in_d4_stride && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.in_d4_stride.value.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+        if(decoded_reg_strb.hwpe_job_dep.out_tot_len && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_tot_len.value.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
             load_next_c = '1;
         end
-        field_combo.hwpe_job_dep.in_d4_stride.value.next = next_c;
-        field_combo.hwpe_job_dep.in_d4_stride.value.load_next = load_next_c;
+        field_combo.hwpe_job_dep.out_tot_len.value.next = next_c;
+        field_combo.hwpe_job_dep.out_tot_len.value.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.in_d4_stride.value.value <= 32'h0;
+            field_storage.hwpe_job_dep.out_tot_len.value.value <= 32'h0;
         end else begin
-            if(field_combo.hwpe_job_dep.in_d4_stride.value.load_next) begin
-                field_storage.hwpe_job_dep.in_d4_stride.value.value <= field_combo.hwpe_job_dep.in_d4_stride.value.next;
+            if(field_combo.hwpe_job_dep.out_tot_len.value.load_next) begin
+                field_storage.hwpe_job_dep.out_tot_len.value.value <= field_combo.hwpe_job_dep.out_tot_len.value.next;
             end
         end
     end
-    assign hwif_out.hwpe_job_dep.in_d4_stride.value.value = field_storage.hwpe_job_dep.in_d4_stride.value.value;
-    // Field: datamover_regif.hwpe_job_dep.out_d4_stride.value
+    assign hwif_out.hwpe_job_dep.out_tot_len.value.value = field_storage.hwpe_job_dep.out_tot_len.value.value;
+    // Field: datamover_regif.hwpe_job_dep.in_stride0.stride
     always_comb begin
-        automatic logic [31:0] next_c;
+        automatic logic [20:0] next_c;
         automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_d4_stride.value.value;
+        next_c = field_storage.hwpe_job_dep.in_stride0.stride.value;
         load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_d4_stride && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_d4_stride.value.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+        if(decoded_reg_strb.hwpe_job_dep.in_stride0 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_stride0.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
             load_next_c = '1;
         end
-        field_combo.hwpe_job_dep.out_d4_stride.value.next = next_c;
-        field_combo.hwpe_job_dep.out_d4_stride.value.load_next = load_next_c;
+        field_combo.hwpe_job_dep.in_stride0.stride.next = next_c;
+        field_combo.hwpe_job_dep.in_stride0.stride.load_next = load_next_c;
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_d4_stride.value.value <= 32'h0;
+            field_storage.hwpe_job_dep.in_stride0.stride.value <= 21'h0;
         end else begin
-            if(field_combo.hwpe_job_dep.out_d4_stride.value.load_next) begin
-                field_storage.hwpe_job_dep.out_d4_stride.value.value <= field_combo.hwpe_job_dep.out_d4_stride.value.next;
+            if(field_combo.hwpe_job_dep.in_stride0.stride.load_next) begin
+                field_storage.hwpe_job_dep.in_stride0.stride.value <= field_combo.hwpe_job_dep.in_stride0.stride.next;
             end
         end
     end
-    assign hwif_out.hwpe_job_dep.out_d4_stride.value.value = field_storage.hwpe_job_dep.out_d4_stride.value.value;
+    assign hwif_out.hwpe_job_dep.in_stride0.stride.value = field_storage.hwpe_job_dep.in_stride0.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.in_stride1.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_stride1.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_stride1 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_stride1.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_stride1.stride.next = next_c;
+        field_combo.hwpe_job_dep.in_stride1.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_stride1.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_stride1.stride.load_next) begin
+                field_storage.hwpe_job_dep.in_stride1.stride.value <= field_combo.hwpe_job_dep.in_stride1.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_stride1.stride.value = field_storage.hwpe_job_dep.in_stride1.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.in_stride2.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_stride2.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_stride2 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_stride2.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_stride2.stride.next = next_c;
+        field_combo.hwpe_job_dep.in_stride2.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_stride2.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_stride2.stride.load_next) begin
+                field_storage.hwpe_job_dep.in_stride2.stride.value <= field_combo.hwpe_job_dep.in_stride2.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_stride2.stride.value = field_storage.hwpe_job_dep.in_stride2.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.in_stride3.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_stride3.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_stride3 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_stride3.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_stride3.stride.next = next_c;
+        field_combo.hwpe_job_dep.in_stride3.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_stride3.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_stride3.stride.load_next) begin
+                field_storage.hwpe_job_dep.in_stride3.stride.value <= field_combo.hwpe_job_dep.in_stride3.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_stride3.stride.value = field_storage.hwpe_job_dep.in_stride3.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.in_stride4.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_stride4.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_stride4 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_stride4.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_stride4.stride.next = next_c;
+        field_combo.hwpe_job_dep.in_stride4.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_stride4.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_stride4.stride.load_next) begin
+                field_storage.hwpe_job_dep.in_stride4.stride.value <= field_combo.hwpe_job_dep.in_stride4.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_stride4.stride.value = field_storage.hwpe_job_dep.in_stride4.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.in_len_d0_d1.d0
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_len_d0_d1.d0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_len_d0_d1 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_len_d0_d1.d0.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_len_d0_d1.d0.next = next_c;
+        field_combo.hwpe_job_dep.in_len_d0_d1.d0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_len_d0_d1.d0.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_len_d0_d1.d0.load_next) begin
+                field_storage.hwpe_job_dep.in_len_d0_d1.d0.value <= field_combo.hwpe_job_dep.in_len_d0_d1.d0.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_len_d0_d1.d0.value = field_storage.hwpe_job_dep.in_len_d0_d1.d0.value;
+    // Field: datamover_regif.hwpe_job_dep.in_len_d0_d1.d1
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_len_d0_d1.d1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_len_d0_d1 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_len_d0_d1.d1.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_len_d0_d1.d1.next = next_c;
+        field_combo.hwpe_job_dep.in_len_d0_d1.d1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_len_d0_d1.d1.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_len_d0_d1.d1.load_next) begin
+                field_storage.hwpe_job_dep.in_len_d0_d1.d1.value <= field_combo.hwpe_job_dep.in_len_d0_d1.d1.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_len_d0_d1.d1.value = field_storage.hwpe_job_dep.in_len_d0_d1.d1.value;
+    // Field: datamover_regif.hwpe_job_dep.in_len_d2_d3.d2
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_len_d2_d3.d2.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_len_d2_d3 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_len_d2_d3.d2.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_len_d2_d3.d2.next = next_c;
+        field_combo.hwpe_job_dep.in_len_d2_d3.d2.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_len_d2_d3.d2.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_len_d2_d3.d2.load_next) begin
+                field_storage.hwpe_job_dep.in_len_d2_d3.d2.value <= field_combo.hwpe_job_dep.in_len_d2_d3.d2.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_len_d2_d3.d2.value = field_storage.hwpe_job_dep.in_len_d2_d3.d2.value;
+    // Field: datamover_regif.hwpe_job_dep.in_len_d2_d3.d3
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.in_len_d2_d3.d3.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.in_len_d2_d3 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.in_len_d2_d3.d3.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.in_len_d2_d3.d3.next = next_c;
+        field_combo.hwpe_job_dep.in_len_d2_d3.d3.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.in_len_d2_d3.d3.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.in_len_d2_d3.d3.load_next) begin
+                field_storage.hwpe_job_dep.in_len_d2_d3.d3.value <= field_combo.hwpe_job_dep.in_len_d2_d3.d3.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.in_len_d2_d3.d3.value = field_storage.hwpe_job_dep.in_len_d2_d3.d3.value;
+    // Field: datamover_regif.hwpe_job_dep.out_stride0.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_stride0.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_stride0 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_stride0.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_stride0.stride.next = next_c;
+        field_combo.hwpe_job_dep.out_stride0.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_stride0.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_stride0.stride.load_next) begin
+                field_storage.hwpe_job_dep.out_stride0.stride.value <= field_combo.hwpe_job_dep.out_stride0.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_stride0.stride.value = field_storage.hwpe_job_dep.out_stride0.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.out_stride1.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_stride1.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_stride1 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_stride1.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_stride1.stride.next = next_c;
+        field_combo.hwpe_job_dep.out_stride1.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_stride1.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_stride1.stride.load_next) begin
+                field_storage.hwpe_job_dep.out_stride1.stride.value <= field_combo.hwpe_job_dep.out_stride1.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_stride1.stride.value = field_storage.hwpe_job_dep.out_stride1.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.out_stride2.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_stride2.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_stride2 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_stride2.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_stride2.stride.next = next_c;
+        field_combo.hwpe_job_dep.out_stride2.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_stride2.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_stride2.stride.load_next) begin
+                field_storage.hwpe_job_dep.out_stride2.stride.value <= field_combo.hwpe_job_dep.out_stride2.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_stride2.stride.value = field_storage.hwpe_job_dep.out_stride2.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.out_stride3.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_stride3.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_stride3 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_stride3.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_stride3.stride.next = next_c;
+        field_combo.hwpe_job_dep.out_stride3.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_stride3.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_stride3.stride.load_next) begin
+                field_storage.hwpe_job_dep.out_stride3.stride.value <= field_combo.hwpe_job_dep.out_stride3.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_stride3.stride.value = field_storage.hwpe_job_dep.out_stride3.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.out_stride4.stride
+    always_comb begin
+        automatic logic [20:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_stride4.stride.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_stride4 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_stride4.stride.value & ~decoded_wr_biten[20:0]) | (decoded_wr_data[20:0] & decoded_wr_biten[20:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_stride4.stride.next = next_c;
+        field_combo.hwpe_job_dep.out_stride4.stride.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_stride4.stride.value <= 21'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_stride4.stride.load_next) begin
+                field_storage.hwpe_job_dep.out_stride4.stride.value <= field_combo.hwpe_job_dep.out_stride4.stride.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_stride4.stride.value = field_storage.hwpe_job_dep.out_stride4.stride.value;
+    // Field: datamover_regif.hwpe_job_dep.out_len_d0_d1.d0
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_len_d0_d1.d0.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_len_d0_d1 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_len_d0_d1.d0.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_len_d0_d1.d0.next = next_c;
+        field_combo.hwpe_job_dep.out_len_d0_d1.d0.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_len_d0_d1.d0.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_len_d0_d1.d0.load_next) begin
+                field_storage.hwpe_job_dep.out_len_d0_d1.d0.value <= field_combo.hwpe_job_dep.out_len_d0_d1.d0.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_len_d0_d1.d0.value = field_storage.hwpe_job_dep.out_len_d0_d1.d0.value;
+    // Field: datamover_regif.hwpe_job_dep.out_len_d0_d1.d1
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_len_d0_d1.d1.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_len_d0_d1 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_len_d0_d1.d1.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_len_d0_d1.d1.next = next_c;
+        field_combo.hwpe_job_dep.out_len_d0_d1.d1.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_len_d0_d1.d1.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_len_d0_d1.d1.load_next) begin
+                field_storage.hwpe_job_dep.out_len_d0_d1.d1.value <= field_combo.hwpe_job_dep.out_len_d0_d1.d1.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_len_d0_d1.d1.value = field_storage.hwpe_job_dep.out_len_d0_d1.d1.value;
+    // Field: datamover_regif.hwpe_job_dep.out_len_d2_d3.d2
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_len_d2_d3.d2.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_len_d2_d3 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_len_d2_d3.d2.value & ~decoded_wr_biten[15:0]) | (decoded_wr_data[15:0] & decoded_wr_biten[15:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_len_d2_d3.d2.next = next_c;
+        field_combo.hwpe_job_dep.out_len_d2_d3.d2.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_len_d2_d3.d2.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_len_d2_d3.d2.load_next) begin
+                field_storage.hwpe_job_dep.out_len_d2_d3.d2.value <= field_combo.hwpe_job_dep.out_len_d2_d3.d2.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_len_d2_d3.d2.value = field_storage.hwpe_job_dep.out_len_d2_d3.d2.value;
+    // Field: datamover_regif.hwpe_job_dep.out_len_d2_d3.d3
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.out_len_d2_d3.d3.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.out_len_d2_d3 && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.out_len_d2_d3.d3.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.out_len_d2_d3.d3.next = next_c;
+        field_combo.hwpe_job_dep.out_len_d2_d3.d3.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.out_len_d2_d3.d3.value <= 16'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.out_len_d2_d3.d3.load_next) begin
+                field_storage.hwpe_job_dep.out_len_d2_d3.d3.value <= field_combo.hwpe_job_dep.out_len_d2_d3.d3.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.out_len_d2_d3.d3.value = field_storage.hwpe_job_dep.out_len_d2_d3.d3.value;
     // Field: datamover_regif.hwpe_job_dep.matrix_dim.tensor_size_m
     always_comb begin
         automatic logic [15:0] next_c;
@@ -1314,29 +1361,6 @@ module datamover_regif (
         end
     end
     assign hwif_out.hwpe_job_dep.ctrl_engine.im2col_log2w.value = field_storage.hwpe_job_dep.ctrl_engine.im2col_log2w.value;
-    // Field: datamover_regif.hwpe_job_dep.out_tot_len.value
-    always_comb begin
-        automatic logic [31:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.hwpe_job_dep.out_tot_len.value.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.hwpe_job_dep.out_tot_len && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.hwpe_job_dep.out_tot_len.value.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
-            load_next_c = '1;
-        end
-        field_combo.hwpe_job_dep.out_tot_len.value.next = next_c;
-        field_combo.hwpe_job_dep.out_tot_len.value.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.hwpe_job_dep.out_tot_len.value.value <= 32'h0;
-        end else begin
-            if(field_combo.hwpe_job_dep.out_tot_len.value.load_next) begin
-                field_storage.hwpe_job_dep.out_tot_len.value.value <= field_combo.hwpe_job_dep.out_tot_len.value.next;
-            end
-        end
-    end
-    assign hwif_out.hwpe_job_dep.out_tot_len.value.value = field_storage.hwpe_job_dep.out_tot_len.value.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1397,52 +1421,63 @@ module datamover_regif (
             readback_data_var[31:0] = field_storage.hwpe_job_dep.tot_len.value.value;
         end
         if(rd_mux_addr == 32'h4c) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.in_d0.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.in_d0.stride.value;
+            readback_data_var[31:0] = field_storage.hwpe_job_dep.out_tot_len.value.value;
         end
         if(rd_mux_addr == 32'h50) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.in_d1.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.in_d1.stride.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.in_stride0.stride.value;
         end
         if(rd_mux_addr == 32'h54) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.in_d2.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.in_d2.stride.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.in_stride1.stride.value;
         end
         if(rd_mux_addr == 32'h58) begin
-            readback_data_var[10:0] = field_storage.hwpe_job_dep.in_d3.length.value;
-            readback_data_var[31:11] = field_storage.hwpe_job_dep.in_d3.stride.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.in_stride2.stride.value;
         end
         if(rd_mux_addr == 32'h5c) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.out_d0.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.out_d0.stride.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.in_stride3.stride.value;
         end
         if(rd_mux_addr == 32'h60) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.out_d1.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.out_d1.stride.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.in_stride4.stride.value;
         end
         if(rd_mux_addr == 32'h64) begin
-            readback_data_var[15:0] = field_storage.hwpe_job_dep.out_d2.length.value;
-            readback_data_var[31:16] = field_storage.hwpe_job_dep.out_d2.stride.value;
+            readback_data_var[15:0] = field_storage.hwpe_job_dep.in_len_d0_d1.d0.value;
+            readback_data_var[31:16] = field_storage.hwpe_job_dep.in_len_d0_d1.d1.value;
         end
         if(rd_mux_addr == 32'h68) begin
-            readback_data_var[10:0] = field_storage.hwpe_job_dep.out_d3.length.value;
-            readback_data_var[31:11] = field_storage.hwpe_job_dep.out_d3.stride.value;
+            readback_data_var[15:0] = field_storage.hwpe_job_dep.in_len_d2_d3.d2.value;
+            readback_data_var[31:16] = field_storage.hwpe_job_dep.in_len_d2_d3.d3.value;
         end
         if(rd_mux_addr == 32'h6c) begin
-            readback_data_var[31:0] = field_storage.hwpe_job_dep.in_d4_stride.value.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.out_stride0.stride.value;
         end
         if(rd_mux_addr == 32'h70) begin
-            readback_data_var[31:0] = field_storage.hwpe_job_dep.out_d4_stride.value.value;
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.out_stride1.stride.value;
         end
         if(rd_mux_addr == 32'h74) begin
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.out_stride2.stride.value;
+        end
+        if(rd_mux_addr == 32'h78) begin
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.out_stride3.stride.value;
+        end
+        if(rd_mux_addr == 32'h7c) begin
+            readback_data_var[20:0] = field_storage.hwpe_job_dep.out_stride4.stride.value;
+        end
+        if(rd_mux_addr == 32'h80) begin
+            readback_data_var[15:0] = field_storage.hwpe_job_dep.out_len_d0_d1.d0.value;
+            readback_data_var[31:16] = field_storage.hwpe_job_dep.out_len_d0_d1.d1.value;
+        end
+        if(rd_mux_addr == 32'h84) begin
+            readback_data_var[15:0] = field_storage.hwpe_job_dep.out_len_d2_d3.d2.value;
+            readback_data_var[31:16] = field_storage.hwpe_job_dep.out_len_d2_d3.d3.value;
+        end
+        if(rd_mux_addr == 32'h88) begin
             readback_data_var[15:0] = field_storage.hwpe_job_dep.matrix_dim.tensor_size_m.value;
             readback_data_var[31:16] = field_storage.hwpe_job_dep.matrix_dim.tensor_size_n.value;
         end
-        if(rd_mux_addr == 32'h78) begin
+        if(rd_mux_addr == 32'h8c) begin
             readback_data_var[10:0] = field_storage.hwpe_job_dep.channels.num_channels.value;
             readback_data_var[31:11] = field_storage.hwpe_job_dep.channels.total_elements.value;
         end
-        if(rd_mux_addr == 32'h7c) begin
+        if(rd_mux_addr == 32'h90) begin
             readback_data_var[2:0] = field_storage.hwpe_job_dep.ctrl_engine.transp_mode.value;
             readback_data_var[7:3] = field_storage.hwpe_job_dep.ctrl_engine.datamover_mode.value;
             readback_data_var[11:8] = field_storage.hwpe_job_dep.ctrl_engine.read_dim_en.value;
@@ -1450,9 +1485,6 @@ module datamover_regif (
             readback_data_var[18:16] = field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value;
             readback_data_var[19] = field_storage.hwpe_job_dep.ctrl_engine.im2col_pack.value;
             readback_data_var[22:20] = field_storage.hwpe_job_dep.ctrl_engine.im2col_log2w.value;
-        end
-        if(rd_mux_addr == 32'h80) begin
-            readback_data_var[31:0] = field_storage.hwpe_job_dep.out_tot_len.value.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

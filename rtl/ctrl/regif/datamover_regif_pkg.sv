@@ -5,7 +5,7 @@ package datamover_regif_pkg;
 
     localparam DATAMOVER_REGIF_DATA_WIDTH = 32;
     localparam DATAMOVER_REGIF_MIN_ADDR_WIDTH = 32;
-    localparam DATAMOVER_REGIF_SIZE = 'h84;
+    localparam DATAMOVER_REGIF_SIZE = 'h94;
 
     typedef struct packed {
         logic [31:0] next;
@@ -129,30 +129,46 @@ package datamover_regif_pkg;
     } datamover_regif__dm_value32__out_t;
 
     typedef struct packed {
-        logic [15:0] value;
-    } datamover_regif__dm_stride_len__length__out_t;
+        logic [31:0] value;
+    } datamover_regif__dm_out_tot_len__value__out_t;
 
     typedef struct packed {
-        logic [15:0] value;
-    } datamover_regif__dm_stride_len__stride__out_t;
-
-    typedef struct packed {
-        datamover_regif__dm_stride_len__length__out_t length;
-        datamover_regif__dm_stride_len__stride__out_t stride;
-    } datamover_regif__dm_stride_len__out_t;
-
-    typedef struct packed {
-        logic [10:0] value;
-    } datamover_regif__dm_d3_stride_len__length__out_t;
+        datamover_regif__dm_out_tot_len__value__out_t value;
+    } datamover_regif__dm_out_tot_len__out_t;
 
     typedef struct packed {
         logic [20:0] value;
-    } datamover_regif__dm_d3_stride_len__stride__out_t;
+    } datamover_regif__dm_stride__stride__out_t;
 
     typedef struct packed {
-        datamover_regif__dm_d3_stride_len__length__out_t length;
-        datamover_regif__dm_d3_stride_len__stride__out_t stride;
-    } datamover_regif__dm_d3_stride_len__out_t;
+        datamover_regif__dm_stride__stride__out_t stride;
+    } datamover_regif__dm_stride__out_t;
+
+    typedef struct packed {
+        logic [15:0] value;
+    } datamover_regif__dm_len_d0_d1__d0__out_t;
+
+    typedef struct packed {
+        logic [15:0] value;
+    } datamover_regif__dm_len_d0_d1__d1__out_t;
+
+    typedef struct packed {
+        datamover_regif__dm_len_d0_d1__d0__out_t d0;
+        datamover_regif__dm_len_d0_d1__d1__out_t d1;
+    } datamover_regif__dm_len_d0_d1__out_t;
+
+    typedef struct packed {
+        logic [15:0] value;
+    } datamover_regif__dm_len_d2_d3__d2__out_t;
+
+    typedef struct packed {
+        logic [15:0] value;
+    } datamover_regif__dm_len_d2_d3__d3__out_t;
+
+    typedef struct packed {
+        datamover_regif__dm_len_d2_d3__d2__out_t d2;
+        datamover_regif__dm_len_d2_d3__d3__out_t d3;
+    } datamover_regif__dm_len_d2_d3__out_t;
 
     typedef struct packed {
         logic [15:0] value;
@@ -219,31 +235,27 @@ package datamover_regif_pkg;
     } datamover_regif__dm_ctrl_engine__out_t;
 
     typedef struct packed {
-        logic [31:0] value;
-    } datamover_regif__dm_out_tot_len__value__out_t;
-
-    typedef struct packed {
-        datamover_regif__dm_out_tot_len__value__out_t value;
-    } datamover_regif__dm_out_tot_len__out_t;
-
-    typedef struct packed {
         datamover_regif__dm_value32__out_t in_ptr;
         datamover_regif__dm_value32__out_t out_ptr;
         datamover_regif__dm_value32__out_t tot_len;
-        datamover_regif__dm_stride_len__out_t in_d0;
-        datamover_regif__dm_stride_len__out_t in_d1;
-        datamover_regif__dm_stride_len__out_t in_d2;
-        datamover_regif__dm_d3_stride_len__out_t in_d3;
-        datamover_regif__dm_stride_len__out_t out_d0;
-        datamover_regif__dm_stride_len__out_t out_d1;
-        datamover_regif__dm_stride_len__out_t out_d2;
-        datamover_regif__dm_d3_stride_len__out_t out_d3;
-        datamover_regif__dm_value32__out_t in_d4_stride;
-        datamover_regif__dm_value32__out_t out_d4_stride;
+        datamover_regif__dm_out_tot_len__out_t out_tot_len;
+        datamover_regif__dm_stride__out_t in_stride0;
+        datamover_regif__dm_stride__out_t in_stride1;
+        datamover_regif__dm_stride__out_t in_stride2;
+        datamover_regif__dm_stride__out_t in_stride3;
+        datamover_regif__dm_stride__out_t in_stride4;
+        datamover_regif__dm_len_d0_d1__out_t in_len_d0_d1;
+        datamover_regif__dm_len_d2_d3__out_t in_len_d2_d3;
+        datamover_regif__dm_stride__out_t out_stride0;
+        datamover_regif__dm_stride__out_t out_stride1;
+        datamover_regif__dm_stride__out_t out_stride2;
+        datamover_regif__dm_stride__out_t out_stride3;
+        datamover_regif__dm_stride__out_t out_stride4;
+        datamover_regif__dm_len_d0_d1__out_t out_len_d0_d1;
+        datamover_regif__dm_len_d2_d3__out_t out_len_d2_d3;
         datamover_regif__dm_matrix_dim__out_t matrix_dim;
         datamover_regif__dm_channels__out_t channels;
         datamover_regif__dm_ctrl_engine__out_t ctrl_engine;
-        datamover_regif__dm_out_tot_len__out_t out_tot_len;
     } datamover_regif__hwpe_ctrl_job_dep__out_t;
 
     typedef struct packed {

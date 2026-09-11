@@ -91,25 +91,37 @@ typedef struct {
 #define DATAMOVER_REGIF__DM_VALUE32__VALUE_bw 32
 #define DATAMOVER_REGIF__DM_VALUE32__VALUE_reset 0x0
 
-// reg - datamover_regif::dm_stride_len
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__LENGTH_bm 0xffff
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__LENGTH_bp 0
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__LENGTH_bw 16
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__LENGTH_reset 0x0
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__STRIDE_bm 0xffff0000
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__STRIDE_bp 16
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__STRIDE_bw 16
-#define DATAMOVER_REGIF__DM_STRIDE_LEN__STRIDE_reset 0x0
+// reg - datamover_regif::dm_out_tot_len
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bm 0xffffffff
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bp 0
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bw 32
+#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_reset 0x0
 
-// reg - datamover_regif::dm_d3_stride_len
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__LENGTH_bm 0x7ff
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__LENGTH_bp 0
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__LENGTH_bw 11
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__LENGTH_reset 0x0
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__STRIDE_bm 0xfffff800
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__STRIDE_bp 11
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__STRIDE_bw 21
-#define DATAMOVER_REGIF__DM_D3_STRIDE_LEN__STRIDE_reset 0x0
+// reg - datamover_regif::dm_stride
+#define DATAMOVER_REGIF__DM_STRIDE__STRIDE_bm 0x1fffff
+#define DATAMOVER_REGIF__DM_STRIDE__STRIDE_bp 0
+#define DATAMOVER_REGIF__DM_STRIDE__STRIDE_bw 21
+#define DATAMOVER_REGIF__DM_STRIDE__STRIDE_reset 0x0
+
+// reg - datamover_regif::dm_len_d0_d1
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D0_bm 0xffff
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D0_bp 0
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D0_bw 16
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D0_reset 0x0
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D1_bm 0xffff0000
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D1_bp 16
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D1_bw 16
+#define DATAMOVER_REGIF__DM_LEN_D0_D1__D1_reset 0x0
+
+// reg - datamover_regif::dm_len_d2_d3
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D2_bm 0xffff
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D2_bp 0
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D2_bw 16
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D2_reset 0x0
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D3_bm 0xffff0000
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D3_bp 16
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D3_bw 16
+#define DATAMOVER_REGIF__DM_LEN_D2_D3__D3_reset 0x0
 
 // reg - datamover_regif::dm_matrix_dim
 #define DATAMOVER_REGIF__DM_MATRIX_DIM__TENSOR_SIZE_M_bm 0xffff
@@ -161,31 +173,29 @@ typedef struct {
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_LOG2W_bw 3
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_LOG2W_reset 0x0
 
-// reg - datamover_regif::dm_out_tot_len
-#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bm 0xffffffff
-#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bp 0
-#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_bw 32
-#define DATAMOVER_REGIF__DM_OUT_TOT_LEN__VALUE_reset 0x0
-
 // regfile - datamover_regif::hwpe_ctrl_job_dep
 typedef struct {
     uint32_t in_ptr;
     uint32_t out_ptr;
     uint32_t tot_len;
-    uint32_t in_d0;
-    uint32_t in_d1;
-    uint32_t in_d2;
-    uint32_t in_d3;
-    uint32_t out_d0;
-    uint32_t out_d1;
-    uint32_t out_d2;
-    uint32_t out_d3;
-    uint32_t in_d4_stride;
-    uint32_t out_d4_stride;
+    uint32_t out_tot_len;
+    uint32_t in_stride0;
+    uint32_t in_stride1;
+    uint32_t in_stride2;
+    uint32_t in_stride3;
+    uint32_t in_stride4;
+    uint32_t in_len_d0_d1;
+    uint32_t in_len_d2_d3;
+    uint32_t out_stride0;
+    uint32_t out_stride1;
+    uint32_t out_stride2;
+    uint32_t out_stride3;
+    uint32_t out_stride4;
+    uint32_t out_len_d0_d1;
+    uint32_t out_len_d2_d3;
     uint32_t matrix_dim;
     uint32_t channels;
     uint32_t ctrl_engine;
-    uint32_t out_tot_len;
 } datamover_regif__hwpe_ctrl_job_dep_t;
 
 // addrmap - datamover_regif
@@ -197,7 +207,7 @@ typedef struct {
 } datamover_regif_t;
 
 
-static_assert(sizeof(datamover_regif_t) == 0x84, "Packing error");
+static_assert(sizeof(datamover_regif_t) == 0x94, "Packing error");
 
 #ifdef __cplusplus
 }

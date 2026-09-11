@@ -87,7 +87,6 @@ def normalize_params(raw: dict) -> dict:
 
 
 STR_PARAMS = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
-STRIDE_MAX = (1 << 16) - 1   # dm_stride_len.stride
 LAYOUTS = ("CHW", "CIM")
 IM2COL_IN = ("CHW", "HWC", "CIM")
 IM2COL_OUT = ("COL", "ROW_CIM", "COL_CIM")
@@ -95,17 +94,12 @@ IM2COL_UNIT_WIDTHS = (8, 16, 32, 64)
 
 
 def _validate_unfold_params(params: dict) -> None:
-    """Even H and W, and the 16-bit d0 strides of the HAL builders."""
-    c, m, n = params["SIZE_C"], params["SIZE_M"], params["SIZE_N"]
+    """Even H and W; the CIM layout needs whole 64-pixel blocks."""
+    m, n = params["SIZE_M"], params["SIZE_N"]
     if m % 2 != 0 or n % 2 != 0:
         raise ValueError(f"unfold and fold need even H and W, got {m}x{n}")
-    if params["LAYOUT"] == "CIM":
-        if (m * n) % 64 != 0:
-            raise ValueError(f"LAYOUT=CIM needs H*W a multiple of 64, got {m}x{n}")
-        if m * n // 4 > 511:
-            raise ValueError(f"LAYOUT=CIM needs at most 511 tokens, got {m * n // 4}")
-    elif c * m * n // 4 > STRIDE_MAX or m * n > STRIDE_MAX:
-        raise ValueError(f"unfold and fold need C*H*W/4 and H*W below {STRIDE_MAX + 1}, got C={c} {m}x{n}")
+    if params["LAYOUT"] == "CIM" and (m * n) % 64 != 0:
+        raise ValueError(f"LAYOUT=CIM needs H*W a multiple of 64, got {m}x{n}")
 
 
 def _validate_im2row_params(params: dict) -> None:
@@ -120,61 +114,32 @@ def _validate_im2row_params(params: dict) -> None:
 
 
 def _validate_im2col_params(params: dict) -> None:
-    """The limits of the HAL paths: 16-bit d0..d2 strides, 16-bit beat counts, 21-bit element count."""
+    """The relations of the HAL paths."""
     kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
     s, pad = params["CONV_STRIDE"], params["CONV_PAD"]
-    c, m, n = params["SIZE_C"], params["SIZE_M"], params["SIZE_N"]
+    m, n = params["SIZE_M"], params["SIZE_N"]
     layout = (params["IM2COL_IN"], params["IM2COL_OUT"])
     if kh < 1 or kw < 1:
         raise ValueError(f"KERNEL_SIZE_H/KERNEL_SIZE_W must be >= 1, got {kh}x{kw}")
     if params["IM2COL_OUT"] == "ROW_CIM":
         _validate_im2row_params(params)
-        beats = c * m * n // kh if params["IM2COL_IN"] == "CHW" else 2 * (kh // 4) * (m // kh) * (n // kh)
-        _check_beats(beats)
         return
     if s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
-    h_out, w_out = (m + 2 * pad - kh) // s + 1, (n + 2 * pad - kw) // s + 1
-    row_bytes = h_out * w_out
     if layout == ("CIM", "COL_CIM"):
         if (kh, kw, s, pad) != (3, 3, 1, 1):
             raise ValueError(f"CIM im2col is 3x3, stride 1, pad 1, got K={kh}x{kw} S={s} pad={pad}")
         if n not in IM2COL_UNIT_WIDTHS or (m * n) % 64 != 0:
             raise ValueError(f"CIM im2col needs W in {IM2COL_UNIT_WIDTHS} and H*W a multiple of 64, got {m}x{n}")
-        if kh * kw * c * m * n >= 1 << TOTAL_ELEM_BITS:
-            raise ValueError(f"CIM im2col output of {kh * kw * c * m * n} elements exceeds the {TOTAL_ELEM_BITS}-bit count")
-        _check_beats(kh * kw * c * m * n // 64)
     elif layout == ("CHW", "COL_CIM"):
+        w_out = (n - kw) // s + 1
         if s != 2 or pad != 0 or w_out % 64 != 0:
             raise ValueError(f"CHW to COL_CIM needs stride 2, no pad, and w_out a multiple of 64, got S={s} pad={pad} w_out={w_out}")
-        _check_stride("the block pitch", kh * kw * c * 64, w_out > 64)
-        _check_stride("the row pitch", kh * kw * c * w_out, h_out > 1)
-        _check_beats(2 * kh * kw * c * row_bytes // 64)
     elif layout == ("CHW", "COL"):
         if pad != 0:
             raise ValueError("CONV_PAD needs IM2COL_IN=CIM and IM2COL_OUT=COL_CIM")
-        if w_out > 64 or (s == 2 and w_out > 32):
-            _check_stride("the row pitch", row_bytes, kw > 1)
-            _check_stride("the tap pitch", kw * row_bytes, kh > 1)
-        else:
-            _check_stride("the tap pitch", row_bytes, kw > 1)
-            _check_stride("the kernel row pitch", kw * row_bytes, kh > 1)
-        _check_beats(kh * kw * c * h_out * (2 if s == 2 and w_out > 32 else 1) * max(1, w_out // 64))
     else:
         raise ValueError(f"unsupported im2col layouts {layout}")
-
-
-TOTAL_ELEM_BITS = 21
-
-
-def _check_stride(what: str, stride: int, used: bool) -> None:
-    if used and stride > STRIDE_MAX:
-        raise ValueError(f"{what} of {stride} exceeds the 16-bit stride field")
-
-
-def _check_beats(beats: int) -> None:
-    if beats > STRIDE_MAX:
-        raise ValueError(f"{beats} beats exceed the 16-bit transaction counter (B12)")
 
 
 def hw_tag(name: str) -> str:

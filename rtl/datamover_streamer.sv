@@ -49,6 +49,8 @@ module datamover_streamer
   output flags_streamer_t        flags_o
 );
 
+  // 24-bit beat counters: 16M beats, above every job of a 1 MiB tensor.
+  localparam int unsigned TRANS_CNT = 24;
   localparam int unsigned BW = `HCI_SIZE_GET_BW(tcdm);
   localparam int unsigned AW = `HCI_SIZE_GET_AW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
@@ -114,6 +116,7 @@ module datamover_streamer
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
     .DIM_ENABLE_1H         ( 4'b1111               ),
+    .TRANS_CNT             ( TRANS_CNT             ),
     .TCDM_R_READY_SUPPORT  ( 1'b0                  ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_source (
@@ -136,6 +139,7 @@ module datamover_streamer
     .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
     .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
     .DIM_ENABLE_1H         ( 4'b1111               ),
+    .TRANS_CNT             ( TRANS_CNT             ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_sink (
     .clk_i       ( clk_i                       ),
