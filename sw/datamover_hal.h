@@ -54,8 +54,7 @@ static inline __attribute__((always_inline)) void datamover_program(const datamo
   r->in_ptr           = cfg->in_ptr;
   r->out_ptr          = cfg->out_ptr;
   r->tot_len          = cfg->tot_len;
-  // Sink beat count defaults to the source count; only transpose splits them (partial tiles).
-  r->out_tot_len      = cfg->out_tot_len ? cfg->out_tot_len : cfg->tot_len;
+  r->out_tot_len      = cfg->out_tot_len;
   r->in_stride0       = cfg->in_stride0;
   r->in_stride1       = cfg->in_stride1;
   r->in_stride2       = cfg->in_stride2;
@@ -146,8 +145,13 @@ static inline __attribute__((always_inline)) void datamover_unfold(uint8_t *matr
   uint32_t leftover = size_c % DATAMOVER_BANDWIDTH_ELEMS;
   uint32_t c_full   = size_c - leftover;
   if (layout == DATAMOVER_LAYOUT_CHW) {
-    datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
-    datamover_launch(&cfg);
+    // One job per pixel tile: the five address dimensions hold the patch pixel, the patch, the
+    // channel tile, the patch row, and the image row, so a second pixel tile has no dimension.
+    for (uint32_t col = 0; col < size_w; col += DATAMOVER_BANDWIDTH_ELEMS) {
+      uint32_t band_cols = (size_w - col < DATAMOVER_BANDWIDTH_ELEMS) ? size_w - col : DATAMOVER_BANDWIDTH_ELEMS;
+      datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, col, band_cols);
+      datamover_launch(&cfg);
+    }
     return;
   }
   if (c_full > 0) {
@@ -167,8 +171,13 @@ static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix
   uint32_t leftover = size_c % DATAMOVER_BANDWIDTH_ELEMS;
   uint32_t c_full   = size_c - leftover;
   if (layout == DATAMOVER_LAYOUT_CHW) {
-    datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w);
-    datamover_launch(&cfg);
+    // One job per pixel tile: the five address dimensions hold the patch pixel, the patch, the
+    // channel tile, the patch row, and the image row, so a second pixel tile has no dimension.
+    for (uint32_t col = 0; col < size_w; col += DATAMOVER_BANDWIDTH_ELEMS) {
+      uint32_t band_cols = (size_w - col < DATAMOVER_BANDWIDTH_ELEMS) ? size_w - col : DATAMOVER_BANDWIDTH_ELEMS;
+      datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, col, band_cols);
+      datamover_launch(&cfg);
+    }
     return;
   }
   if (c_full > 0) {

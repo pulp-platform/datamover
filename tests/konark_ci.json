@@ -348,6 +348,30 @@
         "SIZE_N": 32,
         "COUNT": 0
       }
+    },
+    {
+      "name": "65x4x66_unfold4",
+      "params": {
+        "DATAMOVER_MODE": 4,
+        "TRANSP_MODE": 1,
+        "BLOCK_MODE": 0,
+        "SIZE_C": 65,
+        "SIZE_M": 4,
+        "SIZE_N": 66,
+        "COUNT": 0
+      }
+    },
+    {
+      "name": "65x4x66_fold4",
+      "params": {
+        "DATAMOVER_MODE": 5,
+        "TRANSP_MODE": 1,
+        "BLOCK_MODE": 0,
+        "SIZE_C": 65,
+        "SIZE_M": 4,
+        "SIZE_N": 66,
+        "COUNT": 0
+      }
     }
   ]
 }
