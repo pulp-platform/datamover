@@ -1,8 +1,9 @@
 .bender
-modelsim/vsim
-modelsim/build_*
-modelsim/builds/
-modelsim/tests/
+simulation/tests/
+simulation/questa/builds/
+simulation/vcs/builds/
+simulation/vcs/cov/
+simulation/vcs/cov_export/
 reports/
 .venv/
 .uv-cache/

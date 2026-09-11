@@ -26,7 +26,7 @@ CC_OPTS += -DDATAMOVER_MISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
 LD_OPTS = -march=rv32imc -D__riscv__ -MMD -MP -nostartfiles -Wl,--gc-sections -lgcc
 
 # Build artifacts
-SW_BUILD_DIR  := $(MODELSIM_TEST_DIR)
+SW_BUILD_DIR  := $(SIM_TEST_DIR)
 SW_HEADER     := $(SW_BUILD_DIR)/datamover_workload.h
 SW_CRT        := $(SW_BUILD_DIR)/crt0.o
 SW_OBJ        := $(SW_BUILD_DIR)/tb_datamover.o

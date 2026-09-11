@@ -89,7 +89,7 @@ module tb_dummy_memory
 
   // Per-port atomic access: each BANK_WORD_WIDTH-bit transaction touches
   // N_STORAGE_PER_PORT consecutive STORAGE_WIDTH-bit memory entries.
-  always_ff @(posedge clk_i) begin : dummy_proc
+  always @(posedge clk_i) begin : dummy_proc
     for (int i = 0; i < MP; i++) begin
       automatic int base_idx = (tcdm_add[i] - BASE_ADDR) >> ADDR_SHIFT;
       if ((tcdm_req[i] & enable_i) == 1'b0) begin
