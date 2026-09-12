@@ -144,6 +144,8 @@ def _validate_unfold_params(params: dict, beat: int) -> None:
         raise ValueError(f"unfold and fold need even H and W, got {m}x{n}")
     if params["LAYOUT"] == "CIM" and (m * n) % beat != 0:
         raise ValueError(f"LAYOUT=CIM needs H*W a multiple of {beat}, got {m}x{n}")
+    if params["LAYOUT"] == "CIM" and m * n // beat > 0xFFFF:
+        raise ValueError(f"LAYOUT=CIM needs at most 65535 pixel blocks per job, got {m * n // beat}")
 
 
 def _validate_im2row_params(params: dict, beat: int) -> None:

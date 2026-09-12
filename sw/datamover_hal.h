@@ -138,7 +138,7 @@ static inline __attribute__((always_inline)) void datamover_cim_layout_reverse(u
 }
 
 // CIM layout: one job for the complete channel tiles, one for the leftover channels.
-static inline __attribute__((always_inline)) void datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
+static inline __attribute__((always_inline)) datamover_status_t datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
                                     uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                     datamover_layout_t layout) {
   datamover_cfg_t cfg = {0};
@@ -152,19 +152,26 @@ static inline __attribute__((always_inline)) void datamover_unfold(uint8_t *matr
       datamover_build_unfold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, col, band_cols);
       datamover_launch(&cfg);
     }
-    return;
+    return DATAMOVER_OK;
   }
-  if (c_full > 0) {
-    datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, 0, c_full);
+  // A job repeats the channel tile for every pixel block; the pass count must fit tensor_size_m.
+  uint32_t blocks = size_h * size_w / DATAMOVER_BANDWIDTH_ELEMS;
+  if (blocks == 0 || blocks > DATAMOVER_MAX_PASSES) return DATAMOVER_ERR;
+  uint32_t tiles_per_job = DATAMOVER_MAX_PASSES / blocks;
+  for (uint32_t c = 0; c < c_full; c += tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) {
+    uint32_t c_len = c_full - c;
+    if (c_len > tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) c_len = tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS;
+    datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c, c_len);
     datamover_launch(&cfg);
   }
   if (leftover > 0) {
     datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
     datamover_launch(&cfg);
   }
+  return DATAMOVER_OK;
 }
 
-static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
+static inline __attribute__((always_inline)) datamover_status_t datamover_fold(uint8_t *matrix_in, uint8_t *matrix_out,
                                   uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                   datamover_layout_t layout) {
   datamover_cfg_t cfg = {0};
@@ -178,16 +185,23 @@ static inline __attribute__((always_inline)) void datamover_fold(uint8_t *matrix
       datamover_build_fold(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, col, band_cols);
       datamover_launch(&cfg);
     }
-    return;
+    return DATAMOVER_OK;
   }
-  if (c_full > 0) {
-    datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, 0, c_full);
+  // A job repeats the channel tile for every pixel block; the pass count must fit tensor_size_m.
+  uint32_t blocks = size_h * size_w / DATAMOVER_BANDWIDTH_ELEMS;
+  if (blocks == 0 || blocks > DATAMOVER_MAX_PASSES) return DATAMOVER_ERR;
+  uint32_t tiles_per_job = DATAMOVER_MAX_PASSES / blocks;
+  for (uint32_t c = 0; c < c_full; c += tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) {
+    uint32_t c_len = c_full - c;
+    if (c_len > tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) c_len = tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS;
+    datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c, c_len);
     datamover_launch(&cfg);
   }
   if (leftover > 0) {
     datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
     datamover_launch(&cfg);
   }
+  return DATAMOVER_OK;
 }
 
 static inline __attribute__((always_inline)) datamover_status_t datamover_im2col(uint8_t *tensor_in, uint8_t *matrix_out,
@@ -261,11 +275,9 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
       datamover_cim_layout_transpose(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;
     case DATAMOVER_UNFOLD:
-      datamover_unfold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);
-      return DATAMOVER_OK;
+      return datamover_unfold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);
     case DATAMOVER_FOLD:
-      datamover_fold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);
-      return DATAMOVER_OK;
+      return datamover_fold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);
     case DATAMOVER_IM2COL:
       return datamover_im2col(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n,
                               t->kernel_h, t->kernel_w, t->conv_stride, t->conv_pad, t->im2col_in, t->im2col_out);

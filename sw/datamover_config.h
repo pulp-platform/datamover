@@ -42,6 +42,8 @@
 #endif
 #define DATAMOVER_BANDWIDTH_ELEMS (DATAMOVER_BANDWIDTH_ALIGNED / DATAMOVER_ELEM_WIDTH)
 #define DATAMOVER_WORD_ELEMS      (DATAMOVER_WORD_WIDTH / DATAMOVER_ELEM_WIDTH)
+// The largest pass count of one unfold or fold job, the width of tensor_size_m.
+#define DATAMOVER_MAX_PASSES      0xFFFF
 
 #define DATAMOVER_UNFOLD_PATCH      4  // 2x2 patch, only supported unfold/fold patch
 #define DATAMOVER_UNFOLD_PATCH_SIDE 2
@@ -249,6 +251,7 @@ static inline __attribute__((always_inline)) void datamover_build_cim_complete(d
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
+  // The rows stay the matrix rows: the beat count would overflow the 16-bit field above 65535 beats.
   cfg->matrix_dim = dm_matrix_dim(n_blocks * BWE, size_m);
   dm_channels(cfg, n_blocks * BWE * size_m, 1);
   cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
@@ -300,7 +303,8 @@ static inline __attribute__((always_inline)) void datamover_build_cim_rev_comple
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(BWE, size_m * n_blocks);
+  // The rows stay the matrix rows: the beat count would overflow the 16-bit field above 65535 beats.
+  cfg->matrix_dim = dm_matrix_dim(n_blocks * BWE, size_m);
   dm_channels(cfg, BWE * size_m * n_blocks, 1);
   cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_CIM_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
 }
