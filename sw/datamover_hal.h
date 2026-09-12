@@ -239,10 +239,13 @@ static inline __attribute__((always_inline)) void datamover_cim_layout_transpose
 static inline __attribute__((always_inline)) datamover_status_t datamover_run(const datamover_task_config_t *t) {
   switch (t->mode) {
     case DATAMOVER_COPY:
-      datamover_copy(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
+      // A copy is flat: the channels extend the row count.
+      datamover_copy(t->in_ptr, t->out_ptr, t->size_c * t->size_m, t->size_n);
       return DATAMOVER_OK;
     case DATAMOVER_TRANSP:
-      datamover_transpose(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->transp_mode);
+      for (uint32_t c = 0; c < t->size_c; c++)
+        datamover_transpose(t->in_ptr + c * t->size_m * t->size_n, t->out_ptr + c * t->size_m * t->size_n,
+                            t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;
     case DATAMOVER_CIM_LAYOUT:
       if (t->cim_mode == 0)
