@@ -14,29 +14,29 @@ generated suites only.
 make gen-tests                                              # all specs, all profiles -> tests/generated/<profile>/*.json
 make gen-tests HW_CONFIGS=bw128_w32                          # one profile
 make tests-generated PARALLEL=8 TIMEOUT=300                 # generate, then run through the normal runner
-make tests TEST_JSON=tests/generated/default/cim_sweep.json  # run one generated suite
+make tests TEST_JSON=tests/generated/default/block_sweep.json  # run one generated suite
 ```
 
 ## Format of a spec
 
 ```jsonc
 {
-  "name": "cim_sweep",      // the output stem -> tests/generated/cim_sweep.json
-  "op": "cim",              // copy | transpose | cim | cim_transpose | unfold | fold | im2col
+  "name": "block_sweep",      // the output stem -> tests/generated/block_sweep.json
+  "op": "block",              // copy | transpose | block | block_transpose | unfold | fold | im2col
   "hw_config": "default",   // optional: pin one profile. Without it, the suite of every profile in HW_CONFIGS
   "max_tests": 30,          // the maximum number of valid tests without duplicates
   "seed": 1,                // the RNG seed. The same seed gives the same suite
   "axes": {                 // an axis name is an exact test param key. Four value forms:
     "SIZE_M": {"min": 1, "max": 256},                     // a random integer in the range
     "SIZE_N": {"min": 8, "max": 64, "multiple_of": 8},    // a random integer, snapped to a multiple
-    "CIM_MODE": [0, 1],                                   // a random choice from the list
+    "BLOCK_MODE": [0, 1],                                   // a random choice from the list
     "CONV_STRIDE": 2,                                     // a scalar is a constant on every candidate
     "KERNEL": [                                           // a group axis: one draw sets several
       {"KERNEL_SIZE_H": 2, "KERNEL_SIZE_W": 2},           // params together. The axis name is only
       {"KERNEL_SIZE_H": 4, "KERNEL_SIZE_W": 4}            // a label; the first and the last object
     ]                                                     // are the boundary values
   },
-  "exclude": [{"CIM_MODE": 1, "TRANSP_MODE": 4}]  // optional. The generator prunes matching combos
+  "exclude": [{"BLOCK_MODE": 1, "TRANSP_MODE": 4}]  // optional. The generator prunes matching combos
 }
 ```
 
@@ -51,9 +51,9 @@ more draws, which balances a path with a low legal rate against the others. A sp
 `"constraints"`, a list of expressions that every candidate must satisfy:
 
 ```jsonc
-  "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"CIM\""],
+  "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"BLOCK\""],
   "axes": {
-    "LAYOUTS": [{"IM2COL_IN": "CIM", "SIZE_N": [8, 16, 32, 64], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}}]
+    "LAYOUTS": [{"IM2COL_IN": "BLOCK", "SIZE_N": [8, 16, 32, 64], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}}]
   }
 ```
 

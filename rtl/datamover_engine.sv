@@ -76,7 +76,7 @@ module datamover_engine
   logic                                   data_out_valid;
   logic                                   data_out_ready;
   logic [NumElemsLog2-1:0]                remaining_elems;
-  logic [AccessCntWidth-1:0]            total_accesses_copy_mode, total_accesses_cim, acc_target;
+  logic [AccessCntWidth-1:0]            total_accesses_copy_mode, total_accesses_block, acc_target;
   logic [TileCntWidth-1:0]              inner_tiles, outer_tiles;
   logic [NumElemsLog2:0]                  inner_leftover, outer_leftover;
   logic [1:0]                             group_log2;
@@ -207,7 +207,7 @@ module datamover_engine
   assign pass_cnt_d      = (tile_done && last_inner_tile && last_outer_tile) ? pass_cnt_q + 1'b1 : pass_cnt_q;
   assign buffer_job_done = last_inner_tile && last_outer_tile && last_pass && clear_elem_matrix;
 
-  logic [NumElems-1:0] strb_copy, strb_buffer, strb_cim, strb_im2col;
+  logic [NumElems-1:0] strb_copy, strb_buffer, strb_block, strb_im2col;
 
   assign strb_copy   = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((StrbOne << remaining_elems) - 1) : '1;
 
@@ -215,7 +215,7 @@ module datamover_engine
   assign strb_buffer = (StrbOne << fill_len) - 1;
 
   // A block layout beat holds the leftover columns of the n size.
-  assign strb_cim    = (outer_leftover != 0) ? ((StrbOne << outer_leftover) - 1) : '1;
+  assign strb_block    = (outer_leftover != 0) ? ((StrbOne << outer_leftover) - 1) : '1;
 
   // The 3x3 unit fills every beat; other im2col beats hold tensor_size_n elements.
   assign strb_im2col = (im2col_unit && ctrl_i.conv_stride == 1) ? '1 :
@@ -224,7 +224,7 @@ module datamover_engine
   assign data_out_prefifo.strb = (ctrl_i.total_elements == 0)                        ? '1 :
                                  (ctrl_i.datamover_mode == DATAMOVER_COPY)           ? strb_copy :
                                  (ctrl_i.datamover_mode == DATAMOVER_IM2COL)         ? strb_im2col :
-                                 (ctrl_i.datamover_mode == DATAMOVER_CIM_CONVERSION) ? strb_cim :
+                                 (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? strb_block :
                                  buffer_mode                                         ? strb_buffer :
                                                                                        '1;
 
@@ -237,8 +237,8 @@ module datamover_engine
   assign cnt_d = cnt_en ? ((cnt_q < (phase_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
 
   // Pass-through modes count output beats; buffer modes count tiles.
-  assign total_accesses_cim = ctrl_i.tensor_size_m * outer_tiles;
-  assign acc_target         = (ctrl_i.datamover_mode == DATAMOVER_CIM_CONVERSION) ? total_accesses_cim : total_accesses_copy_mode;
+  assign total_accesses_block = ctrl_i.tensor_size_m * outer_tiles;
+  assign acc_target         = (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? total_accesses_block : total_accesses_copy_mode;
   assign execution_done     = buffer_mode ? buffer_job_done :
                               (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
 

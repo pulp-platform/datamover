@@ -5,14 +5,14 @@
 # Authors: Cyrill Durrer <cdurrer@iis.ee.ethz.ch>
 #          Lionnus Kesting <lkesting@iis.ee.ethz.ch>
 
-"""Datamover golden-model transforms: cim_layout, transpose, unfold, fold, im2col."""
+"""Datamover golden-model transforms: block_layout, transpose, unfold, fold, im2col."""
 
 import math
 
 import numpy as np
 
 
-def cim_layout(tensor, block, size_m, size_n):
+def block_layout(tensor, block, size_m, size_n):
     # Columns are grouped into blocks of `block` columns; for each block all rows'
     # slices are stored consecutively. (size_m, size_n) -> (1, size_m * size_n).
     n_tiles = size_n // block
@@ -24,8 +24,8 @@ def cim_layout(tensor, block, size_m, size_n):
     return np.concatenate(parts).reshape(1, -1)
 
 
-def cim_layout_reverse(tensor, block, size_m, size_n):
-    # Inverse of cim_layout: CIM layout (1, size_m * size_n) -> (size_m, size_n).
+def block_layout_reverse(tensor, block, size_m, size_n):
+    # Inverse of block_layout: block layout (1, size_m * size_n) -> (size_m, size_n).
     n_tiles = size_n // block
     leftover = size_n % block
     flat = tensor.reshape(-1)
@@ -37,21 +37,21 @@ def cim_layout_reverse(tensor, block, size_m, size_n):
     return complete.reshape(size_m, size_n)
 
 
-def cim_layout_transpose(tensor, block, size_m, size_n):
-    # Transpose a CIM-layout matrix, keeping the result in CIM layout.
-    row_major = cim_layout_reverse(tensor, block, size_m, size_n)
-    return cim_layout(np.transpose(row_major), block, size_n, size_m)
+def block_layout_transpose(tensor, block, size_m, size_n):
+    # Transpose a matrix in the block layout, keeping the result in the block layout.
+    row_major = block_layout_reverse(tensor, block, size_m, size_n)
+    return block_layout(np.transpose(row_major), block, size_n, size_m)
 
 
-def cim_activation(tensor, block):
-    # (C, H, W) -> the (C, H*W) matrix in CIM layout with blocks of `block` pixels, flat.
+def block_activation(tensor, block):
+    # (C, H, W) -> the (C, H*W) matrix in block layout with blocks of `block` pixels, flat.
     c = tensor.shape[0]
-    return np.asarray(cim_layout(tensor.reshape(c, -1), block, c, tensor.size // c)).reshape(-1)
+    return np.asarray(block_layout(tensor.reshape(c, -1), block, c, tensor.size // c)).reshape(-1)
 
 
 def unfold(tensor, patch_size, block, layout="CHW"):
-    # (C, H, W) -> (PATCH_SIZE, NUM_PATCHES, C); layout CIM returns the (PATCH_SIZE*NUM_PATCHES, C)
-    # token matrix in CIM layout with column blocks of `block`, flat.
+    # (C, H, W) -> (PATCH_SIZE, NUM_PATCHES, C); layout BLOCK returns the (PATCH_SIZE*NUM_PATCHES, C)
+    # token matrix in block layout with column blocks of `block`, flat.
     channels, height, width = tensor.shape
     patch_sidelength = int(math.sqrt(patch_size))
     assert (height % patch_sidelength == 0) and (width % patch_sidelength == 0), \
@@ -67,19 +67,19 @@ def unfold(tensor, patch_size, block, layout="CHW"):
                 h_idx = h * patch_sidelength + (p // patch_sidelength)
                 w_idx = w * patch_sidelength + (p % patch_sidelength)
                 tensor_unfolded[p, n, :] = tensor[:, h_idx, w_idx]
-    if layout == "CIM":
+    if layout == "BLOCK":
         rows = patch_size * num_patches
-        return np.asarray(cim_layout(tensor_unfolded.reshape(rows, channels), block, rows, channels)).reshape(-1)
+        return np.asarray(block_layout(tensor_unfolded.reshape(rows, channels), block, rows, channels)).reshape(-1)
     return tensor_unfolded
 
 
 def fold(tensor, patch_size, num_channels, height, width, block, layout="CHW"):
     # (PATCH_SIZE, NUM_PATCHES, C) -> (C, H, W); folded dims are num_channels, height, width.
-    # layout CIM takes and returns the CIM layouts of unfold and cim_activation.
+    # layout BLOCK takes and returns the block layouts of unfold and block_activation.
     patch_sidelength = int(math.sqrt(patch_size))
-    if layout == "CIM":
+    if layout == "BLOCK":
         rows = patch_size * (height // patch_sidelength) * (width // patch_sidelength)
-        tensor = cim_layout_reverse(tensor, block, rows, num_channels).reshape(patch_size, -1, num_channels)
+        tensor = block_layout_reverse(tensor, block, rows, num_channels).reshape(patch_size, -1, num_channels)
     assert (height % patch_sidelength == 0) and (width % patch_sidelength == 0), \
         "Height and Width must be divisible by patch sidelength"
     num_patches_h = height // patch_sidelength
@@ -92,18 +92,18 @@ def fold(tensor, patch_size, num_channels, height, width, block, layout="CHW"):
                 h_idx = h * patch_sidelength + (p // patch_sidelength)
                 w_idx = w * patch_sidelength + (p % patch_sidelength)
                 tensor_folded[:, h_idx, w_idx] = tensor[p, n, :]
-    if layout == "CIM":
-        return cim_activation(tensor_folded, block)
+    if layout == "BLOCK":
+        return block_activation(tensor_folded, block)
     return tensor_folded
 
 
 def im2col(tensor, kernel_h, kernel_w, block, stride=1, padding=0, in_layout="CHW", out_layout="COL"):
     # out_layout COL: each patch is a column, (Kh*Kw*C, H_out*W_out) as torch unfold;
-    #   row = c*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow. Surya operand B.
-    # out_layout ROW: each patch is a row, (H_out*W_out, C*Kh*Kw). Surya operand A.
-    # out_layout ROW_CIM and COL_CIM: ROW or COL in column blocks of `block`, the CIM layout of mode 2.
+    #   row = c*Kh*Kw + kh*Kw + kw, col = oh*W_out + ow.
+    # out_layout ROW: each patch is a row, (H_out*W_out, C*Kh*Kw).
+    # out_layout ROW_BLOCK and COL_BLOCK: ROW or COL in column blocks of `block`, the block layout of mode 2.
     # in_layout HWC reads the bytes as an HWC image; the A columns are then ordered (kh, kw, c).
-    # in_layout CIM is the (C, H*W) matrix in blocks of `block` pixels; the tensor passed here stays CHW.
+    # in_layout BLOCK is the (C, H*W) matrix in blocks of `block` pixels; the tensor passed here stays CHW.
     import torch
     if in_layout == "HWC":
         c, h, w = tensor.shape
@@ -114,8 +114,8 @@ def im2col(tensor, kernel_h, kernel_w, block, stride=1, padding=0, in_layout="CH
     cols = cols.squeeze(0).to(torch.uint8).numpy()
     if out_layout == "COL":
         return cols
-    if out_layout == "COL_CIM":
-        return np.asarray(cim_layout(cols, block, cols.shape[0], cols.shape[1])).reshape(-1)
+    if out_layout == "COL_BLOCK":
+        return np.asarray(block_layout(cols, block, cols.shape[0], cols.shape[1])).reshape(-1)
     n = cols.shape[1]
     tokens = cols.T.reshape(n, c, kernel_h, kernel_w)
     if in_layout == "HWC":
@@ -123,4 +123,4 @@ def im2col(tensor, kernel_h, kernel_w, block, stride=1, padding=0, in_layout="CH
     tokens = np.ascontiguousarray(tokens.reshape(n, -1))
     if out_layout == "ROW":
         return tokens
-    return cim_layout(tokens, block, n, tokens.shape[1])
+    return block_layout(tokens, block, n, tokens.shape[1])

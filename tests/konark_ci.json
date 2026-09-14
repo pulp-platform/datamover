@@ -6,7 +6,7 @@
       "params": {
         "DATAMOVER_MODE": 0,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 196,
         "SIZE_N": 768,
@@ -18,7 +18,7 @@
       "params": {
         "DATAMOVER_MODE": 0,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 384,
@@ -30,7 +30,7 @@
       "params": {
         "DATAMOVER_MODE": 0,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 192,
@@ -42,7 +42,7 @@
       "params": {
         "DATAMOVER_MODE": 0,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 49,
         "SIZE_N": 96,
@@ -54,7 +54,7 @@
       "params": {
         "DATAMOVER_MODE": 0,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 64,
         "SIZE_N": 80,
@@ -66,7 +66,7 @@
       "params": {
         "DATAMOVER_MODE": 1,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 196,
         "SIZE_N": 64,
@@ -78,7 +78,7 @@
       "params": {
         "DATAMOVER_MODE": 1,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 64,
@@ -90,7 +90,7 @@
       "params": {
         "DATAMOVER_MODE": 1,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 49,
         "SIZE_N": 48,
@@ -102,7 +102,7 @@
       "params": {
         "DATAMOVER_MODE": 1,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 128,
@@ -114,7 +114,7 @@
       "params": {
         "DATAMOVER_MODE": 1,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 196,
         "SIZE_N": 32,
@@ -126,7 +126,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 196,
         "SIZE_N": 768,
@@ -138,7 +138,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 192,
@@ -150,7 +150,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 49,
         "SIZE_N": 96,
@@ -162,7 +162,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 768,
@@ -174,7 +174,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 64,
         "SIZE_N": 240,
@@ -186,7 +186,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 1,
+        "BLOCK_MODE": 1,
         "SIZE_C": 1,
         "SIZE_M": 196,
         "SIZE_N": 64,
@@ -198,7 +198,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 1,
+        "BLOCK_MODE": 1,
         "SIZE_C": 1,
         "SIZE_M": 49,
         "SIZE_N": 48,
@@ -210,7 +210,7 @@
       "params": {
         "DATAMOVER_MODE": 2,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 1,
+        "BLOCK_MODE": 1,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 384,
@@ -222,7 +222,7 @@
       "params": {
         "DATAMOVER_MODE": 3,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 196,
         "SIZE_N": 384,
@@ -234,7 +234,7 @@
       "params": {
         "DATAMOVER_MODE": 3,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 49,
         "SIZE_N": 96,
@@ -246,7 +246,7 @@
       "params": {
         "DATAMOVER_MODE": 3,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 1,
         "SIZE_M": 197,
         "SIZE_N": 192,
@@ -258,7 +258,7 @@
       "params": {
         "DATAMOVER_MODE": 4,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 96,
         "SIZE_M": 16,
         "SIZE_N": 16,
@@ -270,7 +270,7 @@
       "params": {
         "DATAMOVER_MODE": 4,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 120,
         "SIZE_M": 8,
         "SIZE_N": 8,
@@ -282,7 +282,7 @@
       "params": {
         "DATAMOVER_MODE": 4,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 240,
         "SIZE_M": 8,
         "SIZE_N": 8,
@@ -294,7 +294,7 @@
       "params": {
         "DATAMOVER_MODE": 4,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 32,
         "SIZE_M": 32,
         "SIZE_N": 32,
@@ -306,7 +306,7 @@
       "params": {
         "DATAMOVER_MODE": 5,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 96,
         "SIZE_M": 16,
         "SIZE_N": 16,
@@ -318,7 +318,7 @@
       "params": {
         "DATAMOVER_MODE": 5,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 120,
         "SIZE_M": 8,
         "SIZE_N": 8,
@@ -330,7 +330,7 @@
       "params": {
         "DATAMOVER_MODE": 5,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 240,
         "SIZE_M": 8,
         "SIZE_N": 8,
@@ -342,7 +342,7 @@
       "params": {
         "DATAMOVER_MODE": 5,
         "TRANSP_MODE": 1,
-        "CIM_MODE": 0,
+        "BLOCK_MODE": 0,
         "SIZE_C": 32,
         "SIZE_M": 32,
         "SIZE_N": 32,

@@ -28,7 +28,7 @@ endif
 # ============================================================================
 DATAMOVER_MODE ?= 0
 TRANSP_MODE    ?= 1
-CIM_MODE       ?= 0
+BLOCK_MODE       ?= 0
 SIZE_C         ?= 1
 SIZE_M         ?= 64
 SIZE_N         ?= 64
@@ -42,7 +42,7 @@ export STALL
 # Test name (JSON mode passes TEST_NAME explicitly) + per-test dir
 # ============================================================================
 _NAME_ARGS := --DATAMOVER_MODE $(DATAMOVER_MODE) --TRANSP_MODE $(TRANSP_MODE) \
-              --CIM_MODE $(CIM_MODE) \
+              --BLOCK_MODE $(BLOCK_MODE) \
               --SIZE_C $(SIZE_C) --SIZE_M $(SIZE_M) --SIZE_N $(SIZE_N) --COUNT $(COUNT) \
               --HW_CONFIG $(HW_CONFIG)
 TEST_NAME := $(or $(TEST_NAME),$(shell python -m datamover_model.workloads.name $(_NAME_ARGS)))

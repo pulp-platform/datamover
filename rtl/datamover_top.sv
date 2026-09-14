@@ -110,7 +110,7 @@ module datamover_top
   );
 
   // The engine transforms the data_in stream into data_out. Supported modes:
-  // copy, transpose, CIM layout conversion, unfold, fold, and im2col.
+  // copy, transpose, block layout, unfold, fold, and im2col.
   // An internal buffer (elem_matrix) of size BWxBW is used to reshuffle the data.
   datamover_engine #(
     .FifoDepth        ( 2                ),

@@ -4,9 +4,9 @@
   "description": "Fold of 2x2 patches in the row-major or the block layout. The constraint is the 16-bit d0 stride of the row-major output. SNAP rounds C and W to the row alignment of the profile (a no-op with misaligned accesses).",
   "max_tests": 50,
   "seed": 1,
-  "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"CIM\""],
+  "constraints": ["SIZE_C * SIZE_M * SIZE_N // 4 <= 65535 or LAYOUT == \"BLOCK\""],
   "axes": {
-    "LAYOUT": ["CHW", "CIM"],
+    "LAYOUT": ["CHW", "BLOCK"],
     "SIZE_C": {"min": 1, "max": 256},
     "SIZE_M": {"min": 2, "max": 128, "multiple_of": 2},
     "SIZE_N": {"min": 2, "max": 128, "multiple_of": 2},

@@ -217,7 +217,7 @@ addrmap datamover_regif {
             sw = rw;
         } read_dim_en[11:8] = 0;
         field {
-            desc = "0=copy, 1=transpose, 2=CIM layout, 3=CIM transpose, 4=unfold, 5=fold, 6=im2col.";
+            desc = "0=copy, 1=transpose, 2=block layout, 3=block layout transpose, 4=unfold, 5=fold, 6=im2col.";
             hw = r;
             sw = rw;
         } datamover_mode[7:3] = 0;

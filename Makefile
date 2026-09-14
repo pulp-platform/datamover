@@ -68,8 +68,8 @@ SUITE_VSIM_FLAGS      := $(if $(filter 1,$(GUI)),$(if $(strip $(TEST)),-gui,-c),
 # JSON-based test runner.
 # Usage:
 #   make tests                                          # all suites in tests/*.json (headless)
-#   make tests TEST_JSON=tests/cim.json                 # one suite (headless)
-#   make tests TEST_JSON=tests/cim.json TEST=NAME GUI=1 # one test, in the GUI
+#   make tests TEST_JSON=tests/block.json                 # one suite (headless)
+#   make tests TEST_JSON=tests/block.json TEST=NAME GUI=1 # one test, in the GUI
 #   make tests ONLY='COPY_*' SKIP='*BROKEN*'            # filter across all suites
 #   make tests PARALLEL=8 TIMEOUT=600
 TEST_JSON_GLOB ?= tests/*.json
@@ -114,21 +114,21 @@ tests-generated: gen-tests
 # Usage:
 #   riscv make test-copy SIZE_M=64 SIZE_N=64 GUI=0
 #   riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2
-#   riscv make test-cim-layout SIZE_M=64 SIZE_N=128
-#   riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128
-#   riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128
+#   riscv make test-block-layout SIZE_M=64 SIZE_N=128
+#   riscv make test-block-layout-reverse SIZE_M=64 SIZE_N=128
+#   riscv make test-block-layout-transpose SIZE_M=64 SIZE_N=128
 #   riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
 #   riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
 #   add HW_CONFIG=bw128_w32, COUNT=1, GUI=0 as needed
 # ============================================================================
-.PHONY: test-copy test-transpose test-cim-layout test-cim-layout-reverse \
-        test-cim-layout-transpose test-unfold test-fold _quick-test
+.PHONY: test-copy test-transpose test-block-layout test-block-layout-reverse \
+        test-block-layout-transpose test-unfold test-fold _quick-test
 
 test-copy:                 ; @$(MAKE) DATAMOVER_MODE=0 _quick-test
 test-transpose:            ; @$(MAKE) DATAMOVER_MODE=1 _quick-test
-test-cim-layout:           ; @$(MAKE) DATAMOVER_MODE=2 CIM_MODE=0 _quick-test
-test-cim-layout-reverse:   ; @$(MAKE) DATAMOVER_MODE=2 CIM_MODE=1 _quick-test
-test-cim-layout-transpose: ; @$(MAKE) DATAMOVER_MODE=3 _quick-test
+test-block-layout:           ; @$(MAKE) DATAMOVER_MODE=2 BLOCK_MODE=0 _quick-test
+test-block-layout-reverse:   ; @$(MAKE) DATAMOVER_MODE=2 BLOCK_MODE=1 _quick-test
+test-block-layout-transpose: ; @$(MAKE) DATAMOVER_MODE=3 _quick-test
 test-unfold:               ; @$(MAKE) DATAMOVER_MODE=4 _quick-test
 test-fold:                 ; @$(MAKE) DATAMOVER_MODE=5 _quick-test
 

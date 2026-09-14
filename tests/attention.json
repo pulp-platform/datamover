@@ -6,6 +6,6 @@
     {"name": "MVIT_KT_16_64x48",           "params": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 1, "SIZE_M": 64,  "SIZE_N": 48}},
     {"name": "MVIT_KT_8_16x60",            "params": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 1, "SIZE_M": 16,  "SIZE_N": 60}},
     {"name": "VIT_S_KT_197x64",            "params": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 1, "SIZE_M": 197, "SIZE_N": 64}},
-    {"name": "VIT_S_SOFTMAX_CIM_197x197",  "params": {"DATAMOVER_MODE": 2, "CIM_MODE": 0,    "SIZE_M": 197, "SIZE_N": 197}}
+    {"name": "VIT_S_SOFTMAX_BLOCK_197x197", "params": {"DATAMOVER_MODE": 2, "BLOCK_MODE": 0,    "SIZE_M": 197, "SIZE_N": 197}}
   ]
 }

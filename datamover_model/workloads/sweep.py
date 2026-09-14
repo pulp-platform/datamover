@@ -31,7 +31,7 @@ always emits every multiple of `tile` in the range as a guaranteed corner case (
 
 A group entry may hold an axis value, a list or a range, in place of a constant. The
 module draws that value when the entry is picked, so the entry states the value set
-one case allows: `{"IM2COL_IN": "CIM", "SIZE_N": [8, 16, 32, 64]}`.
+one case allows: `{"IM2COL_IN": "BLOCK", "SIZE_N": [8, 16, 32, 64]}`.
 
 A value may be a string. The module evaluates the string as a Python expression after
 the draw, with the drawn values as variables, so one param can follow from others:
@@ -56,7 +56,7 @@ from pathlib import Path
 # Project adapter -- the only repo-specific section
 # ============================================================================
 # Everything below the adapter is generic. Keep the generic part line-identical
-# with the Surya copy of this module, so the sweep can move into a shared
+# with the copies of this module in the accelerator repos, so the sweep can move into a shared
 # testing package later.
 
 from datamover_model.workloads.generator import generate_task_data
@@ -74,8 +74,8 @@ from datamover_model.workloads.suite import (
 OP_TO_PARAMS = {
     "copy": {"DATAMOVER_MODE": 0},
     "transpose": {"DATAMOVER_MODE": 1},
-    "cim": {"DATAMOVER_MODE": 2},
-    "cim_transpose": {"DATAMOVER_MODE": 3},
+    "block": {"DATAMOVER_MODE": 2},
+    "block_transpose": {"DATAMOVER_MODE": 3},
     "unfold": {"DATAMOVER_MODE": 4},
     "fold": {"DATAMOVER_MODE": 5},
     "im2col": {"DATAMOVER_MODE": 6},

@@ -61,7 +61,7 @@ DATAMOVER_TASKS(DM_TASK_OUT_BUF)
     .out_size      = TASK##i##_OUT_SIZE,                 \
     .mode          = TASK##i##_DATAMOVER_MODE,           \
     .transp_mode   = TASK##i##_TRANSP_MODE,              \
-    .cim_mode      = TASK##i##_CIM_MODE,                 \
+    .block_mode      = TASK##i##_BLOCK_MODE,                 \
     .size_c        = TASK##i##_SIZE_C,                   \
     .size_m        = TASK##i##_SIZE_M,                   \
     .size_n        = TASK##i##_SIZE_N,                   \

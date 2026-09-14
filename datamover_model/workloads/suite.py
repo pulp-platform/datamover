@@ -15,7 +15,7 @@ HW_KEYS = ("BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MISALIGNED_ACCESSES")
 PARAM_DEFAULTS = {
     "DATAMOVER_MODE": 0,
     "TRANSP_MODE": 1,
-    "CIM_MODE": 0,
+    "BLOCK_MODE": 0,
     "SIZE_C": 1,
     "SIZE_M": 1,
     "SIZE_N": 1,
@@ -24,9 +24,9 @@ PARAM_DEFAULTS = {
     "KERNEL_SIZE_W": 1,
     "CONV_STRIDE": 1,
     "CONV_PAD": 0,
-    "LAYOUT": "CHW",      # unfold and fold: CHW row-major, or CIM column blocks of one beat on both sides
-    "IM2COL_IN": "CHW",   # image layout: CHW, HWC, or CIM ((C, pixels) in pixel blocks of one beat)
-    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_CIM: one row per patch; COL_CIM: COL in pixel blocks of one beat
+    "LAYOUT": "CHW",      # unfold and fold: CHW row-major, or BLOCK column blocks of one beat on both sides
+    "IM2COL_IN": "CHW",   # image layout: CHW, HWC, or BLOCK ((C, pixels) in pixel blocks of one beat)
+    "IM2COL_OUT": "COL",  # COL: one column per patch (torch unfold); ROW_BLOCK: one row per patch; COL_BLOCK: COL in pixel blocks of one beat
 }
 
 
@@ -94,8 +94,8 @@ def normalize_params(raw: dict, beat: int, align: int = 1) -> dict:
         raise ValueError(f"DATAMOVER_MODE must be in 0..6, got {out['DATAMOVER_MODE']}")
     if out["TRANSP_MODE"] not in (0, 1, 2, 4):
         raise ValueError(f"TRANSP_MODE must be in {{0,1,2,4}}, got {out['TRANSP_MODE']}")
-    if out["CIM_MODE"] not in (0, 1):
-        raise ValueError(f"CIM_MODE must be 0 or 1, got {out['CIM_MODE']}")
+    if out["BLOCK_MODE"] not in (0, 1):
+        raise ValueError(f"BLOCK_MODE must be 0 or 1, got {out['BLOCK_MODE']}")
     if out["DATAMOVER_MODE"] == 6:
         _validate_im2col_params(out, beat)
     if out["DATAMOVER_MODE"] in (4, 5):
@@ -114,7 +114,7 @@ def _validate_alignment(params: dict, align: int) -> None:
     if mode in (4, 5):
         # The token matrix has rows of SIZE_C; the row-major image has rows of W.
         rows = (params["SIZE_C"],) + ((n,) if params["LAYOUT"] == "CHW" else ())
-    if mode == 6 and params["IM2COL_IN"] != "CIM" and params["IM2COL_OUT"] != "ROW_CIM":
+    if mode == 6 and params["IM2COL_IN"] != "BLOCK" and params["IM2COL_OUT"] != "ROW_BLOCK":
         # The pass-through and the stride-2 paths read a beat at every kernel column offset.
         kw, s = params["KERNEL_SIZE_W"], params["CONV_STRIDE"]
         if kw != 1:
@@ -126,9 +126,9 @@ def _validate_alignment(params: dict, align: int) -> None:
 
 
 STR_PARAMS = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
-LAYOUTS = ("CHW", "CIM")
-IM2COL_IN = ("CHW", "HWC", "CIM")
-IM2COL_OUT = ("COL", "ROW_CIM", "COL_CIM")
+LAYOUTS = ("CHW", "BLOCK")
+IM2COL_IN = ("CHW", "HWC", "BLOCK")
+IM2COL_OUT = ("COL", "ROW_BLOCK", "COL_BLOCK")
 IM2COL_UNIT_MIN_WIDTH = 8
 
 
@@ -138,28 +138,28 @@ def im2col_unit_widths(beat: int) -> tuple:
 
 
 def _validate_unfold_params(params: dict, beat: int) -> None:
-    """Even H and W; the CIM layout needs whole blocks."""
+    """Even H and W; the block layout needs whole blocks."""
     m, n = params["SIZE_M"], params["SIZE_N"]
     if m % 2 != 0 or n % 2 != 0:
         raise ValueError(f"unfold and fold need even H and W, got {m}x{n}")
-    if params["LAYOUT"] == "CIM" and (m * n) % beat != 0:
-        raise ValueError(f"LAYOUT=CIM needs H*W a multiple of {beat}, got {m}x{n}")
-    if params["LAYOUT"] == "CIM" and m * n // beat > 0xFFFF:
-        raise ValueError(f"LAYOUT=CIM needs at most 65535 pixel blocks per job, got {m * n // beat}")
+    if params["LAYOUT"] == "BLOCK" and (m * n) % beat != 0:
+        raise ValueError(f"LAYOUT=BLOCK needs H*W a multiple of {beat}, got {m}x{n}")
+    if params["LAYOUT"] == "BLOCK" and m * n // beat > 0xFFFF:
+        raise ValueError(f"LAYOUT=BLOCK needs at most 65535 pixel blocks per job, got {m * n // beat}")
 
 
 def _validate_im2row_params(params: dict, beat: int) -> None:
-    """ROW_CIM is a strided copy of patch rows, one run per patch row."""
+    """ROW_BLOCK is a strided copy of patch rows, one run per patch row."""
     k, s, pad, c = params["KERNEL_SIZE_H"], params["CONV_STRIDE"], params["CONV_PAD"], params["SIZE_C"]
     if not (k == params["KERNEL_SIZE_W"] == s) or pad != 0:
-        raise ValueError(f"ROW_CIM needs kernel == stride and no pad, got K={k} S={s} pad={pad}")
+        raise ValueError(f"ROW_BLOCK needs kernel == stride and no pad, got K={k} S={s} pad={pad}")
     if params["IM2COL_IN"] == "CHW" and (beat % k != 0 or (k * k) % beat != 0):
-        raise ValueError(f"CHW ROW_CIM needs a kernel side that divides {beat} with K*K a multiple of it, got {k}")
-    if params["IM2COL_IN"] == "CIM":
-        raise ValueError("ROW_CIM needs IM2COL_IN CHW or HWC")
+        raise ValueError(f"CHW ROW_BLOCK needs a kernel side that divides {beat} with K*K a multiple of it, got {k}")
+    if params["IM2COL_IN"] == "BLOCK":
+        raise ValueError("ROW_BLOCK needs IM2COL_IN CHW or HWC")
     if params["IM2COL_IN"] == "HWC" and (k * c != 48 or k % 4 != 0 or beat != 64):
         # TODO the HWC builder packs four 48-byte patch rows into three 64-element blocks; other beats need a generic scheme (B15)
-        raise ValueError(f"HWC ROW_CIM needs a 64-element beat, 48-byte patch rows and a kernel side that is a multiple of 4, got beat={beat} K={k} C={c}")
+        raise ValueError(f"HWC ROW_BLOCK needs a 64-element beat, 48-byte patch rows and a kernel side that is a multiple of 4, got beat={beat} K={k} C={c}")
 
 
 def _validate_im2col_params(params: dict, beat: int) -> None:
@@ -170,23 +170,23 @@ def _validate_im2col_params(params: dict, beat: int) -> None:
     layout = (params["IM2COL_IN"], params["IM2COL_OUT"])
     if kh < 1 or kw < 1:
         raise ValueError(f"KERNEL_SIZE_H/KERNEL_SIZE_W must be >= 1, got {kh}x{kw}")
-    if params["IM2COL_OUT"] == "ROW_CIM":
+    if params["IM2COL_OUT"] == "ROW_BLOCK":
         _validate_im2row_params(params, beat)
         return
     if s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
-    if layout == ("CIM", "COL_CIM"):
+    if layout == ("BLOCK", "COL_BLOCK"):
         if (kh, kw, s, pad) != (3, 3, 1, 1):
-            raise ValueError(f"CIM im2col is 3x3, stride 1, pad 1, got K={kh}x{kw} S={s} pad={pad}")
+            raise ValueError(f"BLOCK im2col is 3x3, stride 1, pad 1, got K={kh}x{kw} S={s} pad={pad}")
         if n not in im2col_unit_widths(beat) or (m * n) % beat != 0:
-            raise ValueError(f"CIM im2col needs W in {im2col_unit_widths(beat)} and H*W a multiple of {beat}, got {m}x{n}")
-    elif layout == ("CHW", "COL_CIM"):
+            raise ValueError(f"BLOCK im2col needs W in {im2col_unit_widths(beat)} and H*W a multiple of {beat}, got {m}x{n}")
+    elif layout == ("CHW", "COL_BLOCK"):
         w_out = (n - kw) // s + 1
         if s != 2 or pad != 0 or w_out % beat != 0:
-            raise ValueError(f"CHW to COL_CIM needs stride 2, no pad, and w_out a multiple of {beat}, got S={s} pad={pad} w_out={w_out}")
+            raise ValueError(f"CHW to COL_BLOCK needs stride 2, no pad, and w_out a multiple of {beat}, got S={s} pad={pad} w_out={w_out}")
     elif layout == ("CHW", "COL"):
         if pad != 0:
-            raise ValueError("CONV_PAD needs IM2COL_IN=CIM and IM2COL_OUT=COL_CIM")
+            raise ValueError("CONV_PAD needs IM2COL_IN=BLOCK and IM2COL_OUT=COL_BLOCK")
     else:
         raise ValueError(f"unsupported im2col layouts {layout}")
 
@@ -205,14 +205,14 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
     elif mode == 1:
         base = f"TRANSP{params['TRANSP_MODE']}_{m}x{n}"
     elif mode == 2:
-        tag = "FWD" if params["CIM_MODE"] == 0 else "REV"
-        base = f"CIM{tag}_{m}x{n}"
+        tag = "FWD" if params["BLOCK_MODE"] == 0 else "REV"
+        base = f"BLOCK{tag}_{m}x{n}"
     elif mode == 3:
-        base = f"CIMTR{params['TRANSP_MODE']}_{m}x{n}"
+        base = f"BLOCKTR{params['TRANSP_MODE']}_{m}x{n}"
     elif mode == 4:
-        base = f"UNFOLD_C{c}_{m}x{n}" + ("_CIM" if params["LAYOUT"] == "CIM" else "")
+        base = f"UNFOLD_C{c}_{m}x{n}" + ("_BLOCK" if params["LAYOUT"] == "BLOCK" else "")
     elif mode == 5:
-        base = f"FOLD_C{c}_{m}x{n}" + ("_CIM" if params["LAYOUT"] == "CIM" else "")
+        base = f"FOLD_C{c}_{m}x{n}" + ("_BLOCK" if params["LAYOUT"] == "BLOCK" else "")
     else:
         kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
         k_tag = f"{kh}" if kh == kw else f"{kh}x{kw}"

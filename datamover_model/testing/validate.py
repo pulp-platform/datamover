@@ -5,12 +5,12 @@
 #
 # Authors: Lionnus Kesting <lkesting@iis.ee.ethz.ch>
 
-"""Offline validator for the CIM-layout HAL register programming.
+"""Offline validator for the block layout HAL register programming.
 
 Reimplements the hwpe_stream_addressgen_v4 nested-counter model and the
-datamover_build_cim_complete() / *_rev_complete() register computation, then
-checks the resulting memory transform against the golden cim_layout /
-cim_layout_reverse. Also flags stride and len field overflow. Lets us vet
+datamover_build_block_complete() / *_rev_complete() register computation, then
+checks the resulting memory transform against the golden block_layout /
+block_layout_reverse. Also flags stride and len field overflow. Lets us vet
 test configs without running ModelSim.
 """
 
@@ -18,7 +18,7 @@ import sys
 
 import numpy as np
 
-from datamover_model.golden_model.transforms import cim_layout
+from datamover_model.golden_model.transforms import block_layout
 
 LEN_BITS = 16
 STRIDE_BITS = 21
@@ -74,7 +74,7 @@ def check_fields(dims, prefix, errs):
 
 
 def cfg_forward(m, n, bw):
-    """Mirror datamover_build_cim_complete (aligned, no leftover)."""
+    """Mirror datamover_build_block_complete (aligned, no leftover)."""
     errs = []
     n_blocks = n // bw
     tot_len = m * n_blocks
@@ -90,7 +90,7 @@ def cfg_forward(m, n, bw):
 
 
 def cfg_reverse(m, n, bw):
-    """Mirror datamover_build_cim_rev_complete (aligned)."""
+    """Mirror datamover_build_block_rev_complete (aligned)."""
     errs = []
     n_blocks = n // bw
     tot_len = m * n_blocks
@@ -111,10 +111,10 @@ def check(m, n, bw, mode):
         src = rng.integers(0, 256, size=m * n, dtype=np.uint8)
         di, ei, do, eo, tl, errs = cfg_forward(m, n, bw)
         got = beat_copy(src, di, ei, do, eo, tl, bw)
-        gold = np.asarray(cim_layout(src.reshape(m, n), bw, m, n)).reshape(-1).astype(np.uint8)
+        gold = np.asarray(block_layout(src.reshape(m, n), bw, m, n)).reshape(-1).astype(np.uint8)
     else:
         rm = rng.integers(0, 256, size=m * n, dtype=np.uint8).reshape(m, n)
-        src = np.asarray(cim_layout(rm, bw, m, n)).reshape(-1).astype(np.uint8)
+        src = np.asarray(block_layout(rm, bw, m, n)).reshape(-1).astype(np.uint8)
         di, ei, do, eo, tl, errs = cfg_reverse(m, n, bw)
         got = beat_copy(src, di, ei, do, eo, tl, bw)
         gold = rm.reshape(-1)

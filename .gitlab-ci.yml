@@ -80,9 +80,9 @@ test:transpose:
   extends: .suite
   variables: {SUITE: transpose, TEST_JSON: tests/transpose.json}
 
-test:cim:
+test:block:
   extends: .suite
-  variables: {SUITE: cim, TEST_JSON: tests/cim.json}
+  variables: {SUITE: block, TEST_JSON: tests/block.json}
 
 test:chained:
   extends: .suite
@@ -128,13 +128,13 @@ sweep:transpose:
   extends: .sweep
   variables: {SUITE: transpose_sweep}
 
-sweep:cim:
+sweep:block:
   extends: .sweep
-  variables: {SUITE: cim_sweep}
+  variables: {SUITE: block_sweep}
 
-sweep:cim_transpose:
+sweep:block_transpose:
   extends: .sweep
-  variables: {SUITE: cim_transpose_sweep}
+  variables: {SUITE: block_transpose_sweep}
 
 sweep:unfold:
   extends: .sweep

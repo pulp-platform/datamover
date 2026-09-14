@@ -13,7 +13,7 @@
 // Three access levels over the SystemRDL-generated datamover_regif map:
 //   L0  commands  : datamover_{soft_clear,acquire,trigger,status}()
 //   L1  program   : datamover_program() -- write a built register image
-//   L2  operations: datamover_{copy,transpose,cim_layout,...}() and
+//   L2  operations: datamover_{copy,transpose,block_layout,...}() and
 //                   datamover_run() -- build, acquire, program, and trigger a job
 //
 // DATAMOVER_BASE_ADDR must be defined before including.
@@ -107,37 +107,37 @@ static inline __attribute__((always_inline)) void datamover_transpose(uint8_t *m
 }
 
 // One job for the complete column blocks, one for the leftover columns.
-static inline __attribute__((always_inline)) void datamover_cim_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_block_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                         uint32_t size_n) {
   datamover_cfg_t cfg = {0};
   uint32_t leftover = size_n % DATAMOVER_BANDWIDTH_ELEMS;
 
   if (size_n >= DATAMOVER_BANDWIDTH_ELEMS) {
-    datamover_build_cim_complete(&cfg, matrix_in, matrix_out, size_m, size_n);
+    datamover_build_block_complete(&cfg, matrix_in, matrix_out, size_m, size_n);
     datamover_launch(&cfg);
   }
   if (leftover != 0) {
-    datamover_build_cim_leftover(&cfg, matrix_in, matrix_out, size_m, size_n);
+    datamover_build_block_leftover(&cfg, matrix_in, matrix_out, size_m, size_n);
     datamover_launch(&cfg);
   }
 }
 
-static inline __attribute__((always_inline)) void datamover_cim_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_block_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                                 uint32_t size_n) {
   datamover_cfg_t cfg = {0};
   uint32_t leftover = size_n % DATAMOVER_BANDWIDTH_ELEMS;
 
   if (size_n >= DATAMOVER_BANDWIDTH_ELEMS) {
-    datamover_build_cim_rev_complete(&cfg, matrix_in, matrix_out, size_m, size_n);
+    datamover_build_block_rev_complete(&cfg, matrix_in, matrix_out, size_m, size_n);
     datamover_launch(&cfg);
   }
   if (leftover != 0) {
-    datamover_build_cim_rev_leftover(&cfg, matrix_in, matrix_out, size_m, size_n);
+    datamover_build_block_rev_leftover(&cfg, matrix_in, matrix_out, size_m, size_n);
     datamover_launch(&cfg);
   }
 }
 
-// CIM layout: one job for the complete channel tiles, one for the leftover channels.
+// block layout: one job for the complete channel tiles, one for the leftover channels.
 static inline __attribute__((always_inline)) datamover_status_t datamover_unfold(uint8_t *matrix_in, uint8_t *matrix_out,
                                     uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                     datamover_layout_t layout) {
@@ -161,11 +161,11 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_unfold
   for (uint32_t c = 0; c < c_full; c += tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) {
     uint32_t c_len = c_full - c;
     if (c_len > tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) c_len = tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS;
-    datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c, c_len);
+    datamover_build_unfold_block(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c, c_len);
     datamover_launch(&cfg);
   }
   if (leftover > 0) {
-    datamover_build_unfold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
+    datamover_build_unfold_block(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
     datamover_launch(&cfg);
   }
   return DATAMOVER_OK;
@@ -194,11 +194,11 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_fold(u
   for (uint32_t c = 0; c < c_full; c += tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) {
     uint32_t c_len = c_full - c;
     if (c_len > tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS) c_len = tiles_per_job * DATAMOVER_BANDWIDTH_ELEMS;
-    datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c, c_len);
+    datamover_build_fold_block(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c, c_len);
     datamover_launch(&cfg);
   }
   if (leftover > 0) {
-    datamover_build_fold_cim(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
+    datamover_build_fold_block(&cfg, matrix_in, matrix_out, size_c, size_h, size_w, c_full, leftover);
     datamover_launch(&cfg);
   }
   return DATAMOVER_OK;
@@ -212,7 +212,7 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_im2col
   if (datamover_im2col_check(size_c, size_h, size_w, kernel_h, kernel_w, conv_stride, conv_pad,
                              in_layout, out_layout) != DATAMOVER_OK)
     return DATAMOVER_ERR;
-  if (out_layout == DATAMOVER_IM2COL_OUT_ROW_CIM) {
+  if (out_layout == DATAMOVER_IM2COL_OUT_ROW_BLOCK) {
     uint32_t jobs = (in_layout == DATAMOVER_IM2COL_IN_HWC) ? 3 : 1;
     for (uint32_t j = 0; j < jobs; j++) {
       datamover_build_im2row(&cfg, tensor_in, matrix_out, size_c, size_h, size_w, kernel_h, in_layout, j);
@@ -234,20 +234,20 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_im2col
   return DATAMOVER_OK;
 }
 
-// Transpose a CIM-layout matrix via row-major: reverse -> transpose -> forward.
+// Transpose a matrix in the block layout via row-major: reverse -> transpose -> forward.
 // Each phase reads the buffer the previous one wrote; the engine runs committed
 // jobs in order, so the phases stay correctly sequenced without explicit waits.
 // IMPORTANT: the input buffer is used as scratch and is overwritten.
-static inline __attribute__((always_inline)) void datamover_cim_layout_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+static inline __attribute__((always_inline)) void datamover_block_layout_transpose(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                                   uint32_t size_n, datamover_transp_mode_t transp_mode) {
   if (size_n <= DATAMOVER_BANDWIDTH_ELEMS && size_m <= DATAMOVER_BANDWIDTH_ELEMS) {
-    // One block in N and M: the CIM layout is row-major, so transpose directly.
+    // One block in N and M: the block layout is row-major, so transpose directly.
     datamover_transpose(matrix_in, matrix_out, size_m, size_n, transp_mode);
     return;
   }
-  datamover_cim_layout_reverse(matrix_in, matrix_out, size_m, size_n);
+  datamover_block_layout_reverse(matrix_in, matrix_out, size_m, size_n);
   datamover_transpose(matrix_out, matrix_in, size_m, size_n, transp_mode);
-  datamover_cim_layout(matrix_in, matrix_out, size_n, size_m);
+  datamover_block_layout(matrix_in, matrix_out, size_n, size_m);
 }
 
 //==========================================================================
@@ -265,14 +265,14 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
         datamover_transpose(t->in_ptr + c * t->size_m * t->size_n, t->out_ptr + c * t->size_m * t->size_n,
                             t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;
-    case DATAMOVER_CIM_LAYOUT:
-      if (t->cim_mode == 0)
-        datamover_cim_layout(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
+    case DATAMOVER_BLOCK_LAYOUT:
+      if (t->block_mode == 0)
+        datamover_block_layout(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
       else
-        datamover_cim_layout_reverse(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
+        datamover_block_layout_reverse(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
       return DATAMOVER_OK;
-    case DATAMOVER_CIM_LAYOUT_TRANSPOSE:
-      datamover_cim_layout_transpose(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->transp_mode);
+    case DATAMOVER_BLOCK_LAYOUT_TRANSPOSE:
+      datamover_block_layout_transpose(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;
     case DATAMOVER_UNFOLD:
       return datamover_unfold(t->in_ptr, t->out_ptr, t->size_c, t->size_m, t->size_n, t->layout);

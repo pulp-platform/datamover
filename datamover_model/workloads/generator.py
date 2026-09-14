@@ -11,10 +11,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from datamover_model.golden_model.transforms import (
-    cim_activation,
-    cim_layout,
-    cim_layout_reverse,
-    cim_layout_transpose,
+    block_activation,
+    block_layout,
+    block_layout_reverse,
+    block_layout_transpose,
     fold,
     im2col,
     unfold,
@@ -68,23 +68,23 @@ def golden_for(params: dict, in_tensor: np.ndarray, beat: int):
         return in_tensor, out
     if mode == 2:
         flat = in_tensor.reshape(m, n)
-        out = cim_layout(flat, beat, m, n) if params["CIM_MODE"] == 0 \
-            else cim_layout_reverse(flat, beat, m, n)
+        out = block_layout(flat, beat, m, n) if params["BLOCK_MODE"] == 0 \
+            else block_layout_reverse(flat, beat, m, n)
         return in_tensor, np.asarray(out).reshape(-1)
     if mode == 3:
         flat = in_tensor.reshape(m, n)
-        out = cim_layout_transpose(flat, beat, m, n)
+        out = block_layout_transpose(flat, beat, m, n)
         return in_tensor, np.asarray(out).reshape(-1)
     layout = params["LAYOUT"]
     if mode == 4:
-        mem_in = cim_activation(in_tensor, beat) if layout == "CIM" else in_tensor
+        mem_in = block_activation(in_tensor, beat) if layout == "BLOCK" else in_tensor
         return mem_in, unfold(in_tensor, PATCH_SIZE, beat, layout)
     if mode == 5:
         # Fold consumes an unfolded tensor; synthesize it so the golden round-trips.
         unfolded = unfold(in_tensor, PATCH_SIZE, beat, layout)
         return unfolded, fold(unfolded, PATCH_SIZE, c, m, n, beat, layout)
     if mode == 6:
-        mem_in = cim_activation(in_tensor, beat) if params["IM2COL_IN"] == "CIM" else in_tensor
+        mem_in = block_activation(in_tensor, beat) if params["IM2COL_IN"] == "BLOCK" else in_tensor
         return mem_in, im2col(in_tensor, params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"], beat,
                               params["CONV_STRIDE"], params["CONV_PAD"],
                               params["IM2COL_IN"], params["IM2COL_OUT"])

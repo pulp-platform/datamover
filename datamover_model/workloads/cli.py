@@ -101,7 +101,7 @@ def main() -> int:
                               in_tensor=(input_tensor if i == 0 else None), out_tensor=out)
             # Verify every stage against its own golden (pinpoints the failing stage),
             # except a stage whose output buffer the next stage overwrites as scratch
-            # (cim_layout_transpose / mode 3 uses its input buffer as scratch).
+            # (block_layout_transpose / mode 3 uses its input buffer as scratch).
             next_clobbers = (i + 1 < n) and (stages[i + 1][0]["DATAMOVER_MODE"] == 3)
             metas.append(emit_task_artifacts(result, args.output_dir, index=i,
                                              in_from=(None if i == 0 else i - 1),

@@ -14,15 +14,15 @@
     "SIZE_N": {"min": 1, "max": 512},
     "LAYOUTS": [
       {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL"},
-      {"IM2COL_IN": "CIM", "IM2COL_OUT": "COL_CIM", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
-      {"IM2COL_IN": "CIM", "IM2COL_OUT": "COL_CIM", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
-      {"IM2COL_IN": "CIM", "IM2COL_OUT": "COL_CIM", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
-      {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_CIM", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % (2 * BEAT), KERNEL_SIZE_H + 2 * BEAT - 2)"},
-      {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_CIM", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % (2 * BEAT), KERNEL_SIZE_H + 2 * BEAT - 2)"},
-      {"IM2COL_IN": "CHW", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": [4, 8, 16, 32, 64], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"},
-      {"IM2COL_IN": "CHW", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": [4, 8, 16, 32, 64], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"},
+      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
+      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
+      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
+      {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_BLOCK", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % (2 * BEAT), KERNEL_SIZE_H + 2 * BEAT - 2)"},
+      {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_BLOCK", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % (2 * BEAT), KERNEL_SIZE_H + 2 * BEAT - 2)"},
+      {"IM2COL_IN": "CHW", "IM2COL_OUT": "ROW_BLOCK", "KERNEL_SIZE_H": [4, 8, 16, 32, 64], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"},
+      {"IM2COL_IN": "CHW", "IM2COL_OUT": "ROW_BLOCK", "KERNEL_SIZE_H": [4, 8, 16, 32, 64], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"},
       {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL"},
-      {"IM2COL_IN": "HWC", "IM2COL_OUT": "ROW_CIM", "KERNEL_SIZE_H": [4, 8, 16], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_C": "48 // KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"}
+      {"IM2COL_IN": "HWC", "IM2COL_OUT": "ROW_BLOCK", "KERNEL_SIZE_H": [4, 8, 16], "CONV_STRIDE": "KERNEL_SIZE_H", "SIZE_C": "48 // KERNEL_SIZE_H", "SIZE_M": "max(SIZE_M - SIZE_M % KERNEL_SIZE_H, KERNEL_SIZE_H)", "SIZE_N": "max(SIZE_N - SIZE_N % KERNEL_SIZE_H, KERNEL_SIZE_H)"}
     ]
   }
 }
