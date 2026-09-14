@@ -153,6 +153,8 @@ def _validate_im2row_params(params: dict, beat: int) -> None:
         raise ValueError(f"ROW_CIM needs kernel == stride and no pad, got K={k} S={s} pad={pad}")
     if params["IM2COL_IN"] == "CHW" and (beat % k != 0 or (k * k) % beat != 0):
         raise ValueError(f"CHW ROW_CIM needs a kernel side that divides {beat} with K*K a multiple of it, got {k}")
+    if params["IM2COL_IN"] == "CIM":
+        raise ValueError("ROW_CIM needs IM2COL_IN CHW or HWC")
     if params["IM2COL_IN"] == "HWC" and (k * c != 48 or k % 4 != 0 or beat != 64):
         # TODO the HWC builder packs four 48-byte patch rows into three 64-element blocks; other beats need a generic scheme (B15)
         raise ValueError(f"HWC ROW_CIM needs a 64-element beat, 48-byte patch rows and a kernel side that is a multiple of 4, got beat={beat} K={k} C={c}")

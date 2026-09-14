@@ -453,6 +453,43 @@ static inline __attribute__((always_inline)) void datamover_build_fold_cim(datam
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_FOLD, 0x3, 0xF, DATAMOVER_TRANSP_1ELEM);
 }
 
+// The im2col shapes the builders program; datamover_model/workloads/suite.py states the same rules.
+static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                                       uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride,
+                                                       uint32_t pad, datamover_im2col_in_t in_layout,
+                                                       datamover_im2col_out_t out_layout) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  if (kernel_h == 0 || kernel_w == 0 || conv_stride == 0) return DATAMOVER_ERR;
+  if (size_h + 2 * pad < kernel_h || size_w + 2 * pad < kernel_w) return DATAMOVER_ERR;
+  if (out_layout == DATAMOVER_IM2COL_OUT_ROW_CIM) {
+    uint32_t k = kernel_h;
+    if (k != kernel_w || k != conv_stride || pad != 0) return DATAMOVER_ERR;
+    if (in_layout == DATAMOVER_IM2COL_IN_CHW)
+      return (BWE % k == 0 && (k * k) % BWE == 0) ? DATAMOVER_OK : DATAMOVER_ERR;
+    if (in_layout == DATAMOVER_IM2COL_IN_HWC)
+      return (k * size_c == 48 && k % 4 == 0 && BWE == 64) ? DATAMOVER_OK : DATAMOVER_ERR;
+    return DATAMOVER_ERR;
+  }
+  if (conv_stride > 2) return DATAMOVER_ERR;
+  uint32_t w_out = (size_w + 2 * pad - kernel_w) / conv_stride + 1;
+  if (in_layout == DATAMOVER_IM2COL_IN_CIM && out_layout == DATAMOVER_IM2COL_OUT_COL_CIM) {
+    if (kernel_h != 3 || kernel_w != 3 || conv_stride != 1 || pad != 1) return DATAMOVER_ERR;
+    if (size_w < 8 || size_w > BWE || (size_w & (size_w - 1)) != 0) return DATAMOVER_ERR;
+    return ((size_h * size_w) % BWE == 0) ? DATAMOVER_OK : DATAMOVER_ERR;
+  }
+  if (in_layout != DATAMOVER_IM2COL_IN_CHW || pad != 0) return DATAMOVER_ERR;
+  if (out_layout == DATAMOVER_IM2COL_OUT_COL_CIM) {
+    if (conv_stride != 2 || w_out % BWE != 0) return DATAMOVER_ERR;
+  } else if (out_layout != DATAMOVER_IM2COL_OUT_COL) {
+    return DATAMOVER_ERR;
+  }
+#if DATAMOVER_MISALIGNED_ACCESSES == 0
+  // The row-major paths read a beat at every kernel column offset: only a word-aligned row works.
+  if (kernel_w != 1 || size_w % DATAMOVER_WORD_ELEMS != 0 || w_out % DATAMOVER_WORD_ELEMS != 0) return DATAMOVER_ERR;
+#endif
+  return DATAMOVER_OK;
+}
+
 // Tensor (C,H,W) -> im2col matrix (Kh*Kw*C, H_out*W_out); row = ci*Kh*Kw+kh*Kw+kw, col = oh*W_out+ow.
 // conv_stride applies to both spatial dims. Three paths:
 // - CIM in, COL_CIM out: the im2col unit, 3x3 with a 1-pixel border, stride 1, W a power of two from 8 to the beat.
