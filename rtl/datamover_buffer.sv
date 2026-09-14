@@ -22,24 +22,24 @@
 
 module datamover_buffer
 #(
-  parameter int unsigned NB_ELEMENTS = 64,
-  parameter int unsigned ELEM_WIDTH  = 8
+  parameter int unsigned NumElems  = 64,
+  parameter int unsigned ElemWidth = 8
 ) (
   input  logic                                    clk_i,
   input  logic                                    rst_ni,
   input  logic                                    clear_i,
   input  logic                                    clear_matrix_i,
-  input  logic [NB_ELEMENTS-1:0]                  wr_row_en_i,
-  input  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]  wr_row_data_i [NB_ELEMENTS-1:0],
-  output logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]  rd_data_o     [NB_ELEMENTS-1:0]
+  input  logic [NumElems-1:0]                  wr_row_en_i,
+  input  logic [NumElems-1:0][ElemWidth-1:0]  wr_row_data_i [NumElems-1:0],
+  output logic [NumElems-1:0][ElemWidth-1:0]  rd_data_o     [NumElems-1:0]
 );
 
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] elem_matrix_d [NB_ELEMENTS-1:0], elem_matrix_q [NB_ELEMENTS-1:0];
+  logic [NumElems-1:0][ElemWidth-1:0] elem_matrix_d [NumElems-1:0], elem_matrix_q [NumElems-1:0];
   logic clear_int;
   assign clear_int = clear_i | clear_matrix_i;
 
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_x
-    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_y
+  for(genvar ii=0; ii<NumElems; ii++) begin : gen_elem_matrix_x
+    for(genvar jj=0; jj<NumElems; jj++) begin : gen_elem_matrix_y
       assign elem_matrix_d[ii][jj] = wr_row_en_i[ii] ? wr_row_data_i[ii][jj]
                                                       : elem_matrix_q[ii][jj];
     end // gen_elem_matrix_y
@@ -47,8 +47,8 @@ module datamover_buffer
 
   assign rd_data_o = elem_matrix_q;
 
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_elem_matrix_ff_x
-    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_elem_matrix_ff_y
+  for(genvar ii=0; ii<NumElems; ii++) begin : gen_elem_matrix_ff_x
+    for(genvar jj=0; jj<NumElems; jj++) begin : gen_elem_matrix_ff_y
       `FFARNC(elem_matrix_q[ii][jj], elem_matrix_d[ii][jj], clear_int, '0, clk_i, rst_ni)
     end // gen_elem_matrix_ff_y
   end // gen_elem_matrix_ff_x

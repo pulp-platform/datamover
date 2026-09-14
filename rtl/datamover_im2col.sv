@@ -15,78 +15,78 @@
  * Authors:  Lionnus Kesting <lkesting@iis.ee.ethz.ch>
  */
 
-// im2col unit. Every output beat holds NB_ELEMENTS output pixels of one tap.
+// im2col unit. Every output beat holds NumElems output pixels of one tap.
 //
-// conv_stride 1: the input is (C x pixels) in NB_ELEMENTS-pixel blocks with
-// image rows of W pixels, W a power of two from 8 to NB_ELEMENTS. The unit
+// conv_stride 1: the input is (C x pixels) in NumElems-pixel blocks with
+// image rows of W pixels, W a power of two from 8 to NumElems. The unit
 // keeps the previous and the current block row and reads the next one from
 // the input stream. Per block row it emits the 9 taps of a 3x3 kernel with a
 // 1-pixel zero border.
 //
-// conv_stride 2: every input beat gives NB_ELEMENTS/2 output pixels, the even
+// conv_stride 2: every input beat gives NumElems/2 output pixels, the even
 // input columns. Two beats merge into one output beat.
 
 `include "common_cells/registers.svh"
 
 module datamover_im2col
-  import datamover_package::*;
+  import datamover_pkg::*;
 #(
-  parameter int unsigned NB_ELEMENTS = 64,
-  parameter int unsigned ELEM_WIDTH  = 8
+  parameter int unsigned NumElems  = 64,
+  parameter int unsigned ElemWidth = 8
 ) (
   input  logic                                   clk_i,
   input  logic                                   rst_ni,
   input  logic                                   clear_i,
   input  ctrl_engine_t                           ctrl_i,
-  input  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_i,
+  input  logic [NumElems-1:0][ElemWidth-1:0] data_i,
   input  logic                                   valid_i,
   output logic                                   ready_o,
-  output logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_o,
+  output logic [NumElems-1:0][ElemWidth-1:0] data_o,
   output logic                                   valid_o,
   input  logic                                   ready_i
 );
 
-  localparam int unsigned NB_ELEM_LOG2 = $clog2(NB_ELEMENTS);
-  localparam int unsigned LOG2W_MIN    = 3;
-  localparam int unsigned NUM_W        = NB_ELEM_LOG2 - LOG2W_MIN + 1;
+  localparam int unsigned NumElemsLog2 = $clog2(NumElems);
+  localparam int unsigned Log2wMin    = 3;
+  localparam int unsigned NumW        = NumElemsLog2 - Log2wMin + 1;
 
   typedef enum logic { PRIME, DRAIN } state_e;
   state_e state_d, state_q;
 
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] prev_d, prev_q, cur_d, cur_q;
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] up_row, dn_row, row_sel, tap, out_window, out_merge, out;
-  logic [NB_ELEMENTS/2-1:0][ELEM_WIDTH-1:0] lo_d, lo_q;
-  logic [NB_ELEMENTS+1:0][ELEM_WIDTH-1:0] row_pad;
-  logic [NB_ELEMENTS-1:0]                 zero, first_col, last_col, top_row, bot_row;
-  logic [IM2COL_LOG2W_WIDTH-1:0]          w_idx;
-  logic [TENSOR_SIZE_WIDTH-1:0]           blk_d, blk_q, n_blocks;
+  logic [NumElems-1:0][ElemWidth-1:0] prev_d, prev_q, cur_d, cur_q;
+  logic [NumElems-1:0][ElemWidth-1:0] up_row, dn_row, row_sel, tap, out_window, out_merge, out;
+  logic [NumElems/2-1:0][ElemWidth-1:0] lo_d, lo_q;
+  logic [NumElems+1:0][ElemWidth-1:0] row_pad;
+  logic [NumElems-1:0]                 zero, first_col, last_col, top_row, bot_row;
+  logic [Im2colLog2wWidth-1:0]          w_idx;
+  logic [TensorSizeWidth-1:0]           blk_d, blk_q, n_blocks;
   logic [1:0]                             kh_d, kh_q, kw_d, kw_q;
   logic                                   half_d, half_q, out_valid, out_free;
   logic                                   merge, first_blk, last_blk, last_tap, need_next;
   logic                                   drain_valid, out_load, prime_hs, shift, accept;
 
   assign merge     = (ctrl_i.conv_stride != 1);
-  assign w_idx     = ctrl_i.im2col_log2w - LOG2W_MIN;
-  assign n_blocks  = (ctrl_i.tensor_size_m << ctrl_i.im2col_log2w) >> NB_ELEM_LOG2;
+  assign w_idx     = ctrl_i.im2col_log2w - Log2wMin;
+  assign n_blocks  = (ctrl_i.tensor_size_m << ctrl_i.im2col_log2w) >> NumElemsLog2;
   assign first_blk = (blk_q == '0);
   assign last_blk  = (blk_q == n_blocks - 1);
   assign last_tap  = (kh_q == 2) && (kw_q == 2);
   assign need_next = (kh_q == 2) && !last_blk;
 
   // Tap select: row by kh and W, then column by kw, then the zero border.
-  for (genvar jj = 0; jj < NB_ELEMENTS; jj++) begin : gen_lane
-    logic [NUM_W-1:0][ELEM_WIDTH-1:0] up_w, dn_w;
-    logic [NUM_W-1:0]                 first_w, last_w, top_w, bot_w;
-    for (genvar ll = 0; ll < NUM_W; ll++) begin : gen_width
-      localparam int unsigned W  = 1 << (LOG2W_MIN + ll);
-      localparam int unsigned Up = (jj >= W) ? jj - W : NB_ELEMENTS + jj - W;
-      localparam int unsigned Dn = (jj + W < NB_ELEMENTS) ? jj + W : jj + W - NB_ELEMENTS;
+  for (genvar jj = 0; jj < NumElems; jj++) begin : gen_lane
+    logic [NumW-1:0][ElemWidth-1:0] up_w, dn_w;
+    logic [NumW-1:0]                 first_w, last_w, top_w, bot_w;
+    for (genvar ll = 0; ll < NumW; ll++) begin : gen_width
+      localparam int unsigned W  = 1 << (Log2wMin + ll);
+      localparam int unsigned Up = (jj >= W) ? jj - W : NumElems + jj - W;
+      localparam int unsigned Dn = (jj + W < NumElems) ? jj + W : jj + W - NumElems;
       assign up_w[ll]    = (jj >= W) ? cur_q[Up] : prev_q[Up];
-      assign dn_w[ll]    = (jj + W < NB_ELEMENTS) ? cur_q[Dn] : data_i[Dn];
+      assign dn_w[ll]    = (jj + W < NumElems) ? cur_q[Dn] : data_i[Dn];
       assign first_w[ll] = ((jj & (W - 1)) == 0);
       assign last_w[ll]  = ((jj & (W - 1)) == W - 1);
       assign top_w[ll]   = (jj < W);
-      assign bot_w[ll]   = (jj >= NB_ELEMENTS - W);
+      assign bot_w[ll]   = (jj >= NumElems - W);
     end
     assign up_row[jj]    = up_w[w_idx];
     assign dn_row[jj]    = dn_w[w_idx];
@@ -103,12 +103,12 @@ module datamover_im2col
     assign out_window[jj] = zero[jj] ? '0 : tap[jj];
   end
   assign row_pad[0]             = '0;
-  assign row_pad[NB_ELEMENTS+1] = '0;
+  assign row_pad[NumElems+1] = '0;
 
-  for (genvar ii = 0; ii < NB_ELEMENTS / 2; ii++) begin : gen_merge
+  for (genvar ii = 0; ii < NumElems / 2; ii++) begin : gen_merge
     assign lo_d[ii]                        = (accept && !half_q) ? data_i[2*ii] : lo_q[ii];
     assign out_merge[ii]                   = lo_q[ii];
-    assign out_merge[ii + NB_ELEMENTS / 2] = data_i[2*ii];
+    assign out_merge[ii + NumElems / 2] = data_i[2*ii];
   end
 
   // Handshakes
@@ -130,7 +130,7 @@ module datamover_im2col
   assign out_valid   = merge ? (accept && half_q) : out_load;
 
   stream_register #(
-    .T ( logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] )
+    .T ( logic [NumElems-1:0][ElemWidth-1:0] )
   ) i_out_reg (
     .clk_i      ( clk_i     ),
     .rst_ni     ( rst_ni    ),

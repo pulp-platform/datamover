@@ -22,13 +22,13 @@
 module datamover_streamer
   import hwpe_stream_package::*;
   import hci_package::*;
-  import datamover_package::*;
+  import datamover_pkg::*;
 #(
-  parameter int unsigned BANDWIDTH = 32,
-  parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
-  parameter int unsigned ELEM_WIDTH = 8,    // element width (in bits)
-  parameter int unsigned TCDM_FIFO_DEPTH = 2,
-  parameter int unsigned MISALIGNED_ACCESSES = 1,
+  parameter int unsigned Bandwidth          = 32,
+  parameter int unsigned ElemsPerWord       = 4,  // number of elements in a bank word
+  parameter int unsigned ElemWidth          = 8,  // element width (in bits)
+  parameter int unsigned TcdmFifoDepth      = 2,
+  parameter int unsigned MisalignedAccesses = 1,
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0
 ) (
   // global signals
@@ -50,7 +50,7 @@ module datamover_streamer
 );
 
   // 24-bit beat counters: 16M beats, above every job of a 1 MiB tensor.
-  localparam int unsigned TRANS_CNT = 24;
+  localparam int unsigned TransCnt = 24;
   localparam int unsigned BW = `HCI_SIZE_GET_BW(tcdm);
   localparam int unsigned AW = `HCI_SIZE_GET_AW(tcdm);
   localparam int unsigned UW  = `HCI_SIZE_GET_UW(tcdm);
@@ -63,7 +63,7 @@ module datamover_streamer
   // "Virtual" HCI TCDM interfaces. Interface [0] maps loads (coming from
   // and HCI source) and interface [1] maps stores (coming from an HCI sink).
   hci_core_intf #(
-    .DW  ( BANDWIDTH ),
+    .DW  ( Bandwidth ),
     .BW  ( BW ),
     .AW  ( AW ),
     .UW  ( UW ),
@@ -81,7 +81,7 @@ module datamover_streamer
   // "Virtual" TCDM interface, used to embody data after mixing loads and
   // stores, but before the TCDM FIFO (if present).
   hci_core_intf #(
-    .DW ( BANDWIDTH ),
+    .DW ( Bandwidth ),
     .BW ( BW ),
     .AW ( AW ),
     .UW ( UW ),
@@ -97,7 +97,7 @@ module datamover_streamer
   // an array of interfaces, with one single instance inside. This is
   // useful because HCI muxes expect an array of output interfaces.
   hci_core_intf #(
-    .DW  ( BANDWIDTH ),
+    .DW  ( Bandwidth ),
     .BW  ( BW ),
     .AW  ( AW ),
     .UW  ( UW ),
@@ -112,11 +112,11 @@ module datamover_streamer
   // the HWPE-Stream, since the source also performs realignment, it will
   // expose a 1-word-larger HCI TCDM interface.
   hci_core_source #(
-    .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
-    .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
-    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .ELEMENT_WIDTH         ( ElemWidth            ), // e.g., 8 bits per element
+    .ELEMENTS_PER_BANK     ( ElemsPerWord         ), // number of elements in one memory bank word
+    .MISALIGNED_ACCESSES   ( MisalignedAccesses   ),
     .DIM_ENABLE_1H         ( 4'b1111               ),
-    .TRANS_CNT             ( TRANS_CNT             ),
+    .TRANS_CNT             ( TransCnt             ),
     .TCDM_R_READY_SUPPORT  ( 1'b0                  ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_source (
@@ -135,11 +135,11 @@ module datamover_streamer
   // the HWPE-Stream, since the sink also performs realignment, it will
   // expose a 1-word-larger HCI TCDM interface.
   hci_core_sink #(
-    .ELEMENT_WIDTH         ( ELEM_WIDTH            ), // e.g., 8 bits per element
-    .ELEMENTS_PER_BANK     ( NUM_ELEM_WORD         ), // number of elements in one memory bank word
-    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .ELEMENT_WIDTH         ( ElemWidth            ), // e.g., 8 bits per element
+    .ELEMENTS_PER_BANK     ( ElemsPerWord         ), // number of elements in one memory bank word
+    .MISALIGNED_ACCESSES   ( MisalignedAccesses   ),
     .DIM_ENABLE_1H         ( 4'b1111               ),
-    .TRANS_CNT             ( TRANS_CNT             ),
+    .TRANS_CNT             ( TransCnt             ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_sink (
     .clk_i       ( clk_i                       ),
@@ -154,7 +154,7 @@ module datamover_streamer
   );
 
   generate
-    if(TCDM_FIFO_DEPTH > 0) begin : use_fifo_gen
+    if(TcdmFifoDepth > 0) begin : use_fifo_gen
 
       // TCDM muxing is not possible in general before a FIFO, because
       // there is no standard way to couple a response with the channel
@@ -163,7 +163,7 @@ module datamover_streamer
       // a STORE-exclusive channel. It will couple any valid response to
       // the LOAD channel exclusively.
       hci_core_load_store_mixer #(
-        .DW ( BANDWIDTH ),
+        .DW ( Bandwidth ),
         .BW ( BW ),
         .AW ( AW ),
         .UW ( UW ),
@@ -180,7 +180,7 @@ module datamover_streamer
       // The HCI core FIFO decouples the request path from the response path, easing
       // timing closure when integrating the accelerator in a cluster.
       hci_core_fifo #(
-        .FIFO_DEPTH ( TCDM_FIFO_DEPTH )
+        .FIFO_DEPTH ( TcdmFifoDepth )
       ) i_tcdm_fifo (
         .clk_i         ( clk_i             ),
         .rst_ni        ( rst_ni            ),

@@ -25,7 +25,7 @@
 module datamover_top_wrap
   import hwpe_ctrl_package::*;
   import hci_package::*;
-  import datamover_package::*;
+  import datamover_pkg::*;
 #(
 `ifndef SYNTHESIS
   parameter bit WAIVE_RQ3_ASSERT  = 1'b0,
@@ -33,18 +33,18 @@ module datamover_top_wrap
   parameter bit WAIVE_RSP3_ASSERT = 1'b0,
   parameter bit WAIVE_RSP5_ASSERT = 1'b0,
 `endif
-  parameter int unsigned ADDR_WIDTH = 32,         // width of address bus
-  parameter int unsigned ID = 10,                 // control slave peripheral ID width
-  parameter int unsigned BANDWIDTH = 576,         // total bandwidth of HWPE to TCDM (in bits)
-  parameter int unsigned NUM_ELEM_WORD = 8,       // number of elements in a memory bank word
-  parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
-  parameter int unsigned N_CORES   = 8,           // number of cores for event inputs
-  parameter int unsigned N_CONTEXT = 2,           // number of context for control slave regfile
-  parameter int unsigned MISALIGNED_ACCESSES = 1, // enable misaligned accesses on TCDM interface
-  parameter bit          EnableIm2col = ENABLE_IM2COL, // instantiate the im2col unit
+  parameter int unsigned AddrWidth          = datamover_pkg::AddrWidth,          // width of address bus
+  parameter int unsigned IdWidth            = datamover_pkg::IdWidth,            // control slave peripheral ID width
+  parameter int unsigned Bandwidth          = datamover_pkg::Bandwidth,          // total bandwidth of HWPE to TCDM (in bits)
+  parameter int unsigned ElemsPerWord       = datamover_pkg::ElemsPerWord,       // number of elements in a memory bank word
+  parameter int unsigned ElemWidth          = datamover_pkg::ElemWidth,          // element width (in bits)
+  parameter int unsigned NumCores           = datamover_pkg::NumCores,           // number of cores for event inputs
+  parameter int unsigned NumContext         = datamover_pkg::NumContext,         // number of context for control slave regfile
+  parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
+  parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col unit
   // Dependent parameters: do not modify!
-  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
-  localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH // TCDM interface width in number of words
+  localparam int unsigned WordWidth = ElemsPerWord * ElemWidth, // should correspond to bank width
+  localparam int unsigned NumWords  = Bandwidth / WordWidth     // TCDM interface width in number of words
 )
 (
   // global signals
@@ -52,18 +52,18 @@ module datamover_top_wrap
   input  logic rst_ni,
   input  logic test_mode_i,
   // events
-  output logic [N_CORES-1:0][REGFILE_N_EVT-1:0] evt_o,
+  output logic [NumCores-1:0][REGFILE_N_EVT-1:0] evt_o,
   // busy status
   output logic                                    busy_o,
   // tcdm master ports
-  output logic [NUM_WORDS-1:0]                    tcdm_req,
-  input  logic [NUM_WORDS-1:0]                    tcdm_gnt,
-  output logic [NUM_WORDS-1:0][ADDR_WIDTH-1:0]    tcdm_add,
-  output logic [NUM_WORDS-1:0]                    tcdm_wen,
-  output logic [NUM_WORDS-1:0][NUM_ELEM_WORD-1:0] tcdm_be,
-  output logic [NUM_WORDS-1:0][WORD_WIDTH-1:0]    tcdm_data,
-  input  logic [NUM_WORDS-1:0][WORD_WIDTH-1:0]    tcdm_r_data,
-  input  logic [NUM_WORDS-1:0]                    tcdm_r_valid,
+  output logic [NumWords-1:0]                    tcdm_req,
+  input  logic [NumWords-1:0]                    tcdm_gnt,
+  output logic [NumWords-1:0][AddrWidth-1:0]    tcdm_add,
+  output logic [NumWords-1:0]                    tcdm_wen,
+  output logic [NumWords-1:0][ElemsPerWord-1:0] tcdm_be,
+  output logic [NumWords-1:0][WordWidth-1:0]    tcdm_data,
+  input  logic [NumWords-1:0][WordWidth-1:0]    tcdm_r_data,
+  input  logic [NumWords-1:0]                    tcdm_r_valid,
   // periph slave port
   input  logic          periph_req,
   output logic          periph_gnt,
@@ -71,10 +71,10 @@ module datamover_top_wrap
   input  logic          periph_wen,
   input  logic    [3:0] periph_be,
   input  logic   [31:0] periph_data,
-  input  logic [ID-1:0] periph_id,
+  input  logic [IdWidth-1:0] periph_id,
   output logic   [31:0] periph_r_data,
   output logic          periph_r_valid,
-  output logic [ID-1:0] periph_r_id
+  output logic [IdWidth-1:0] periph_r_id
 );
 
   ////////////////////
@@ -82,9 +82,9 @@ module datamover_top_wrap
   ////////////////////
 
   localparam hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '{
-    DW:  BANDWIDTH,
-    AW:  ADDR_WIDTH,
-    BW:  ELEM_WIDTH,
+    DW:  Bandwidth,
+    AW:  AddrWidth,
+    BW:  ElemWidth,
     UW:  DEFAULT_UW,
     IW:  DEFAULT_IW,
     EW:  DEFAULT_EW,
@@ -98,9 +98,9 @@ module datamover_top_wrap
     .WAIVE_RSP3_ASSERT ( WAIVE_RSP3_ASSERT ),
     .WAIVE_RSP5_ASSERT ( WAIVE_RSP5_ASSERT ),
   `endif
-    .DW  ( BANDWIDTH   ),
-    .AW  ( ADDR_WIDTH  ),
-    .BW  ( ELEM_WIDTH  ),
+    .DW  ( Bandwidth   ),
+    .AW  ( AddrWidth  ),
+    .BW  ( ElemWidth  ),
     .UW  ( DEFAULT_UW  ),
     .IW  ( DEFAULT_IW  ),
     .EW  ( DEFAULT_EW  ),
@@ -111,16 +111,16 @@ module datamover_top_wrap
 
   // HCI bindings
   generate
-    for(genvar i = 0; i < NUM_WORDS; i++) begin: tcdm_bin
+    for(genvar i = 0; i < NumWords; i++) begin: tcdm_bin
       // All banks are accessed at the same time, so `req` and `wen` are the same for all banks
       assign tcdm_req[i]  = tcdm.req;
       assign tcdm_wen[i]  = tcdm.wen;
-      // The datamover accesses a number of NUM_WORDS adjacent words.
+      // The datamover accesses a number of NumWords adjacent words.
       // Assuming the memory is element-indexed, i.e., every word-element is individually addressable
-      // on the address bus: to go from word `n` to word `n+1` we have to skip NUM_ELEM_WORD addresses.
-      assign tcdm_add[i]  = tcdm.add + i * NUM_ELEM_WORD;
-      assign tcdm_be[i]   = tcdm.be[(i+1)*NUM_ELEM_WORD - 1 : i*NUM_ELEM_WORD];
-      assign tcdm_data[i] = tcdm.data[(i+1)*WORD_WIDTH - 1 : i*WORD_WIDTH];
+      // on the address bus: to go from word `n` to word `n+1` we have to skip ElemsPerWord addresses.
+      assign tcdm_add[i]  = tcdm.add + i * ElemsPerWord;
+      assign tcdm_be[i]   = tcdm.be[(i+1)*ElemsPerWord - 1 : i*ElemsPerWord];
+      assign tcdm_data[i] = tcdm.data[(i+1)*WordWidth - 1 : i*WordWidth];
     end
       assign tcdm.gnt     = &(tcdm_gnt); // only when all words are granted
       assign tcdm.r_data  = { >> {tcdm_r_data}};
@@ -132,7 +132,7 @@ module datamover_top_wrap
   /////////////////////
 
   hwpe_ctrl_intf_periph #(
-    .ID_WIDTH ( ID )
+    .ID_WIDTH ( IdWidth )
   ) periph (
     .clk ( clk_i )
   );
@@ -153,13 +153,13 @@ module datamover_top_wrap
   ///////////////
 
   datamover_top #(
-    .ID ( ID ),
-    .BANDWIDTH ( BANDWIDTH ),
-    .NUM_ELEM_WORD ( NUM_ELEM_WORD ),
-    .ELEM_WIDTH ( ELEM_WIDTH ),
-    .N_CORES ( N_CORES ),
-    .N_CONTEXT ( N_CONTEXT ),
-    .MISALIGNED_ACCESSES ( MISALIGNED_ACCESSES ),
+    .IdWidth            ( IdWidth            ),
+    .Bandwidth          ( Bandwidth          ),
+    .ElemsPerWord       ( ElemsPerWord       ),
+    .ElemWidth          ( ElemWidth          ),
+    .NumCores           ( NumCores           ),
+    .NumContext         ( NumContext         ),
+    .MisalignedAccesses ( MisalignedAccesses ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_datamover_top (
     .clk_i       ( clk_i ),
@@ -187,8 +187,8 @@ module datamover_top_wrap
   `ifndef VERILATOR
   `ifndef VCS
     initial begin
-      assert (BANDWIDTH % WORD_WIDTH == 0)
-        else $fatal("BANDWIDTH (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH, WORD_WIDTH);
+      assert (Bandwidth % WordWidth == 0)
+        else $fatal("Bandwidth (%0d) must be a multiple of WordWidth (%0d)", Bandwidth, WordWidth);
     end
   `endif
   `endif

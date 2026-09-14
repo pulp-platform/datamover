@@ -22,15 +22,15 @@
 module datamover_engine
   import hwpe_stream_package::*;
   import hci_package::*;
-  import datamover_package::*;
+  import datamover_pkg::*;
 #(
-  parameter int unsigned FIFO_DEPTH = 2,
-  parameter bit          EnableIm2col = 1'b1,
-  parameter int unsigned BANDWIDTH_ALIGNED = 512,
-  parameter int unsigned NUM_ELEM_WORD = 4, // number of elements in a bank word
-  parameter int unsigned ELEM_WIDTH = 8,     // element width (in bits)
+  parameter int unsigned FifoDepth        = 2,
+  parameter bit          EnableIm2col     = 1'b1,
+  parameter int unsigned BandwidthAligned = 512,
+  parameter int unsigned ElemsPerWord     = 4,    // number of elements in a bank word
+  parameter int unsigned ElemWidth        = 8,    // element width (in bits)
   // Dependent parameters: do not modify!
-  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH // should correspond to bank width
+  localparam int unsigned WordWidth = ElemsPerWord * ElemWidth // should correspond to bank width
 ) (
   // global signals
   input  logic                   clk_i,
@@ -48,50 +48,50 @@ module datamover_engine
 );
 
   // number of elements (in the full bandwidth, not a single bank word)
-  localparam int unsigned NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
-  localparam int unsigned NB_ELEM_LOG2 = $clog2(NB_ELEMENTS);
+  localparam int unsigned NumElems = BandwidthAligned / ElemWidth;
+  localparam int unsigned NumElemsLog2 = $clog2(NumElems);
 
   // Counter widths
-  //   TILE_CNT    holds ceil(tensor_size / NB_ELEMENTS)
+  //   TILE_CNT    holds ceil(tensor_size / NumElems)
   //   ACCESS_CNT  holds the output beats of one job
-  // A 4-element transpose holds NB_ELEMENTS / 4 rows per tile, so the tile count needs two more bits.
-  localparam int unsigned TILE_CNT_WIDTH   = TENSOR_SIZE_WIDTH - NB_ELEM_LOG2 + 3;
-  localparam int unsigned ACCESS_CNT_BASE  = (TENSOR_SIZE_WIDTH + NB_ELEM_LOG2 > TOTAL_ELEM_WIDTH) ?
-                                             TENSOR_SIZE_WIDTH + NB_ELEM_LOG2 : TOTAL_ELEM_WIDTH;
-  localparam int unsigned ACCESS_CNT_WIDTH = ACCESS_CNT_BASE + 2;
+  // A 4-element transpose holds NumElems / 4 rows per tile, so the tile count needs two more bits.
+  localparam int unsigned TileCntWidth   = TensorSizeWidth - NumElemsLog2 + 3;
+  localparam int unsigned AccessCntBase  = (TensorSizeWidth + NumElemsLog2 > TotalElemWidth) ?
+                                             TensorSizeWidth + NumElemsLog2 : TotalElemWidth;
+  localparam int unsigned AccessCntWidth = AccessCntBase + 2;
 
   // Type def and internal signals
   typedef enum logic { WRITE, READ } datamover_engine_fsm_t;
   datamover_engine_fsm_t                  fsm_d, fsm_q;
   logic                                   clear_elem_matrix;
   logic                                   clear_run;
-  logic [NB_ELEM_LOG2-1:0]                cnt_q, cnt_d;
-  logic [ACCESS_CNT_WIDTH-1:0]            tot_cnt_q, tot_cnt_d;
+  logic [NumElemsLog2-1:0]                cnt_q, cnt_d;
+  logic [AccessCntWidth-1:0]            tot_cnt_q, tot_cnt_d;
   logic                                   cnt_en;
   logic                                   tot_cnt_incr;
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_unrolled;
+  logic [NumElems-1:0][ElemWidth-1:0] data_in_unrolled;
   logic                                   data_in_valid;
   logic                                   data_in_ready;
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_out_unrolled;
+  logic [NumElems-1:0][ElemWidth-1:0] data_out_unrolled;
   logic                                   data_out_valid;
   logic                                   data_out_ready;
-  logic [NB_ELEM_LOG2-1:0]                remaining_elems;
-  logic [ACCESS_CNT_WIDTH-1:0]            total_accesses_copy_mode, total_accesses_cim, acc_target;
-  logic [TILE_CNT_WIDTH-1:0]              inner_tiles, outer_tiles;
-  logic [NB_ELEM_LOG2:0]                  inner_leftover, outer_leftover;
+  logic [NumElemsLog2-1:0]                remaining_elems;
+  logic [AccessCntWidth-1:0]            total_accesses_copy_mode, total_accesses_cim, acc_target;
+  logic [TileCntWidth-1:0]              inner_tiles, outer_tiles;
+  logic [NumElemsLog2:0]                  inner_leftover, outer_leftover;
   logic [1:0]                             group_log2;
-  logic [$clog2(NB_ELEM_LOG2+1)-1:0]      inner_rows_log2;
-  logic [TENSOR_SIZE_WIDTH-1:0]           inner_size;
-  logic [TILE_CNT_WIDTH-1:0]              inner_tile_q, inner_tile_d, outer_tile_q, outer_tile_d;
-  logic [TENSOR_SIZE_WIDTH-1:0]           pass_cnt_q, pass_cnt_d, num_passes;
-  logic [NB_ELEM_LOG2:0]                  inner_len, outer_len, fill_len, drain_len, phase_len;
+  logic [$clog2(NumElemsLog2+1)-1:0]      inner_rows_log2;
+  logic [TensorSizeWidth-1:0]           inner_size;
+  logic [TileCntWidth-1:0]              inner_tile_q, inner_tile_d, outer_tile_q, outer_tile_d;
+  logic [TensorSizeWidth-1:0]           pass_cnt_q, pass_cnt_d, num_passes;
+  logic [NumElemsLog2:0]                  inner_len, outer_len, fill_len, drain_len, phase_len;
   logic                                   buffer_mode, unfold_fold, tile_done, buffer_job_done;
   logic                                   last_inner_tile, last_outer_tile, last_pass;
 
   logic                                   execution_done;
 
   logic                                   im2col_unit;
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] im2col_data;
+  logic [NumElems-1:0][ElemWidth-1:0] im2col_data;
   logic                                   im2col_valid, im2col_ready;
 
   assign im2col_unit = EnableIm2col && (ctrl_i.datamover_mode == DATAMOVER_IM2COL) && ctrl_i.im2col_pack;
@@ -122,25 +122,25 @@ module datamover_engine
 
   // internal interfaces and unrolling
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
-    .ELEMENT_WIDTH ( ELEM_WIDTH ),
-    .STRB_WIDTH ( NB_ELEMENTS )
+    .DATA_WIDTH ( BandwidthAligned ),
+    .ELEMENT_WIDTH ( ElemWidth ),
+    .STRB_WIDTH ( NumElems )
   ) data_in_postfifo (
     .clk ( clk_i )
   );
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
-    .ELEMENT_WIDTH ( ELEM_WIDTH ),
-    .STRB_WIDTH ( NB_ELEMENTS )
+    .DATA_WIDTH ( BandwidthAligned ),
+    .ELEMENT_WIDTH ( ElemWidth ),
+    .STRB_WIDTH ( NumElems )
   ) data_out_prefifo (
     .clk ( clk_i )
   );
 
   // decouple in/out with FIFOs
   hwpe_stream_fifo #(
-    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
-    .ELEMENT_WIDTH ( ELEM_WIDTH ),
-    .FIFO_DEPTH ( FIFO_DEPTH )
+    .DATA_WIDTH ( BandwidthAligned ),
+    .ELEMENT_WIDTH ( ElemWidth ),
+    .FIFO_DEPTH ( FifoDepth )
   ) i_fifo_in (
     .clk_i   ( clk_i            ),
     .rst_ni  ( rst_ni           ),
@@ -153,9 +153,9 @@ module datamover_engine
   assign data_in_valid = data_in_postfifo.valid;
   assign data_in_postfifo.ready = data_in_ready;
   hwpe_stream_fifo #(
-    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
-    .ELEMENT_WIDTH ( ELEM_WIDTH ),
-    .FIFO_DEPTH ( FIFO_DEPTH )
+    .DATA_WIDTH ( BandwidthAligned ),
+    .ELEMENT_WIDTH ( ElemWidth ),
+    .FIFO_DEPTH ( FifoDepth )
   ) i_fifo_out (
     .clk_i   ( clk_i            ),
     .rst_ni  ( rst_ni           ),
@@ -168,28 +168,28 @@ module datamover_engine
 
   // Partial tile / leftover elements handling
   // Due to the streamer address generation, matrices need to be word-aligned in n-dimension for transposition
-  localparam logic [NB_ELEMENTS-1:0] STRB_ONE = {{(NB_ELEMENTS-1){1'b0}}, 1'b1};    // Necessary to force the shifting operation to the correct bitwidth (default would be only 32b)
-  assign remaining_elems = ctrl_i.total_elements & (NB_ELEMENTS - 1);         // modulo (NB_ELEMENTS: power of two) - this signal is only used in copy mode
-  assign total_accesses_copy_mode = (ctrl_i.total_elements >> NB_ELEM_LOG2) + ((remaining_elems != 0) ? 1 : 0);
+  localparam logic [NumElems-1:0] StrbOne = {{(NumElems-1){1'b0}}, 1'b1};    // Necessary to force the shifting operation to the correct bitwidth (default would be only 32b)
+  assign remaining_elems = ctrl_i.total_elements & (NumElems - 1);         // modulo (NumElems: power of two) - this signal is only used in copy mode
+  assign total_accesses_copy_mode = (ctrl_i.total_elements >> NumElemsLog2) + ((remaining_elems != 0) ? 1 : 0);
 
   // Tile geometry
-  // The buffer modes walk a grid of NB_ELEMENTS tiles, inner dimension first, num_passes times.
+  // The buffer modes walk a grid of NumElems tiles, inner dimension first, num_passes times.
   // The inner dimension is the channel count of unfold and fold, the m size of the other modes.
   // The outer dimension is the n size. A pass repeats the grid for one image row (unfold, fold).
   // A transpose of t-element groups fills t buffer rows per input row, so a tile holds
-  // NB_ELEMENTS / t input rows and the leftover of the inner dimension counts t buffer rows per row.
+  // NumElems / t input rows and the leftover of the inner dimension counts t buffer rows per row.
   assign buffer_mode     = ctrl_i.transp_mode != TRANSP_NONE;
   assign unfold_fold     = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD) || (ctrl_i.datamover_mode == DATAMOVER_FOLD);
   assign group_log2      = unfold_fold                    ? 2'd0 :
                            ctrl_i.transp_stride == 3'd4   ? 2'd2 :
                            ctrl_i.transp_stride == 3'd2   ? 2'd1 : 2'd0;
-  assign inner_rows_log2 = NB_ELEM_LOG2 - group_log2;
+  assign inner_rows_log2 = NumElemsLog2 - group_log2;
   assign inner_size      = unfold_fold ? ctrl_i.num_channels : ctrl_i.tensor_size_m;
-  assign inner_tiles     = (inner_size + (TENSOR_SIZE_WIDTH'(1) << inner_rows_log2) - 1) >> inner_rows_log2;
-  assign outer_tiles     = (ctrl_i.tensor_size_n + NB_ELEMENTS - 1) >> NB_ELEM_LOG2;
-  assign inner_leftover  = (inner_size & ((TENSOR_SIZE_WIDTH'(1) << inner_rows_log2) - 1)) << group_log2;
-  assign outer_leftover  = ctrl_i.tensor_size_n & (NB_ELEMENTS - 1);
-  assign num_passes      = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? TENSOR_SIZE_WIDTH'(1) : ctrl_i.tensor_size_m;
+  assign inner_tiles     = (inner_size + (TensorSizeWidth'(1) << inner_rows_log2) - 1) >> inner_rows_log2;
+  assign outer_tiles     = (ctrl_i.tensor_size_n + NumElems - 1) >> NumElemsLog2;
+  assign inner_leftover  = (inner_size & ((TensorSizeWidth'(1) << inner_rows_log2) - 1)) << group_log2;
+  assign outer_leftover  = ctrl_i.tensor_size_n & (NumElems - 1);
+  assign num_passes      = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? TensorSizeWidth'(1) : ctrl_i.tensor_size_m;
   assign last_inner_tile = (inner_tile_q == inner_tiles - 1);
   assign last_outer_tile = (outer_tile_q == outer_tiles - 1);
   assign last_pass       = (pass_cnt_q == num_passes - 1);
@@ -207,19 +207,19 @@ module datamover_engine
   assign pass_cnt_d      = (tile_done && last_inner_tile && last_outer_tile) ? pass_cnt_q + 1'b1 : pass_cnt_q;
   assign buffer_job_done = last_inner_tile && last_outer_tile && last_pass && clear_elem_matrix;
 
-  logic [NB_ELEMENTS-1:0] strb_copy, strb_buffer, strb_cim, strb_im2col;
+  logic [NumElems-1:0] strb_copy, strb_buffer, strb_cim, strb_im2col;
 
-  assign strb_copy   = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((STRB_ONE << remaining_elems) - 1) : '1;
+  assign strb_copy   = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((StrbOne << remaining_elems) - 1) : '1;
 
   // The buffer holds fill_len valid rows, so each drained column has fill_len elements.
-  assign strb_buffer = (STRB_ONE << fill_len) - 1;
+  assign strb_buffer = (StrbOne << fill_len) - 1;
 
   // A block layout beat holds the leftover columns of the n size.
-  assign strb_cim    = (outer_leftover != 0) ? ((STRB_ONE << outer_leftover) - 1) : '1;
+  assign strb_cim    = (outer_leftover != 0) ? ((StrbOne << outer_leftover) - 1) : '1;
 
   // The 3x3 unit fills every beat; other im2col beats hold tensor_size_n elements.
   assign strb_im2col = (im2col_unit && ctrl_i.conv_stride == 1) ? '1 :
-                       (ctrl_i.tensor_size_n < NB_ELEMENTS) ? ((STRB_ONE << ctrl_i.tensor_size_n) - 1) : strb_copy;
+                       (ctrl_i.tensor_size_n < NumElems) ? ((StrbOne << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
   assign data_out_prefifo.strb = (ctrl_i.total_elements == 0)                        ? '1 :
                                  (ctrl_i.datamover_mode == DATAMOVER_COPY)           ? strb_copy :
@@ -248,20 +248,20 @@ module datamover_engine
   // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
   // appropriately, depending on the configuration.
   // E.g., if you have a classical configuration with
-  // - NUM_ELEM_WORD = 8 and
-  // - ELEM_WIDTH = 8 bits, i.e. total is 64 bits per word
+  // - ElemsPerWord = 8 and
+  // - ElemWidth = 8 bits, i.e. total is 64 bits per word
   // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
   // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
   // and those < 8b are not interesting in our use case.
-  localparam MAX_SHIFTING = (NUM_ELEM_WORD > MAX_TRANSP_STRIDE) ? NUM_ELEM_WORD : MAX_TRANSP_STRIDE;
-  // e.g., in a classical configuration (ELEM_WIDTH = 8), MAX_SHIFTING is
+  localparam MaxShifting = (ElemsPerWord > MaxTranspStride) ? ElemsPerWord : MaxTranspStride;
+  // e.g., in a classical configuration (ElemWidth = 8), MaxShifting is
   // in bytes, i.e., "4" for 32b transpose (includes shifting by 0 bytes)
-  logic [MAX_SHIFTING-1:0][NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_shifted;
+  logic [MaxShifting-1:0][NumElems-1:0][ElemWidth-1:0] data_in_shifted;
 
-  for(genvar ii=0; ii<MAX_SHIFTING; ii++) begin : gen_data_shifting_x
-    for(genvar jj=0; jj<NB_ELEMENTS; jj++) begin : gen_data_shifting_y
+  for(genvar ii=0; ii<MaxShifting; ii++) begin : gen_data_shifting_x
+    for(genvar jj=0; jj<NumElems; jj++) begin : gen_data_shifting_y
 
-      if(ii+jj < NB_ELEMENTS) begin : gen_feasible_shiftings
+      if(ii+jj < NumElems) begin : gen_feasible_shiftings
         assign data_in_shifted[ii][jj] = data_in_unrolled[ii+jj];
       end
       else begin : gen_unfeasible_shiftings
@@ -273,8 +273,8 @@ module datamover_engine
 
   if (EnableIm2col) begin : gen_im2col
     datamover_im2col #(
-      .NB_ELEMENTS ( NB_ELEMENTS ),
-      .ELEM_WIDTH  ( ELEM_WIDTH  )
+      .NumElems  ( NumElems  ),
+      .ElemWidth ( ElemWidth )
     ) i_im2col (
       .clk_i   ( clk_i                       ),
       .rst_ni  ( rst_ni                      ),
@@ -293,18 +293,18 @@ module datamover_engine
     assign im2col_valid = 1'b0;
   end
 
-  logic [NB_ELEMENTS-1:0]                     wr_row_en;
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]     wr_row_data   [NB_ELEMENTS-1:0];
-  logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0]     elem_matrix_q [NB_ELEMENTS-1:0];
+  logic [NumElems-1:0]                     wr_row_en;
+  logic [NumElems-1:0][ElemWidth-1:0]     wr_row_data   [NumElems-1:0];
+  logic [NumElems-1:0][ElemWidth-1:0]     elem_matrix_q [NumElems-1:0];
 
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_buffer_write
+  for(genvar ii=0; ii<NumElems; ii++) begin : gen_buffer_write
     logic in_hs, buffer_enable;
     assign in_hs = data_in_valid & data_in_ready;
     assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE  ? 1'b0 :
                            ctrl_i.transp_mode == TRANSP_4ELEM ? ((cnt_q>>2) == (ii>>2)) & in_hs :
                            ctrl_i.transp_mode == TRANSP_2ELEM ? ((cnt_q>>1) == (ii>>1)) & in_hs :
                                                                 ( cnt_q     ==  ii    ) & in_hs;
-    logic [NB_ELEMENTS-1:0][ELEM_WIDTH-1:0] data_in_selected;
+    logic [NumElems-1:0][ElemWidth-1:0] data_in_selected;
     assign data_in_selected = ctrl_i.transp_mode == TRANSP_4ELEM? data_in_shifted[ii % 4] :
                               ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] :
                                                                    data_in_shifted[0];
@@ -314,8 +314,8 @@ module datamover_engine
   end // gen_buffer_write
 
   datamover_buffer #(
-    .NB_ELEMENTS ( NB_ELEMENTS ),
-    .ELEM_WIDTH  ( ELEM_WIDTH  )
+    .NumElems  ( NumElems  ),
+    .ElemWidth ( ElemWidth )
   ) i_buffer (
     .clk_i          ( clk_i             ),
     .rst_ni         ( rst_ni            ),
@@ -327,11 +327,11 @@ module datamover_engine
   );
 
   // Output assignment
-  for(genvar ii=0; ii<NB_ELEMENTS; ii++) begin : gen_output
+  for(genvar ii=0; ii<NumElems; ii++) begin : gen_output
     assign data_out_unrolled[ii] =
         ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
       : im2col_unit                       ? im2col_data[ii]
-      : ctrl_i.conv_stride == 2           ? data_in_unrolled[(ii < NB_ELEMENTS/2) ? 2*ii : 2*ii - NB_ELEMENTS]
+      : ctrl_i.conv_stride == 2           ? data_in_unrolled[(ii < NumElems/2) ? 2*ii : 2*ii - NumElems]
                                           : data_in_unrolled[ii];
   end // gen_output
 
@@ -354,21 +354,21 @@ module datamover_engine
 `ifndef VCS
   // Parameter assertions (elaboration-time checks)
   initial begin
-    assert (BANDWIDTH_ALIGNED <= MAX_BANDWIDTH)
-      else $fatal("BANDWIDTH_ALIGNED (%0d) must not be greater than MAX_BANDWIDTH (%0d)", BANDWIDTH_ALIGNED, MAX_BANDWIDTH);
-    assert ((BANDWIDTH_ALIGNED % WORD_WIDTH) == 0)
-      else $fatal("BANDWIDTH_ALIGNED (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH_ALIGNED, WORD_WIDTH);
-    assert ((NB_ELEMENTS != 0) && ((NB_ELEMENTS & (NB_ELEMENTS - 1)) == 0))
-      else $fatal("NB_ELEMENTS (%0d) = BANDWIDTH_ALIGNED (%0d) / ELEM_WIDTH (%0d) must be a power of two", NB_ELEMENTS, BANDWIDTH_ALIGNED, ELEM_WIDTH);
-    assert (NUM_ELEM_WORD <= MAX_SHIFTING)
-      else $fatal("NUM_ELEM_WORD (%0d) must not be greater than MAX_SHIFTING (%0d)", NUM_ELEM_WORD, MAX_SHIFTING);
+    assert (BandwidthAligned <= MaxBandwidth)
+      else $fatal("BandwidthAligned (%0d) must not be greater than MaxBandwidth (%0d)", BandwidthAligned, MaxBandwidth);
+    assert ((BandwidthAligned % WordWidth) == 0)
+      else $fatal("BandwidthAligned (%0d) must be a multiple of WordWidth (%0d)", BandwidthAligned, WordWidth);
+    assert ((NumElems != 0) && ((NumElems & (NumElems - 1)) == 0))
+      else $fatal("NumElems (%0d) = BandwidthAligned (%0d) / ElemWidth (%0d) must be a power of two", NumElems, BandwidthAligned, ElemWidth);
+    assert (ElemsPerWord <= MaxShifting)
+      else $fatal("ElemsPerWord (%0d) must not be greater than MaxShifting (%0d)", ElemsPerWord, MaxShifting);
   end
 
   // Runtime assertions
   assert property (@(posedge clk_i) disable iff (!rst_ni || $isunknown(ctrl_i.transp_len))
-    ctrl_i.transp_len <= NB_ELEMENTS
-  ) else $error("transp_len (%0d) exceeds NB_ELEMENTS (%0d) - cnt_q will never match FSM transition condition",
-                ctrl_i.transp_len, NB_ELEMENTS);
+    ctrl_i.transp_len <= NumElems
+  ) else $error("transp_len (%0d) exceeds NumElems (%0d) - cnt_q will never match FSM transition condition",
+                ctrl_i.transp_len, NumElems);
 `endif
 `endif
 `endif

@@ -23,27 +23,27 @@
 module datamover_top
   import hwpe_ctrl_package::*;
   import hci_package::*;
-  import datamover_package::*;
+  import datamover_pkg::*;
 #(
-  parameter int unsigned ID = 4,                  // control target peripheral ID width
-  parameter int unsigned BANDWIDTH = 512,         // total bandwidth of HWPE to TCDM (in bits)
-  parameter int unsigned NUM_ELEM_WORD = 8,       // number of elements in a memory bank word
-  parameter int unsigned ELEM_WIDTH = 8,          // element width (in bits)
-  parameter int unsigned N_CORES   = 2,           // number of cores for event inputs
-  parameter int unsigned N_CONTEXT = 2,           // depth of the control target job queue
-  parameter int unsigned MISALIGNED_ACCESSES = 0, // enable misaligned accesses on TCDM interface
-  parameter bit          EnableIm2col = ENABLE_IM2COL, // instantiate the im2col unit
+  parameter int unsigned IdWidth            = datamover_pkg::IdWidth,            // control target peripheral ID width
+  parameter int unsigned Bandwidth          = datamover_pkg::Bandwidth,          // total bandwidth of HWPE to TCDM (in bits)
+  parameter int unsigned ElemsPerWord       = datamover_pkg::ElemsPerWord,       // number of elements in a memory bank word
+  parameter int unsigned ElemWidth          = datamover_pkg::ElemWidth,          // element width (in bits)
+  parameter int unsigned NumCores           = datamover_pkg::NumCores,           // number of cores for event inputs
+  parameter int unsigned NumContext         = datamover_pkg::NumContext,         // depth of the control target job queue
+  parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
+  parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col unit
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
-  localparam int unsigned WORD_WIDTH = NUM_ELEM_WORD * ELEM_WIDTH, // should correspond to bank width
-  localparam int unsigned NUM_WORDS = BANDWIDTH / WORD_WIDTH // TCDM interface width in number of words
+  localparam int unsigned WordWidth = ElemsPerWord * ElemWidth, // should correspond to bank width
+  localparam int unsigned NumWords  = Bandwidth / WordWidth     // TCDM interface width in number of words
 ) (
   // global signals
   input  logic                    clk_i,
   input  logic                    rst_ni,
   input  logic                    test_mode_i,
   // events
-  output logic [N_CORES-1:0][REGFILE_N_EVT-1:0] evt_o,
+  output logic [NumCores-1:0][REGFILE_N_EVT-1:0] evt_o,
   // busy status
   output logic                    busy_o,
   // tcdm master ports
@@ -54,7 +54,7 @@ module datamover_top
 
   // We "sacrifice" 1 word of memory interface bandwidth in order to support
   // realignment at a word boundary if the access are misaligned.
-  localparam BANDWIDTH_ALIGNED = MISALIGNED_ACCESSES == 0 ? BANDWIDTH : BANDWIDTH-WORD_WIDTH;
+  localparam BandwidthAligned = MisalignedAccesses == 0 ? Bandwidth : Bandwidth-WordWidth;
 
   // Software-generated clear signal.
   logic clear;
@@ -67,20 +67,20 @@ module datamover_top
   ctrl_engine_t engine_ctrl;
 
   // number of elements (in the full bandwidth, not a single bank word)
-  localparam NB_ELEMENTS = BANDWIDTH_ALIGNED / ELEM_WIDTH;
+  localparam NumElems = BandwidthAligned / ElemWidth;
 
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
-    .ELEMENT_WIDTH ( ELEM_WIDTH ),
-    .STRB_WIDTH ( NB_ELEMENTS )
+    .DATA_WIDTH ( BandwidthAligned ),
+    .ELEMENT_WIDTH ( ElemWidth ),
+    .STRB_WIDTH ( NumElems )
   ) data_in  (
     .clk(clk_i)
   );
 
   hwpe_stream_intf_stream #(
-    .DATA_WIDTH ( BANDWIDTH_ALIGNED ),
-    .ELEMENT_WIDTH ( ELEM_WIDTH ),
-    .STRB_WIDTH ( NB_ELEMENTS )
+    .DATA_WIDTH ( BandwidthAligned ),
+    .ELEMENT_WIDTH ( ElemWidth ),
+    .STRB_WIDTH ( NumElems )
   ) data_out (
     .clk(clk_i)
   );
@@ -90,11 +90,11 @@ module datamover_top
   // On the accelerator side, it exposes an outgoing data in stream and
   // an incoming data out HWPE-Streams, each 512-bit wide.
   datamover_streamer #(
-    .BANDWIDTH             ( BANDWIDTH             ),
-    .NUM_ELEM_WORD         ( NUM_ELEM_WORD         ),
-    .ELEM_WIDTH            ( ELEM_WIDTH            ),
-    .TCDM_FIFO_DEPTH       ( 0                     ),
-    .MISALIGNED_ACCESSES   ( MISALIGNED_ACCESSES   ),
+    .Bandwidth          ( Bandwidth          ),
+    .ElemsPerWord       ( ElemsPerWord       ),
+    .ElemWidth          ( ElemWidth          ),
+    .TcdmFifoDepth      ( 0                  ),
+    .MisalignedAccesses ( MisalignedAccesses ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_streamer (
     .clk_i      ( clk_i          ),
@@ -113,11 +113,11 @@ module datamover_top
   // copy, transpose, CIM layout conversion, unfold, fold, and im2col.
   // An internal buffer (elem_matrix) of size BWxBW is used to reshuffle the data.
   datamover_engine #(
-    .FIFO_DEPTH ( 2          ),
-    .EnableIm2col ( EnableIm2col ),
-    .BANDWIDTH_ALIGNED ( BANDWIDTH_ALIGNED ),
-    .NUM_ELEM_WORD ( NUM_ELEM_WORD ),
-    .ELEM_WIDTH ( ELEM_WIDTH )
+    .FifoDepth        ( 2                ),
+    .EnableIm2col     ( EnableIm2col     ),
+    .BandwidthAligned ( BandwidthAligned ),
+    .ElemsPerWord     ( ElemsPerWord     ),
+    .ElemWidth        ( ElemWidth        )
   ) i_engine (
     .clk_i      ( clk_i          ),
     .rst_ni     ( rst_ni         ),
@@ -130,10 +130,10 @@ module datamover_top
   );
 
   datamover_ctrl #(
-    .NUM_CORES   ( N_CORES                        ),
-    .NUM_CONTEXT ( N_CONTEXT                      ),
-    .ID_WIDTH    ( ID                             ),
-    .TRANSP_LEN  ( BANDWIDTH_ALIGNED / ELEM_WIDTH )
+    .NumCores   ( NumCores                     ),
+    .NumContext ( NumContext                   ),
+    .IdWidth    ( IdWidth                      ),
+    .TranspLen  ( BandwidthAligned / ElemWidth )
   ) i_ctrl (
     .clk_i            ( clk_i          ),
     .rst_ni           ( rst_ni         ),
@@ -158,8 +158,8 @@ module datamover_top
   `ifndef VERILATOR
   `ifndef VCS
     initial begin
-      assert (BANDWIDTH % WORD_WIDTH == 0)
-        else $fatal("BANDWIDTH (%0d) must be a multiple of WORD_WIDTH (%0d)", BANDWIDTH, WORD_WIDTH);
+      assert (Bandwidth % WordWidth == 0)
+        else $fatal("Bandwidth (%0d) must be a multiple of WordWidth (%0d)", Bandwidth, WordWidth);
     end
   `endif
   `endif

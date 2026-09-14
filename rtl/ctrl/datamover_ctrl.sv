@@ -22,29 +22,29 @@
 `include "common_cells/registers.svh"
 
 module datamover_ctrl
-  import datamover_package::*;
+  import datamover_pkg::*;
   import datamover_regif_pkg::*;
   import hwpe_ctrl_package::*;
   import hci_package::*;
 #(
-  parameter int unsigned NUM_CORES     = 2,   // number of cores for event outputs
-  parameter int unsigned NUM_CONTEXT   = 2,   // depth of the job queue (committed-but-not-done jobs)
-  parameter int unsigned ID_WIDTH      = 4,   // control target peripheral ID width
-  parameter int unsigned REGFILE_N_EVT = hwpe_ctrl_package::REGFILE_N_EVT,
-  parameter int unsigned TRANSP_LEN    = 64   // BANDWIDTH_ALIGNED / ELEM_WIDTH (number of elements per beat)
+  parameter int unsigned NumCores      = 2,                                // number of cores for event outputs
+  parameter int unsigned NumContext    = 2,                                // depth of the job queue (committed-but-not-done jobs)
+  parameter int unsigned IdWidth       = 4,                                // control target peripheral ID width
+  parameter int unsigned RegfileNumEvt = hwpe_ctrl_package::REGFILE_N_EVT,
+  parameter int unsigned TranspLen     = 64                                // BandwidthAligned / ElemWidth (number of elements per beat)
 )
 (
   input  logic                                    clk_i,
   input  logic                                    rst_ni,
   // events
-  output logic [NUM_CORES-1:0][REGFILE_N_EVT-1:0] evt_o,
+  output logic [NumCores-1:0][RegfileNumEvt-1:0] evt_o,
   // status / clear
   output logic                                    busy_o,
   output logic                                    clear_o,
   // streamer + engine control
-  output datamover_package::ctrl_streamer_t       ctrl_streamer_o,
-  input  datamover_package::flags_streamer_t      flags_streamer_i,
-  output datamover_package::ctrl_engine_t         ctrl_engine_o,
+  output datamover_pkg::ctrl_streamer_t       ctrl_streamer_o,
+  input  datamover_pkg::flags_streamer_t      flags_streamer_i,
+  output datamover_pkg::ctrl_engine_t         ctrl_engine_o,
   // peripheral slave port
   hwpe_ctrl_intf_periph.slave                     periph
 );
@@ -84,8 +84,8 @@ module datamover_ctrl
   // HWPE control target + SystemRDL register file
   // ----------------------------------------------------------------------
   hwpe_ctrl_target #(
-    .NB_CONTEXT            ( NUM_CONTEXT                                                    ),
-    .ID_WIDTH              ( ID_WIDTH                                                       ),
+    .NB_CONTEXT            ( NumContext                                                    ),
+    .ID_WIDTH              ( IdWidth                                                       ),
     .ADDR_WIDTH            ( 10                                                             ),
     .hwpe_ctrl_regif_in_t  ( datamover_regif_pkg::datamover_regif__in_t                     ),
     .hwpe_ctrl_regif_out_t ( datamover_regif_pkg::datamover_regif__out_t                    ),
@@ -155,8 +155,8 @@ module datamover_ctrl
   assign job_status = busy_o ? 32'h1 : 32'h0;
 
   // Completion event, one cycle after the job is done.
-  for (genvar c = 0; c < NUM_CORES; c++) begin : gen_evt_core
-    for (genvar e = 0; e < REGFILE_N_EVT; e++) begin : gen_evt_bit
+  for (genvar c = 0; c < NumCores; c++) begin : gen_evt_core
+    for (genvar e = 0; e < RegfileNumEvt; e++) begin : gen_evt_bit
       if (c == 0 && e == 0) begin : gen_job_done_evt
         assign evt_o[c][e] = job_done_q;
       end else begin : gen_zero_evt
@@ -244,7 +244,7 @@ module datamover_ctrl
   assign engine_ctrl_d.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
   assign engine_ctrl_d.num_channels   = job_dep_regs.channels.num_channels.value;
   assign engine_ctrl_d.total_elements = job_dep_regs.channels.total_elements.value;
-  assign engine_ctrl_d.transp_len     = TRANSP_LEN;
+  assign engine_ctrl_d.transp_len     = TranspLen;
 
   assign ctrl_engine_o = engine_ctrl_q;
 

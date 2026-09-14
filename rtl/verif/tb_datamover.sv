@@ -14,7 +14,7 @@ timeunit 1ps;
 timeprecision 1ps;
 
 module tb_datamover;
-  import datamover_package::*;
+  import datamover_pkg::*;
   import hwpe_ctrl_package::*;
   import hci_package::*;
   import ibex_pkg::*;
@@ -35,22 +35,22 @@ module tb_datamover;
   `define PROB_STALL 0.0
 `endif
 
-  localparam int unsigned BANDWIDTH           = `BANDWIDTH;
-  localparam int unsigned WORD_WIDTH          = `WORD_WIDTH;
-  localparam int unsigned ELEM_WIDTH          = `ELEM_WIDTH;
-  localparam int unsigned MISALIGNED_ACCESSES = `MISALIGNED_ACCESSES;
+  localparam int unsigned Bandwidth           = `BANDWIDTH;
+  localparam int unsigned WordWidth          = `WORD_WIDTH;
+  localparam int unsigned ElemWidth          = `ELEM_WIDTH;
+  localparam int unsigned MisalignedAccesses = `MISALIGNED_ACCESSES;
   localparam real         PROB_STALL          = `PROB_STALL;
-  localparam int unsigned NUM_ELEM_WORD       = WORD_WIDTH / ELEM_WIDTH;
-  localparam int unsigned NUM_WORDS           = BANDWIDTH / WORD_WIDTH;
+  localparam int unsigned ElemsPerWord       = WordWidth / ElemWidth;
+  localparam int unsigned NumWords           = Bandwidth / WordWidth;
 
-  // The Ibex data port is 32-bit. tb_dummy_memory uses WORD_WIDTH-wide banks
+  // The Ibex data port is 32-bit. tb_dummy_memory uses WordWidth-wide banks
   // natively; an aligner places the Ibex's 32-bit data into the right slice
-  // of the wide bus. WORD_WIDTH must be a multiple of 32.
-  localparam int unsigned NUM_SLOTS  = WORD_WIDTH / 32;
+  // of the wide bus. WordWidth must be a multiple of 32.
+  localparam int unsigned NUM_SLOTS  = WordWidth / 32;
   localparam int unsigned SLOT_BITS  = (NUM_SLOTS <= 1) ? 1 : $clog2(NUM_SLOTS);
-  localparam int unsigned ALIGN_BITS = $clog2(WORD_WIDTH / 8);
-  // Total number of WORD_WIDTH-wide TCDM ports: datamover footprint + Ibex.
-  localparam int unsigned MP = NUM_WORDS + 1;
+  localparam int unsigned ALIGN_BITS = $clog2(WordWidth / 8);
+  // Total number of WordWidth-wide TCDM ports: datamover footprint + Ibex.
+  localparam int unsigned MP = NumWords + 1;
 
   // Must match sw/link.ld and sw/s19tomem.py. tb_dummy_memory storage is
   // 32-bit-wide regardless of bank port width, so MEMORY_SIZE counts 32-bit
@@ -82,8 +82,8 @@ module tb_datamover;
   localparam TT  = 0.8ns;
 
   initial begin
-    if (WORD_WIDTH < 32 || (WORD_WIDTH % 32) != 0)
-      $fatal(1, "tb_datamover: WORD_WIDTH (%0d) must be a multiple of 32 >= 32", WORD_WIDTH);
+    if (WordWidth < 32 || (WordWidth % 32) != 0)
+      $fatal(1, "tb_datamover: WordWidth (%0d) must be a multiple of 32 >= 32", WordWidth);
   end
 
   logic clk_i  = '0;
@@ -91,21 +91,21 @@ module tb_datamover;
   logic test_mode_i = '0;
   logic fetch_enable = 1'b0;
 
-  // 32-bit-wide instruction port; WORD_WIDTH-wide TCDM ports for both the
+  // 32-bit-wide instruction port; WordWidth-wide TCDM ports for both the
   // datamover footprint and the Ibex (via aligner).
-  hwpe_stream_intf_tcdm #(.DATA_WIDTH(32), .ELEMENT_WIDTH(ELEM_WIDTH))
+  hwpe_stream_intf_tcdm #(.DATA_WIDTH(32), .ELEMENT_WIDTH(ElemWidth))
     instr [0:0] (.clk(clk_i));
-  hwpe_stream_intf_tcdm #(.DATA_WIDTH(WORD_WIDTH), .ELEMENT_WIDTH(ELEM_WIDTH))
+  hwpe_stream_intf_tcdm #(.DATA_WIDTH(WordWidth), .ELEMENT_WIDTH(ElemWidth))
     tcdm [MP-1:0] (.clk(clk_i));
 
-  logic [NUM_WORDS-1:0]                    dm_tcdm_req;
-  logic [NUM_WORDS-1:0]                    dm_tcdm_gnt;
-  logic [NUM_WORDS-1:0][31:0]              dm_tcdm_add;
-  logic [NUM_WORDS-1:0]                    dm_tcdm_wen;
-  logic [NUM_WORDS-1:0][NUM_ELEM_WORD-1:0] dm_tcdm_be;
-  logic [NUM_WORDS-1:0][WORD_WIDTH-1:0]    dm_tcdm_data;
-  logic [NUM_WORDS-1:0][WORD_WIDTH-1:0]    dm_tcdm_r_data;
-  logic [NUM_WORDS-1:0]                    dm_tcdm_r_valid;
+  logic [NumWords-1:0]                    dm_tcdm_req;
+  logic [NumWords-1:0]                    dm_tcdm_gnt;
+  logic [NumWords-1:0][31:0]              dm_tcdm_add;
+  logic [NumWords-1:0]                    dm_tcdm_wen;
+  logic [NumWords-1:0][ElemsPerWord-1:0] dm_tcdm_be;
+  logic [NumWords-1:0][WordWidth-1:0]    dm_tcdm_data;
+  logic [NumWords-1:0][WordWidth-1:0]    dm_tcdm_r_data;
+  logic [NumWords-1:0]                    dm_tcdm_r_valid;
 
   logic        periph_req;
   logic        periph_gnt;
@@ -196,7 +196,7 @@ module tb_datamover;
 
   // Datamover ports: directly bound to the wide TCDM (no splitter).
   generate
-    for (genvar p = 0; p < NUM_WORDS; p++) begin : g_dm_bind
+    for (genvar p = 0; p < NumWords; p++) begin : g_dm_bind
       assign tcdm[p].req  = dm_tcdm_req[p];
       assign tcdm[p].add  = dm_tcdm_add[p];
       assign tcdm[p].wen  = dm_tcdm_wen[p];
@@ -208,7 +208,7 @@ module tb_datamover;
     end
   endgenerate
 
-  // Ibex 32-bit data port -> last TCDM port (WORD_WIDTH-wide) via aligner.
+  // Ibex 32-bit data port -> last TCDM port (WordWidth-wide) via aligner.
   // For WW=32 the aligner is identity. For wider WW, the active 32-bit slice
   // within the WW-byte word is selected by data_addr[ALIGN_BITS-1:2].
   wire [SLOT_BITS-1:0] core_slot;
@@ -218,8 +218,8 @@ module tb_datamover;
     assign core_slot = data_addr[ALIGN_BITS-1:2];
   end
 
-  logic [WORD_WIDTH-1:0]            core_wide_data;
-  logic [(WORD_WIDTH/8)-1:0]        core_wide_be;
+  logic [WordWidth-1:0]            core_wide_data;
+  logic [(WordWidth/8)-1:0]        core_wide_be;
   generate
     for (genvar k = 0; k < NUM_SLOTS; k++) begin : g_core_wide
       assign core_wide_data[(k+1)*32-1 -: 32] = data_wdata;
@@ -228,7 +228,7 @@ module tb_datamover;
   endgenerate
 
   assign tcdm[MP-1].req  = data_req & is_tcdm_req;
-  assign tcdm[MP-1].add  = data_addr & ~((WORD_WIDTH/8) - 1);
+  assign tcdm[MP-1].add  = data_addr & ~((WordWidth/8) - 1);
   assign tcdm[MP-1].wen  = ~data_we;
   assign tcdm[MP-1].be   = core_wide_be;
   assign tcdm[MP-1].data = core_wide_data;
@@ -264,14 +264,14 @@ module tb_datamover;
     .WAIVE_RSP3_ASSERT ( 1'b1 ),
     .WAIVE_RSP5_ASSERT ( 1'b1 ),
 `endif
-    .ADDR_WIDTH          ( 32                  ),
-    .ID                  ( 10                  ),
-    .BANDWIDTH           ( BANDWIDTH           ),
-    .NUM_ELEM_WORD       ( NUM_ELEM_WORD       ),
-    .ELEM_WIDTH          ( ELEM_WIDTH          ),
-    .N_CORES             ( 8                   ),
-    .N_CONTEXT           ( 2                   ),
-    .MISALIGNED_ACCESSES ( MISALIGNED_ACCESSES )
+    .AddrWidth          ( 32                 ),
+    .IdWidth            ( 10                 ),
+    .Bandwidth          ( Bandwidth          ),
+    .ElemsPerWord       ( ElemsPerWord       ),
+    .ElemWidth          ( ElemWidth          ),
+    .NumCores           ( 8                  ),
+    .NumContext         ( 2                  ),
+    .MisalignedAccesses ( MisalignedAccesses )
   ) i_dut (
     .clk_i          ( clk_i           ),
     .rst_ni         ( rst_ni          ),
@@ -300,9 +300,9 @@ module tb_datamover;
 
   tb_dummy_memory #(
     .MP                ( MP              ),
-    .BANK_WORD_WIDTH   ( WORD_WIDTH      ),
+    .BANK_WORD_WIDTH   ( WordWidth      ),
     .STORAGE_WIDTH     ( 32              ),
-    .ELEMENT_WIDTH     ( ELEM_WIDTH      ),
+    .ELEMENT_WIDTH     ( ElemWidth      ),
     .MEMORY_SIZE       ( MEMORY_SIZE     ),
     .BASE_ADDR         ( TCDM_DATA_BASE  ),
     .PROB_STALL        ( PROB_STALL      ),
@@ -339,7 +339,7 @@ module tb_datamover;
   tb_dummy_memory #(
     .MP              ( 1               ),
     .BANK_WORD_WIDTH  ( 32             ),
-    .ELEMENT_WIDTH   ( ELEM_WIDTH      ),
+    .ELEMENT_WIDTH   ( ElemWidth      ),
     .MEMORY_SIZE     ( INSTR_MEM_SIZE  ),
     .BASE_ADDR       ( INSTR_BASE_ADDR ),
     .PROB_STALL      ( 0               ),
