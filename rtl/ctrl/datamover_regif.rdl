@@ -192,12 +192,17 @@ addrmap datamover_regif {
 
     reg dm_ctrl_engine {
         field {
-            desc = "im2col unit: log2 of the image row width W, 3 to 6.";
+            desc = "im2col unit: the kernel side K, 3 or 5. A kernel of 5 needs Im2colKernel 5.";
+            hw = r;
+            sw = rw;
+        } im2col_kernel[25:23] = 0;
+        field {
+            desc = "im2col unit: log2 of the image row width W, from Im2colMinLog2W to log2 of the beat.";
             hw = r;
             sw = rw;
         } im2col_log2w[22:20] = 0;
         field {
-            desc = "im2col unit: 3x3 taps with a zero border from 64-pixel block rows (conv_stride 1), or two stride-2 half beats merged into one (conv_stride 2).";
+            desc = "im2col unit: K x K taps with a zero border from block rows of one beat (conv_stride 1), or two stride-2 half beats merged into one (conv_stride 2).";
             hw = r;
             sw = rw;
         } im2col_pack[19:19] = 0;

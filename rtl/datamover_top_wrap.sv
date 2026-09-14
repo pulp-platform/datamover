@@ -43,6 +43,8 @@ module datamover_top_wrap
   parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
   parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col unit
   parameter bit          EnableBuffer       = datamover_pkg::EnableBuffer,       // instantiate the element buffer
+  parameter int unsigned Im2colKernel       = datamover_pkg::Im2colKernel,       // largest im2col unit kernel, 3 or 5
+  parameter int unsigned Im2colMinLog2W     = datamover_pkg::Im2colMinLog2W,     // log2 of the smallest im2col unit row width
   parameter int unsigned FifoDepth          = datamover_pkg::FifoDepth,          // depth of the engine stream FIFOs
   // Dependent parameters: do not modify!
   localparam int unsigned WordWidth = ElemsPerWord * ElemWidth, // should correspond to bank width
@@ -164,6 +166,8 @@ module datamover_top_wrap
     .MisalignedAccesses ( MisalignedAccesses ),
     .EnableIm2col       ( EnableIm2col       ),
     .EnableBuffer       ( EnableBuffer       ),
+    .Im2colKernel       ( Im2colKernel       ),
+    .Im2colMinLog2W     ( Im2colMinLog2W     ),
     .FifoDepth          ( FifoDepth          ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_datamover_top (

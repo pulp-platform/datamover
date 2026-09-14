@@ -225,6 +225,10 @@ package datamover_regif_pkg;
     } datamover_regif__dm_ctrl_engine__im2col_log2w__out_t;
 
     typedef struct packed {
+        logic [2:0] value;
+    } datamover_regif__dm_ctrl_engine__im2col_kernel__out_t;
+
+    typedef struct packed {
         datamover_regif__dm_ctrl_engine__transp_mode__out_t transp_mode;
         datamover_regif__dm_ctrl_engine__datamover_mode__out_t datamover_mode;
         datamover_regif__dm_ctrl_engine__read_dim_en__out_t read_dim_en;
@@ -232,6 +236,7 @@ package datamover_regif_pkg;
         datamover_regif__dm_ctrl_engine__conv_stride__out_t conv_stride;
         datamover_regif__dm_ctrl_engine__im2col_pack__out_t im2col_pack;
         datamover_regif__dm_ctrl_engine__im2col_log2w__out_t im2col_log2w;
+        datamover_regif__dm_ctrl_engine__im2col_kernel__out_t im2col_kernel;
     } datamover_regif__dm_ctrl_engine__out_t;
 
     typedef struct packed {

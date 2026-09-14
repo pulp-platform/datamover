@@ -1,7 +1,7 @@
 {
   "name": "im2col_sweep",
   "op": "im2col",
-  "description": "LAYOUTS picks the datapath and holds the values it allows; a repeated entry gets more draws, which balances the paths with a low legal rate. The free axes draw the rest; the second constraint keeps the im2col output inside the TB memory, so the draws are not lost to the budget check. The image is at least one beat; kernels are square. BEAT is the elements per beat of the profile.",
+  "description": "LAYOUTS picks the datapath and holds the values it allows; a repeated entry gets more draws, which balances the paths with a low legal rate. The 5x5 entry draws only on a profile with IM2COL_KERNEL 5. The free axes draw the rest; the second constraint keeps the im2col output inside the TB memory, so the draws are not lost to the budget check. The image is at least one beat; kernels are square. BEAT is the elements per beat of the profile.",
   "max_tests": 100,
   "seed": 1,
   "constraints": ["SIZE_M * SIZE_N >= BEAT", "SIZE_C * SIZE_M * SIZE_N * KERNEL_SIZE_H * KERNEL_SIZE_W <= 1200000 * CONV_STRIDE * CONV_STRIDE"],
@@ -14,8 +14,8 @@
     "SIZE_N": {"min": 1, "max": 512},
     "LAYOUTS": [
       {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL"},
-      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
-      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
+      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": [3, 5], "CONV_STRIDE": 1, "CONV_PAD": "KERNEL_SIZE_H // 2", "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
+      {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 5, "CONV_STRIDE": 1, "CONV_PAD": 2, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
       {"IM2COL_IN": "BLOCK", "IM2COL_OUT": "COL_BLOCK", "KERNEL_SIZE_H": 3, "CONV_STRIDE": 1, "CONV_PAD": 1, "SIZE_N": [8, 16, 32, 64, 128, 256], "SIZE_M": {"min": 8, "max": 512, "multiple_of": 8}},
       {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_BLOCK", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % (2 * BEAT), KERNEL_SIZE_H + 2 * BEAT - 2)"},
       {"IM2COL_IN": "CHW", "IM2COL_OUT": "COL_BLOCK", "CONV_STRIDE": 2, "SIZE_N": "max(SIZE_N - (SIZE_N - KERNEL_SIZE_H + 2) % (2 * BEAT), KERNEL_SIZE_H + 2 * BEAT - 2)"},

@@ -27,6 +27,8 @@ module datamover_engine
   parameter int unsigned FifoDepth        = 2,
   parameter bit          EnableIm2col     = 1'b1,
   parameter bit          EnableBuffer     = 1'b1,
+  parameter int unsigned Im2colKernel     = 3,
+  parameter int unsigned Im2colMinLog2W   = 3,
   parameter int unsigned BandwidthAligned = 512,
   parameter int unsigned ElemsPerWord     = 4,    // number of elements in a bank word
   parameter int unsigned ElemWidth        = 8,    // element width (in bits)
@@ -248,8 +250,10 @@ module datamover_engine
 
   if (EnableIm2col) begin : gen_im2col
     datamover_im2col #(
-      .NumElems  ( NumElems  ),
-      .ElemWidth ( ElemWidth )
+      .NumElems       ( NumElems       ),
+      .ElemWidth      ( ElemWidth      ),
+      .Im2colKernel   ( Im2colKernel   ),
+      .Im2colMinLog2W ( Im2colMinLog2W )
     ) i_im2col (
       .clk_i   ( clk_i                       ),
       .rst_ni  ( rst_ni                      ),

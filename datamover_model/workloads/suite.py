@@ -12,7 +12,7 @@ from pathlib import Path
 
 HW_KEYS = ("BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MISALIGNED_ACCESSES")
 # Optional feature keys of a profile; a profile without the key has the default.
-HW_FEATURES = {"ENABLE_BUFFER": 1}
+HW_FEATURES = {"ENABLE_BUFFER": 1, "IM2COL_KERNEL": 3, "IM2COL_MIN_LOG2W": 3}
 
 PARAM_DEFAULTS = {
     "DATAMOVER_MODE": 0,
@@ -106,7 +106,7 @@ def normalize_params(raw: dict, beat: int, align: int = 1, features: dict = None
     if out["BLOCK_MODE"] not in (0, 1):
         raise ValueError(f"BLOCK_MODE must be 0 or 1, got {out['BLOCK_MODE']}")
     if out["DATAMOVER_MODE"] == 6:
-        _validate_im2col_params(out, beat)
+        _validate_im2col_params(out, beat, features)
     if out["DATAMOVER_MODE"] in (4, 5):
         _validate_unfold_params(out, beat)
     _validate_alignment(out, align)
@@ -140,12 +140,11 @@ STR_PARAMS = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
 LAYOUTS = ("CHW", "BLOCK")
 IM2COL_IN = ("CHW", "HWC", "BLOCK")
 IM2COL_OUT = ("COL", "ROW_BLOCK", "COL_BLOCK")
-IM2COL_UNIT_MIN_WIDTH = 8
 
 
-def im2col_unit_widths(beat: int) -> tuple:
-    """Image row widths the im2col unit supports: powers of two from 8 to the beat."""
-    return tuple(w for w in (8, 16, 32, 64, 128, 256) if IM2COL_UNIT_MIN_WIDTH <= w <= beat)
+def im2col_unit_widths(beat: int, min_log2w: int = 3) -> tuple:
+    """Image row widths the im2col unit supports: powers of two from 2**min_log2w to the beat."""
+    return tuple(1 << l for l in range(min_log2w, beat.bit_length()) if (1 << l) <= beat)
 
 
 def _validate_unfold_params(params: dict, beat: int) -> None:
@@ -173,7 +172,7 @@ def _validate_im2row_params(params: dict, beat: int) -> None:
         raise ValueError(f"HWC ROW_BLOCK needs a 64-element beat, 48-byte patch rows and a kernel side that is a multiple of 4, got beat={beat} K={k} C={c}")
 
 
-def _validate_im2col_params(params: dict, beat: int) -> None:
+def _validate_im2col_params(params: dict, beat: int, features: dict) -> None:
     """The relations of the HAL paths."""
     kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
     s, pad = params["CONV_STRIDE"], params["CONV_PAD"]
@@ -187,10 +186,12 @@ def _validate_im2col_params(params: dict, beat: int) -> None:
     if s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
     if layout == ("BLOCK", "COL_BLOCK"):
-        if (kh, kw, s, pad) != (3, 3, 1, 1):
-            raise ValueError(f"BLOCK im2col is 3x3, stride 1, pad 1, got K={kh}x{kw} S={s} pad={pad}")
-        if n not in im2col_unit_widths(beat) or (m * n) % beat != 0:
-            raise ValueError(f"BLOCK im2col needs W in {im2col_unit_widths(beat)} and H*W a multiple of {beat}, got {m}x{n}")
+        kernels = (3, 5) if features["IM2COL_KERNEL"] >= 5 else (3,)
+        if kh != kw or kh not in kernels or s != 1 or pad != kh // 2:
+            raise ValueError(f"BLOCK im2col is K x K with K in {kernels}, stride 1, pad K // 2, got K={kh}x{kw} S={s} pad={pad}")
+        widths = im2col_unit_widths(beat, features["IM2COL_MIN_LOG2W"])
+        if n not in widths or (m * n) % beat != 0:
+            raise ValueError(f"BLOCK im2col needs W in {widths} and H*W a multiple of {beat}, got {m}x{n}")
     elif layout == ("CHW", "COL_BLOCK"):
         w_out = (n - kw) // s + 1
         if s != 2 or pad != 0 or w_out % beat != 0:

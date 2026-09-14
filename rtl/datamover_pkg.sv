@@ -53,11 +53,16 @@ package datamover_pkg;
     $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__conv_stride__out_t);
   parameter int unsigned Im2colLog2wWidth =
     $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__im2col_log2w__out_t);
+    parameter int unsigned Im2colKernelWidth =
+      $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__im2col_kernel__out_t);
 
   // The im2col unit is instantiated when EnableIm2col is set on datamover_top.
   parameter bit          EnableIm2col       = 1'b1;
   // The element buffer is instantiated when EnableBuffer is set: transpose, unfold, and fold need it.
   parameter bit          EnableBuffer       = 1'b1;
+  // The im2col unit supports kernels up to Im2colKernel (3 or 5) and rows from 2**Im2colMinLog2W pixels.
+  parameter int unsigned Im2colKernel       = 3;
+  parameter int unsigned Im2colMinLog2W     = 3;
   parameter int unsigned FifoDepth          = 2;
   // Element-granularity transpose steps by 1, 2 or 4 elements
   parameter int unsigned MaxTranspStride     = 4;
@@ -77,6 +82,7 @@ package datamover_pkg;
     logic [ConvStrideWidth-1:0]     conv_stride;    // im2col column subsample, 1 or 2
     logic                             im2col_pack;    // im2col: run the im2col unit
     logic [Im2colLog2wWidth-1:0]    im2col_log2w;   // im2col unit: log2 of the image row width
+    logic [Im2colKernelWidth-1:0]    im2col_kernel;  // im2col unit: kernel side, 3 or 5
     datamover_mode_e                  datamover_mode;
     logic [TensorSizeWidth-1:0]     tensor_size_m;
     logic [TensorSizeWidth-1:0]     tensor_size_n;

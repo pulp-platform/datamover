@@ -354,6 +354,10 @@ module datamover_regif (
                     logic [2:0] next;
                     logic load_next;
                 } im2col_log2w;
+                struct {
+                    logic [2:0] next;
+                    logic load_next;
+                } im2col_kernel;
             } ctrl_engine;
         } hwpe_job_dep;
     } field_combo_t;
@@ -518,6 +522,9 @@ module datamover_regif (
                 struct {
                     logic [2:0] value;
                 } im2col_log2w;
+                struct {
+                    logic [2:0] value;
+                } im2col_kernel;
             } ctrl_engine;
         } hwpe_job_dep;
     } field_storage_t;
@@ -1361,6 +1368,29 @@ module datamover_regif (
         end
     end
     assign hwif_out.hwpe_job_dep.ctrl_engine.im2col_log2w.value = field_storage.hwpe_job_dep.ctrl_engine.im2col_log2w.value;
+    // Field: datamover_regif.hwpe_job_dep.ctrl_engine.im2col_kernel
+    always_comb begin
+        automatic logic [2:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.ctrl_engine && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value & ~decoded_wr_biten[25:23]) | (decoded_wr_data[25:23] & decoded_wr_biten[25:23]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.ctrl_engine.im2col_kernel.next = next_c;
+        field_combo.hwpe_job_dep.ctrl_engine.im2col_kernel.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value <= 3'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.ctrl_engine.im2col_kernel.load_next) begin
+                field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value <= field_combo.hwpe_job_dep.ctrl_engine.im2col_kernel.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.ctrl_engine.im2col_kernel.value = field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1485,6 +1515,7 @@ module datamover_regif (
             readback_data_var[18:16] = field_storage.hwpe_job_dep.ctrl_engine.conv_stride.value;
             readback_data_var[19] = field_storage.hwpe_job_dep.ctrl_engine.im2col_pack.value;
             readback_data_var[22:20] = field_storage.hwpe_job_dep.ctrl_engine.im2col_log2w.value;
+            readback_data_var[25:23] = field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;
