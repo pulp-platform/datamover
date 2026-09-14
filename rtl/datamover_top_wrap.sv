@@ -131,6 +131,13 @@ module datamover_top_wrap
       assign tcdm.gnt     = &(tcdm_gnt); // only when all words are granted
       assign tcdm.r_data  = { >> {tcdm_r_data}};
       assign tcdm.r_valid = &(tcdm_r_valid); // only when all words are valid
+      // The flat ports carry no response id, user, opcode, or ECC fields.
+      assign tcdm.r_user   = '0;
+      assign tcdm.r_id     = '0;
+      assign tcdm.r_opc    = 1'b0;
+      assign tcdm.r_ecc    = '0;
+      assign tcdm.egnt     = '0;
+      assign tcdm.r_evalid = '0;
   endgenerate
 
   /////////////////////

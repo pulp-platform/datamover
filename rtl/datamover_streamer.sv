@@ -74,7 +74,7 @@ module datamover_streamer
     // ,.WAIVE_RQ4_ASSERT ( 1'b1 )    // ToDo: make sure that these waives are not hiding real issues in the design
     // ,.WAIVE_RQ3_ASSERT ( 1'b1 )
     // `endif
-  ) virt_tcdm [1:0] (
+  ) virt_tcdm [0:1] (
     .clk ( clk_i )
   );
 
@@ -214,7 +214,7 @@ module datamover_streamer
         .clk_i   ( clk_i          ),
         .rst_ni  ( rst_ni         ),
         .clear_i ( clear_i        ),
-        .in      ( virt_tcdm[1:0] ),
+        .in      ( virt_tcdm      ),
         .out     ( tcdm_prefilter )
       );
       assign tcdm_fifo_flags.empty = 1'b1;
