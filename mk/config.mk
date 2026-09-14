@@ -46,6 +46,10 @@ _NAME_ARGS := --DATAMOVER_MODE $(DATAMOVER_MODE) --TRANSP_MODE $(TRANSP_MODE) \
               --SIZE_C $(SIZE_C) --SIZE_M $(SIZE_M) --SIZE_N $(SIZE_N) --COUNT $(COUNT) \
               --HW_CONFIG $(HW_CONFIG)
 TEST_NAME := $(or $(TEST_NAME),$(shell python -m datamover_model.workloads.name $(_NAME_ARGS)))
+# An empty name would point SIM_TEST_DIR, and clean-test, at every test dir.
+ifeq ($(strip $(TEST_NAME)),)
+$(error TEST_NAME is empty: the name tool rejected the parameters, see the message above)
+endif
 
 SIM_DIR      := $(ROOT_DIR)/simulation
 SIM_TEST_DIR := $(SIM_DIR)/tests/$(TEST_NAME)
