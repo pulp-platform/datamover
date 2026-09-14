@@ -18,6 +18,10 @@
 #define DATAMOVER_BASE_ADDR 0x10000000  /* HWPE region (addr[31:24]==0x10) in standalone TB */
 #include "datamover_hal.h"
 #include "tinyprintf.h"
+
+#ifndef DATAMOVER_CTRL_TEST
+#define DATAMOVER_CTRL_TEST 0
+#endif
 #include "datamover_workload.h"
 
 #ifndef TB_MBOX_ERRORS_ADDR
@@ -84,6 +88,66 @@ static const datamover_task_config_t dm_tasks[NUM_TASKS] = {
 static const int dm_task_verify[NUM_TASKS] = { DATAMOVER_TASKS(DM_TASK_VERIFY) };
 #undef DM_TASK_VERIFY
 
+#if DATAMOVER_CTRL_TEST
+/* Exercise the control target before the regular tasks: register read-back, writes to the
+ * read-only registers, a byte-wide store, a commit without a trigger, autotrigger, and a soft
+ * clear of each kind while a job runs. Task 0 must be a copy; the regular task 0 rewrites its output. */
+static int datamover_ctrl_test(void) {
+  const datamover_task_config_t *t = &dm_tasks[0];
+  volatile datamover_regif_t *regs = DATAMOVER_REGS;
+  datamover_cfg_t cfg = {0};
+  const uint32_t words = sizeof(datamover_cfg_t) / sizeof(uint32_t);
+  const uint32_t clears[3] = {1, 2, 0};
+  int errors = 0;
+
+  if (t->mode != DATAMOVER_COPY) {
+    tfp_printf("[RISCV] Control test: task 0 is not a copy, skipped\n");
+    return 0;
+  }
+  datamover_build_copy(&cfg, t->in_ptr, t->out_ptr, t->size_c * t->size_m, t->size_n);
+
+  /* Read back the programmed job, then commit without a trigger and trigger alone. */
+  datamover_acquire_wait();
+  datamover_program(&cfg);
+  for (uint32_t w = 0; w < words; w++) {
+    if (((volatile uint32_t *)&regs->hwpe_job_dep)[w] != ((const uint32_t *)&cfg)[w]) errors++;
+  }
+  (void)regs->hwpe_ctrl.soft_clear;
+  (void)regs->hwpe_ctrl.running_job;
+  regs->hwpe_ctrl.status = 0;
+  regs->hwpe_ctrl.running_job = 0;
+  regs->hwpe_ctrl.commit_trigger = 1;
+  regs->hwpe_ctrl.commit_trigger = 2;
+  datamover_wait();
+
+  /* Autotrigger starts a committed job once the previous job is done. */
+  regs->hwpe_ctrl.autotrigger = 0;
+  datamover_acquire_wait();
+  datamover_program(&cfg);
+  regs->hwpe_ctrl.commit_trigger = 1;
+  for (volatile int k = 0; k < 2000 && datamover_status() != 0; k++);
+  if (datamover_status() != 0) regs->hwpe_ctrl.commit_trigger = 2;
+  datamover_wait();
+  regs->hwpe_ctrl.autotrigger = 1;
+
+  /* A byte-wide store changes one byte of a register. */
+  *(volatile uint8_t *)&regs->hwpe_job_dep.tot_len = 0x5a;
+
+  /* A soft clear of the engine state, of the register file, and of both, each while a job runs. */
+  for (int c = 0; c < 3; c++) {
+    datamover_launch(&cfg);
+    for (volatile int k = 0; k < 20; k++);
+    regs->hwpe_ctrl.soft_clear = clears[c];
+    for (volatile int k = 0; k < 20; k++);
+    datamover_soft_clear();
+    for (volatile int k = 0; k < 20; k++);
+    if (datamover_status() != 0) errors++;
+  }
+  tfp_printf("[RISCV] Control test: %d errors\n", errors);
+  return errors;
+}
+#endif
+
 int main(void) {
   init_printf(NULL, tb_putc);
   tfp_printf("[RISCV] Datamover HWPE Test (%d task%s)\n",
@@ -91,6 +155,12 @@ int main(void) {
 
   datamover_soft_clear();
   for (volatile int kk = 0; kk < 10; kk++);
+
+#if DATAMOVER_CTRL_TEST
+  int ctrl_errors = datamover_ctrl_test();
+#else
+  int ctrl_errors = 0;
+#endif
 
   /* Trigger all jobs back-to-back. The 2-deep job queue lets each be programmed
    * while the previous one runs; acquire spins when the queue is full. */
@@ -121,7 +191,7 @@ int main(void) {
     total_errors += task_errors;
   }
 
-  total_errors += hal_errors;
+  total_errors += hal_errors + ctrl_errors;
 
   if (total_errors == 0) {
     tfp_printf("[RISCV] PASS: All %d task%s correct\n",

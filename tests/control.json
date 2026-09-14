@@ -1,0 +1,11 @@
+{
+  "make_args": "CTRL_TEST=1",
+  "description": "Control target: register read-back, autotrigger, a commit without a trigger, and a soft clear of each kind while a job runs. Task 0 of every test must be a copy.",
+  "tests": [
+    {"name": "CTRL_COPY_512x512", "params": {"DATAMOVER_MODE": 0, "SIZE_M": 512, "SIZE_N": 512}},
+    {"name": "CTRL_COPY_BLOCK_256", "chain": [
+      {"DATAMOVER_MODE": 0, "SIZE_M": 256, "SIZE_N": 256},
+      {"DATAMOVER_MODE": 2, "BLOCK_MODE": 0, "SIZE_M": 256, "SIZE_N": 256}
+    ]}
+  ]
+}

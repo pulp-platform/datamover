@@ -96,6 +96,10 @@ test:im2col:
   extends: .suite
   variables: {SUITE: im2col, TEST_JSON: tests/im2col.json}
 
+test:control:
+  extends: .suite
+  variables: {SUITE: control, TEST_JSON: tests/control.json}
+
 test:konark_ci:
   extends: .suite-default
   variables: {SUITE: konark_ci, TEST_JSON: tests/konark_ci.json}
