@@ -26,6 +26,7 @@ module datamover_engine
 #(
   parameter int unsigned FifoDepth        = 2,
   parameter bit          EnableIm2col     = 1'b1,
+  parameter bit          EnableBuffer     = 1'b1,
   parameter int unsigned BandwidthAligned = 512,
   parameter int unsigned ElemsPerWord     = 4,    // number of elements in a bank word
   parameter int unsigned ElemWidth        = 8,    // element width (in bits)
@@ -117,7 +118,7 @@ module datamover_engine
     endcase
   end
 
-  assign clear_elem_matrix = (fsm_q == READ && fsm_d == WRITE) && (ctrl_i.transp_mode != TRANSP_NONE);
+  assign clear_elem_matrix = (fsm_q == READ && fsm_d == WRITE) && buffer_mode;
   assign clear_run = clear_i || execution_done;
 
   // internal interfaces and unrolling
@@ -178,7 +179,7 @@ module datamover_engine
   // The outer dimension is the n size. A pass repeats the grid for one image row (unfold, fold).
   // A transpose of t-element groups fills t buffer rows per input row, so a tile holds
   // NumElems / t input rows and the leftover of the inner dimension counts t buffer rows per row.
-  assign buffer_mode     = ctrl_i.transp_mode != TRANSP_NONE;
+  assign buffer_mode     = EnableBuffer && (ctrl_i.transp_mode != TRANSP_NONE);
   assign unfold_fold     = (ctrl_i.datamover_mode == DATAMOVER_UNFOLD) || (ctrl_i.datamover_mode == DATAMOVER_FOLD);
   assign group_log2      = unfold_fold                    ? 2'd0 :
                            ctrl_i.transp_stride == 3'd4   ? 2'd2 :
@@ -245,32 +246,6 @@ module datamover_engine
   assign tot_cnt_incr = data_out_prefifo.valid & data_out_prefifo.ready;
   assign tot_cnt_d    = tot_cnt_incr ? tot_cnt_q + 1 : tot_cnt_q;
 
-  // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
-  // appropriately, depending on the configuration.
-  // E.g., if you have a classical configuration with
-  // - ElemsPerWord = 8 and
-  // - ElemWidth = 8 bits, i.e. total is 64 bits per word
-  // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
-  // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
-  // and those < 8b are not interesting in our use case.
-  localparam MaxShifting = (ElemsPerWord > MaxTranspStride) ? ElemsPerWord : MaxTranspStride;
-  // e.g., in a classical configuration (ElemWidth = 8), MaxShifting is
-  // in bytes, i.e., "4" for 32b transpose (includes shifting by 0 bytes)
-  logic [MaxShifting-1:0][NumElems-1:0][ElemWidth-1:0] data_in_shifted;
-
-  for(genvar ii=0; ii<MaxShifting; ii++) begin : gen_data_shifting_x
-    for(genvar jj=0; jj<NumElems; jj++) begin : gen_data_shifting_y
-
-      if(ii+jj < NumElems) begin : gen_feasible_shiftings
-        assign data_in_shifted[ii][jj] = data_in_unrolled[ii+jj];
-      end
-      else begin : gen_unfeasible_shiftings
-        assign data_in_shifted[ii][jj] = '0;
-      end
-
-    end // gen_data_shifting_y
-  end // gen_data_shifting_x
-
   if (EnableIm2col) begin : gen_im2col
     datamover_im2col #(
       .NumElems  ( NumElems  ),
@@ -293,51 +268,82 @@ module datamover_engine
     assign im2col_valid = 1'b0;
   end
 
-  logic [NumElems-1:0]                     wr_row_en;
-  logic [NumElems-1:0][ElemWidth-1:0]     wr_row_data   [NumElems-1:0];
   logic [NumElems-1:0][ElemWidth-1:0]     elem_matrix_q [NumElems-1:0];
 
-  for(genvar ii=0; ii<NumElems; ii++) begin : gen_buffer_write
-    logic in_hs, buffer_enable;
-    assign in_hs = data_in_valid & data_in_ready;
-    assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE  ? 1'b0 :
-                           ctrl_i.transp_mode == TRANSP_4ELEM ? ((cnt_q>>2) == (ii>>2)) & in_hs :
-                           ctrl_i.transp_mode == TRANSP_2ELEM ? ((cnt_q>>1) == (ii>>1)) & in_hs :
-                                                                ( cnt_q     ==  ii    ) & in_hs;
-    logic [NumElems-1:0][ElemWidth-1:0] data_in_selected;
-    assign data_in_selected = ctrl_i.transp_mode == TRANSP_4ELEM? data_in_shifted[ii % 4] :
-                              ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] :
-                                                                   data_in_shifted[0];
+  localparam MaxShifting = (ElemsPerWord > MaxTranspStride) ? ElemsPerWord : MaxTranspStride;
+  if (EnableBuffer) begin : gen_buffer
+    // "Smart shifting": this set of combinational blocks shifts data_in_unrolled
+    // appropriately, depending on the configuration.
+    // E.g., if you have a classical configuration with
+    // - ElemsPerWord = 8 and
+    // - ElemWidth = 8 bits, i.e. total is 64 bits per word
+    // the configurations are: 8b transpose, 16b transpose, 32b transpose. We assume
+    // that transposes >= 64b can be done efficiently by Snitch processors through SSRs
+    // and those < 8b are not interesting in our use case.
+    // e.g., in a classical configuration (ElemWidth = 8), MaxShifting is
+    // in bytes, i.e., "4" for 32b transpose (includes shifting by 0 bytes)
+    logic [MaxShifting-1:0][NumElems-1:0][ElemWidth-1:0] data_in_shifted;
 
-    assign wr_row_en[ii]   = buffer_enable;
-    assign wr_row_data[ii] = data_in_selected;
-  end // gen_buffer_write
+    for(genvar ii=0; ii<MaxShifting; ii++) begin : gen_data_shifting_x
+      for(genvar jj=0; jj<NumElems; jj++) begin : gen_data_shifting_y
 
-  datamover_buffer #(
-    .NumElems  ( NumElems  ),
-    .ElemWidth ( ElemWidth )
-  ) i_buffer (
-    .clk_i          ( clk_i             ),
-    .rst_ni         ( rst_ni            ),
-    .clear_i        ( clear_i           ),
-    .clear_matrix_i ( clear_elem_matrix ),
-    .wr_row_en_i    ( wr_row_en         ),
-    .wr_row_data_i  ( wr_row_data       ),
-    .rd_data_o      ( elem_matrix_q     )
-  );
+        if(ii+jj < NumElems) begin : gen_feasible_shiftings
+          assign data_in_shifted[ii][jj] = data_in_unrolled[ii+jj];
+        end
+        else begin : gen_unfeasible_shiftings
+          assign data_in_shifted[ii][jj] = '0;
+        end
+
+      end // gen_data_shifting_y
+    end // gen_data_shifting_x
+
+    logic [NumElems-1:0]                     wr_row_en;
+    logic [NumElems-1:0][ElemWidth-1:0]     wr_row_data   [NumElems-1:0];
+
+    for(genvar ii=0; ii<NumElems; ii++) begin : gen_buffer_write
+      logic in_hs, buffer_enable;
+      assign in_hs = data_in_valid & data_in_ready;
+      assign buffer_enable = ctrl_i.transp_mode == TRANSP_NONE  ? 1'b0 :
+                             ctrl_i.transp_mode == TRANSP_4ELEM ? ((cnt_q>>2) == (ii>>2)) & in_hs :
+                             ctrl_i.transp_mode == TRANSP_2ELEM ? ((cnt_q>>1) == (ii>>1)) & in_hs :
+                                                                  ( cnt_q     ==  ii    ) & in_hs;
+      logic [NumElems-1:0][ElemWidth-1:0] data_in_selected;
+      assign data_in_selected = ctrl_i.transp_mode == TRANSP_4ELEM? data_in_shifted[ii % 4] :
+                                ctrl_i.transp_mode == TRANSP_2ELEM ? data_in_shifted[ii % 2] :
+                                                                     data_in_shifted[0];
+
+      assign wr_row_en[ii]   = buffer_enable;
+      assign wr_row_data[ii] = data_in_selected;
+    end // gen_buffer_write
+
+    datamover_buffer #(
+      .NumElems  ( NumElems  ),
+      .ElemWidth ( ElemWidth )
+    ) i_buffer (
+      .clk_i          ( clk_i             ),
+      .rst_ni         ( rst_ni            ),
+      .clear_i        ( clear_i           ),
+      .clear_matrix_i ( clear_elem_matrix ),
+      .wr_row_en_i    ( wr_row_en         ),
+      .wr_row_data_i  ( wr_row_data       ),
+      .rd_data_o      ( elem_matrix_q     )
+    );
+  end else begin : gen_no_buffer
+    assign elem_matrix_q = '{default: '0};
+  end
 
   // Output assignment
   for(genvar ii=0; ii<NumElems; ii++) begin : gen_output
     assign data_out_unrolled[ii] =
-        ctrl_i.transp_mode != TRANSP_NONE ? elem_matrix_q[ii][cnt_q]
+        buffer_mode                       ? elem_matrix_q[ii][cnt_q]
       : im2col_unit                       ? im2col_data[ii]
       : ctrl_i.conv_stride == 2           ? data_in_unrolled[(ii < NumElems/2) ? 2*ii : 2*ii - NumElems]
                                           : data_in_unrolled[ii];
   end // gen_output
 
-  assign data_in_ready  = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == WRITE :
+  assign data_in_ready  = buffer_mode ? fsm_q == WRITE :
                           im2col_unit ? im2col_ready : data_out_ready;
-  assign data_out_valid = ctrl_i.transp_mode != TRANSP_NONE ? fsm_q == READ  :
+  assign data_out_valid = buffer_mode ? fsm_q == READ  :
                           im2col_unit ? im2col_valid : data_in_valid;
 
   // Sequential logic

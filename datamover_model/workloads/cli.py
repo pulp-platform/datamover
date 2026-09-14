@@ -28,6 +28,8 @@ from datamover_model.headers.emit import HW_KEYS, emit_task_artifacts, write_tes
 from datamover_model.testing.debug import write_task_debug
 from datamover_model.workloads.generator import TaskData, generate_chain_data, generate_task_data
 from datamover_model.workloads.suite import (
+    HW_FEATURES,
+    hw_features,
     PARAM_DEFAULTS,
     auto_test_name,
     find_test_entry,
@@ -53,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
         parser.add_argument(f"--{k}", type=int)
     for k in HW_KEYS:
         parser.add_argument(f"--{k}", type=int)
+    for k, d in HW_FEATURES.items():
+        parser.add_argument(f"--{k}", type=int, default=d)
     return parser
 
 
@@ -71,8 +75,8 @@ def _resolve(args):
     missing = [k for k in HW_KEYS if getattr(args, k) is None]
     if missing:
         raise SystemExit("CLI mode requires HW params: " + ", ".join(f"--{k}" for k in missing))
-    hw = {k: getattr(args, k) for k in HW_KEYS}
-    params = normalize_params(raw, beat_elems(hw), align_elems(hw))
+    hw = {k: getattr(args, k) for k in (*HW_KEYS, *HW_FEATURES)}
+    params = normalize_params(raw, beat_elems(hw), align_elems(hw), hw_features(hw))
     name = args.test_name or auto_test_name(params)
     return {"name": name, "params": params}, hw, "cli"
 

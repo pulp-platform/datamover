@@ -56,6 +56,9 @@ package datamover_pkg;
 
   // The im2col unit is instantiated when EnableIm2col is set on datamover_top.
   parameter bit          EnableIm2col       = 1'b1;
+  // The element buffer is instantiated when EnableBuffer is set: transpose, unfold, and fold need it.
+  parameter bit          EnableBuffer       = 1'b1;
+  parameter int unsigned FifoDepth          = 2;
   // Element-granularity transpose steps by 1, 2 or 4 elements
   parameter int unsigned MaxTranspStride     = 4;
   parameter int unsigned TranspStrideWidth   = $clog2(MaxTranspStride) + 1;

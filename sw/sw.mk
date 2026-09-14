@@ -22,6 +22,7 @@ CC_OPTS += -DDATAMOVER_BANDWIDTH=$(BANDWIDTH)
 CC_OPTS += -DDATAMOVER_WORD_WIDTH=$(WORD_WIDTH)
 CC_OPTS += -DDATAMOVER_ELEM_WIDTH=$(ELEM_WIDTH)
 CC_OPTS += -DDATAMOVER_MISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
+CC_OPTS += -DDATAMOVER_ENABLE_BUFFER=$(ENABLE_BUFFER)
 
 LD_OPTS = -march=rv32imc -D__riscv__ -MMD -MP -nostartfiles -Wl,--gc-sections -lgcc
 
@@ -42,7 +43,8 @@ GEN_HEADERS_ARGS := --test_name $(TEST_NAME) \
                     --BLOCK_MODE $(BLOCK_MODE) \
                     --SIZE_C $(SIZE_C) --SIZE_M $(SIZE_M) --SIZE_N $(SIZE_N) --COUNT $(COUNT) \
                     --BANDWIDTH $(BANDWIDTH) --WORD_WIDTH $(WORD_WIDTH) \
-                    --ELEM_WIDTH $(ELEM_WIDTH) --MISALIGNED_ACCESSES $(MISALIGNED_ACCESSES)
+                    --ELEM_WIDTH $(ELEM_WIDTH) --MISALIGNED_ACCESSES $(MISALIGNED_ACCESSES) \
+                    --ENABLE_BUFFER $(ENABLE_BUFFER)
 else
 # JSON mode: take the named test from a suite
 GEN_HEADERS_ARGS := --json $(TEST_JSON) --test_name $(TEST_NAME)

@@ -20,6 +20,7 @@ from datamover_model.workloads.suite import (
     align_elems,
     auto_test_name,
     beat_elems,
+    hw_features,
     hw_tag,
     load_hw_config,
     normalize_params,
@@ -38,7 +39,7 @@ def main() -> int:
     args = build_parser().parse_args()
     raw = {k: getattr(args, k) for k in PARAM_DEFAULTS if getattr(args, k) is not None}
     hw = load_hw_config(args.HW_CONFIG or "default")
-    print(auto_test_name(normalize_params(raw, beat_elems(hw), align_elems(hw)), hw_tag(args.HW_CONFIG)))
+    print(auto_test_name(normalize_params(raw, beat_elems(hw), align_elems(hw), hw_features(hw)), hw_tag(args.HW_CONFIG)))
     return 0
 
 

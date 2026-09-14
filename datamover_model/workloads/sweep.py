@@ -65,6 +65,7 @@ from datamover_model.workloads.suite import (
     auto_test_name,
     beat_elems,
     default_hw_config,
+    hw_features,
     hw_tag,
     load_hw_config,
     normalize_params,
@@ -112,7 +113,7 @@ def validate_candidate(op: str, params: dict, hw, deep: bool = False):
     try:
         cfg = load_hw_config(hw)
         beat = beat_elems(cfg)
-        full = normalize_params({**OP_TO_PARAMS[op], **test_params(params)}, beat, align_elems(cfg))
+        full = normalize_params({**OP_TO_PARAMS[op], **test_params(params)}, beat, align_elems(cfg), hw_features(cfg))
         generate_task_data({"name": "candidate", "params": full}, 0, beat)
         return auto_test_name(full, hw_tag(hw)), None
     except (ValueError, AssertionError, KeyError, TypeError, IndexError, RuntimeError) as e:

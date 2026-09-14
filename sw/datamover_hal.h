@@ -255,6 +255,12 @@ static inline __attribute__((always_inline)) void datamover_block_layout_transpo
 //==========================================================================
 
 static inline __attribute__((always_inline)) datamover_status_t datamover_run(const datamover_task_config_t *t) {
+#if DATAMOVER_ENABLE_BUFFER == 0
+  // Transpose, unfold, and fold need the element buffer.
+  if (t->mode == DATAMOVER_TRANSP || t->mode == DATAMOVER_BLOCK_LAYOUT_TRANSPOSE ||
+      t->mode == DATAMOVER_UNFOLD || t->mode == DATAMOVER_FOLD)
+    return DATAMOVER_ERR;
+#endif
   switch (t->mode) {
     case DATAMOVER_COPY:
       // A copy is flat: the channels extend the row count.

@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 
 HW_KEYS = ("BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MISALIGNED_ACCESSES")
+# Optional feature keys of a profile; a profile without the key has the default.
+HW_FEATURES = {"ENABLE_BUFFER": 1}
 
 PARAM_DEFAULTS = {
     "DATAMOVER_MODE": 0,
@@ -33,7 +35,8 @@ PARAM_DEFAULTS = {
 def hw_fingerprint(hw: dict) -> str:
     """Deterministic build-dir name from the RTL compile-time HW params."""
     t = {k: int(hw[k]) for k in HW_KEYS}
-    return f"BW{t['BANDWIDTH']}_WW{t['WORD_WIDTH']}_EW{t['ELEM_WIDTH']}_MA{t['MISALIGNED_ACCESSES']}"
+    features = "".join(f"_{k}{int(hw.get(k, d))}" for k, d in HW_FEATURES.items() if int(hw.get(k, d)) != d)
+    return f"BW{t['BANDWIDTH']}_WW{t['WORD_WIDTH']}_EW{t['ELEM_WIDTH']}_MA{t['MISALIGNED_ACCESSES']}{features}"
 
 
 def build_tag(hw: dict, stall: str = "0.0") -> str:
@@ -60,7 +63,7 @@ def load_hw_config(name: str) -> dict:
     missing = [k for k in HW_KEYS if k not in cfg]
     if missing:
         raise ValueError(f"HW config '{name}' missing keys: {missing}")
-    return {k: cfg[k] for k in HW_KEYS}
+    return {**{k: cfg[k] for k in HW_KEYS}, **{k: cfg.get(k, d) for k, d in HW_FEATURES.items()}}
 
 
 def beat_elems(hw: dict) -> int:
@@ -69,18 +72,24 @@ def beat_elems(hw: dict) -> int:
     return payload_bits // hw["ELEM_WIDTH"]
 
 
+def hw_features(hw: dict) -> dict:
+    """The feature keys of a profile, with the defaults for the missing keys."""
+    return {k: hw.get(k, d) for k, d in HW_FEATURES.items()}
+
+
 def align_elems(hw: dict) -> int:
     """Elements per aligned access: one word without misaligned accesses, else one element."""
     return 1 if hw["MISALIGNED_ACCESSES"] else hw["WORD_WIDTH"] // hw["ELEM_WIDTH"]
 
 
-def normalize_params(raw: dict, beat: int, align: int = 1) -> dict:
+def normalize_params(raw: dict, beat: int, align: int = 1, features: dict = None) -> dict:
     """Defaults, types, and the checks of the HAL paths.
 
     `beat` is the block width in elements. `align` is the row alignment the streamer needs:
     a row of a strided access starts and ends on a word when the profile has no misaligned
     accesses.
     """
+    features = {**HW_FEATURES, **(features or {})}
     out = dict(PARAM_DEFAULTS)
     for k, v in raw.items():
         if k not in PARAM_DEFAULTS:
@@ -101,6 +110,8 @@ def normalize_params(raw: dict, beat: int, align: int = 1) -> dict:
     if out["DATAMOVER_MODE"] in (4, 5):
         _validate_unfold_params(out, beat)
     _validate_alignment(out, align)
+    if not features["ENABLE_BUFFER"] and out["DATAMOVER_MODE"] in (1, 3, 4, 5):
+        raise ValueError(f"DATAMOVER_MODE {out['DATAMOVER_MODE']} needs the element buffer, the profile has ENABLE_BUFFER 0")
     return out
 
 
@@ -238,9 +249,9 @@ def entry_hw_config(entry: dict, suite_hw: str = "") -> str:
 
 
 def entry_geometry(entry: dict, suite_hw: str = "") -> tuple:
-    """(beat, align) of the profile of the entry."""
+    """(beat, align, features) of the profile of the entry."""
     hw = load_hw_config(entry_hw_config(entry, suite_hw))
-    return beat_elems(hw), align_elems(hw)
+    return beat_elems(hw), align_elems(hw), hw_features(hw)
 
 
 def entry_beat(entry: dict, suite_hw: str = "") -> int:
@@ -252,15 +263,15 @@ def _entry_name(entry: dict, suite_hw: str = "") -> str:
 
     An explicit name gets the profile tag like an auto name, so two profiles never share a test dir.
     """
-    beat, align = entry_geometry(entry, suite_hw)
+    beat, align, features = entry_geometry(entry, suite_hw)
     tag = hw_tag(entry_hw_config(entry, suite_hw))
     if "chain" in entry:
         if not entry.get("name"):
             raise ValueError("Chained tests require a 'name' field")
         for p in entry["chain"]:
-            normalize_params(p, beat, align)
+            normalize_params(p, beat, align, features)
         return entry["name"] + (f"_{tag}" if tag else "")
-    params = normalize_params(entry.get("params", {}), beat, align)
+    params = normalize_params(entry.get("params", {}), beat, align, features)
     if entry.get("name"):
         return entry["name"] + (f"_{tag}" if tag else "")
     return auto_test_name(params, tag)
@@ -299,11 +310,11 @@ def find_test_entry(json_path: str, test_name: str) -> dict:
             out = dict(entry)
             out["name"] = test_name
             out["hw_config"] = entry_hw_config(entry, suite_hw)
-            beat, align = entry_geometry(entry, suite_hw)
+            beat, align, features = entry_geometry(entry, suite_hw)
             if "chain" in entry:
-                out["chain"] = [normalize_params(p, beat, align) for p in entry["chain"]]
+                out["chain"] = [normalize_params(p, beat, align, features) for p in entry["chain"]]
             else:
-                out["params"] = normalize_params(entry.get("params", {}), beat, align)
+                out["params"] = normalize_params(entry.get("params", {}), beat, align, features)
             return out
     available = ", ".join(list_tests(json_path, []))
     raise ValueError(f"Test '{test_name}' not found in {json_path}. Available: {available}")

@@ -42,6 +42,8 @@ module datamover_top_wrap
   parameter int unsigned NumContext         = datamover_pkg::NumContext,         // number of context for control slave regfile
   parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
   parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col unit
+  parameter bit          EnableBuffer       = datamover_pkg::EnableBuffer,       // instantiate the element buffer
+  parameter int unsigned FifoDepth          = datamover_pkg::FifoDepth,          // depth of the engine stream FIFOs
   // Dependent parameters: do not modify!
   localparam int unsigned WordWidth = ElemsPerWord * ElemWidth, // should correspond to bank width
   localparam int unsigned NumWords  = Bandwidth / WordWidth     // TCDM interface width in number of words
@@ -160,6 +162,9 @@ module datamover_top_wrap
     .NumCores           ( NumCores           ),
     .NumContext         ( NumContext         ),
     .MisalignedAccesses ( MisalignedAccesses ),
+    .EnableIm2col       ( EnableIm2col       ),
+    .EnableBuffer       ( EnableBuffer       ),
+    .FifoDepth          ( FifoDepth          ),
     .`HCI_SIZE_PARAM(tcdm) ( `HCI_SIZE_PARAM(tcdm) )
   ) i_datamover_top (
     .clk_i       ( clk_i ),

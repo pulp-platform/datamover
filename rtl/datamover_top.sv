@@ -33,6 +33,8 @@ module datamover_top
   parameter int unsigned NumContext         = datamover_pkg::NumContext,         // depth of the control target job queue
   parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
   parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col unit
+  parameter bit          EnableBuffer       = datamover_pkg::EnableBuffer,       // instantiate the element buffer
+  parameter int unsigned FifoDepth          = datamover_pkg::FifoDepth,          // depth of the engine stream FIFOs
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,
   // Dependent parameters: do not modify!
   localparam int unsigned WordWidth = ElemsPerWord * ElemWidth, // should correspond to bank width
@@ -113,8 +115,9 @@ module datamover_top
   // copy, transpose, block layout, unfold, fold, and im2col.
   // An internal buffer (elem_matrix) of size BWxBW is used to reshuffle the data.
   datamover_engine #(
-    .FifoDepth        ( 2                ),
+    .FifoDepth        ( FifoDepth        ),
     .EnableIm2col     ( EnableIm2col     ),
+    .EnableBuffer     ( EnableBuffer     ),
     .BandwidthAligned ( BandwidthAligned ),
     .ElemsPerWord     ( ElemsPerWord     ),
     .ElemWidth        ( ElemWidth        )

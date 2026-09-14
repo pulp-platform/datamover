@@ -31,6 +31,9 @@ module tb_datamover;
 `ifndef MISALIGNED_ACCESSES
   `define MISALIGNED_ACCESSES 1
 `endif
+`ifndef ENABLE_BUFFER
+  `define ENABLE_BUFFER 1
+`endif
 `ifndef PROB_STALL
   `define PROB_STALL 0.0
 `endif
@@ -39,6 +42,7 @@ module tb_datamover;
   localparam int unsigned WordWidth          = `WORD_WIDTH;
   localparam int unsigned ElemWidth          = `ELEM_WIDTH;
   localparam int unsigned MisalignedAccesses = `MISALIGNED_ACCESSES;
+  localparam bit          EnableBuffer        = `ENABLE_BUFFER;
   localparam real         PROB_STALL          = `PROB_STALL;
   localparam int unsigned ElemsPerWord       = WordWidth / ElemWidth;
   localparam int unsigned NumWords           = Bandwidth / WordWidth;
@@ -271,7 +275,8 @@ module tb_datamover;
     .ElemWidth          ( ElemWidth          ),
     .NumCores           ( 8                  ),
     .NumContext         ( 2                  ),
-    .MisalignedAccesses ( MisalignedAccesses )
+    .MisalignedAccesses ( MisalignedAccesses ),
+    .EnableBuffer       ( EnableBuffer       )
   ) i_dut (
     .clk_i          ( clk_i           ),
     .rst_ni         ( rst_ni          ),
