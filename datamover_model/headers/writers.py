@@ -12,8 +12,9 @@ import numpy as np
 
 
 def hex_byte_lines(arr, per_line: int = 16) -> list:
-    """Format a byte array as indented, comma-separated 0x.. lines."""
-    flat = np.asarray(arr).reshape(-1).astype(np.uint8).tolist()
+    """Format an element array as indented, comma-separated 0x.. byte lines, little-endian."""
+    a = np.asarray(arr)
+    flat = np.ascontiguousarray(a.reshape(-1).astype(a.dtype.newbyteorder("<"))).view(np.uint8).tolist()
     lines = []
     for i in range(0, len(flat), per_line):
         chunk = flat[i:i + per_line]

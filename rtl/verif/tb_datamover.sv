@@ -105,16 +105,16 @@ module tb_datamover;
 
   // 32-bit-wide instruction port; WordWidth-wide TCDM ports for both the
   // datamover footprint and the Ibex (via aligner).
-  hwpe_stream_intf_tcdm #(.DATA_WIDTH(32), .ELEMENT_WIDTH(ElemWidth))
+  hwpe_stream_intf_tcdm #(.DATA_WIDTH(32), .ELEMENT_WIDTH(8))
     instr [0:0] (.clk(clk_i));
-  hwpe_stream_intf_tcdm #(.DATA_WIDTH(WordWidth), .ELEMENT_WIDTH(ElemWidth))
+  hwpe_stream_intf_tcdm #(.DATA_WIDTH(WordWidth), .ELEMENT_WIDTH(8))
     tcdm [MP-1:0] (.clk(clk_i));
 
   logic [NumWords-1:0]                    dm_tcdm_req;
   logic [NumWords-1:0]                    dm_tcdm_gnt;
   logic [NumWords-1:0][31:0]              dm_tcdm_add;
   logic [NumWords-1:0]                    dm_tcdm_wen;
-  logic [NumWords-1:0][ElemsPerWord-1:0] dm_tcdm_be;
+  logic [NumWords-1:0][WordWidth/8-1:0] dm_tcdm_be;
   logic [NumWords-1:0][WordWidth-1:0]    dm_tcdm_data;
   logic [NumWords-1:0][WordWidth-1:0]    dm_tcdm_r_data;
   logic [NumWords-1:0]                    dm_tcdm_r_valid;
@@ -317,7 +317,7 @@ module tb_datamover;
     .MP                ( MP              ),
     .BANK_WORD_WIDTH   ( WordWidth      ),
     .STORAGE_WIDTH     ( 32              ),
-    .ELEMENT_WIDTH     ( ElemWidth      ),
+    .ELEMENT_WIDTH     ( 8 ),
     .MEMORY_SIZE       ( MEMORY_SIZE     ),
     .BASE_ADDR         ( TCDM_DATA_BASE  ),
     .PROB_STALL        ( PROB_STALL      ),
@@ -354,7 +354,7 @@ module tb_datamover;
   tb_dummy_memory #(
     .MP              ( 1               ),
     .BANK_WORD_WIDTH  ( 32             ),
-    .ELEMENT_WIDTH   ( ElemWidth      ),
+    .ELEMENT_WIDTH   ( 8 ),
     .MEMORY_SIZE     ( INSTR_MEM_SIZE  ),
     .BASE_ADDR       ( INSTR_BASE_ADDR ),
     .PROB_STALL      ( 0               ),

@@ -31,6 +31,7 @@ module datamover_ctrl
   parameter int unsigned NumContext    = 2,                                // depth of the job queue (committed-but-not-done jobs)
   parameter int unsigned IdWidth       = 4,                                // control target peripheral ID width
   parameter int unsigned RegfileNumEvt = hwpe_ctrl_package::REGFILE_N_EVT,
+  parameter int unsigned ElemWidth     = 8,                                // element width in bits
   parameter int unsigned TranspLen     = 64                                // BandwidthAligned / ElemWidth (number of elements per beat)
 )
 (
@@ -199,8 +200,10 @@ module datamover_ctrl
   assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.dim_enable_1h = job_dep_regs.ctrl_engine.read_dim_en.value;
   assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.dim_enable_1h  = job_dep_regs.ctrl_engine.write_dim_en.value;
   // Base addresses.
-  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.base_addr = job_dep_regs.in_ptr.value.value;
-  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.base_addr  = job_dep_regs.out_ptr.value.value;
+  // The pointer registers hold byte addresses; the address generators count elements.
+  localparam int unsigned ElemBytesLog2 = $clog2(ElemWidth / 8);
+  assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.base_addr = job_dep_regs.in_ptr.value.value >> ElemBytesLog2;
+  assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.base_addr  = job_dep_regs.out_ptr.value.value >> ElemBytesLog2;
   // Total length (in number of beats).
   assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl.tot_len   = job_dep_regs.tot_len.value.value;
   assign ctrl_streamer_o.data_out_sink_ctrl.addressgen_ctrl.tot_len    = job_dep_regs.out_tot_len.value.value;

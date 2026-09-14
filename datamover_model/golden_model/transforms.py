@@ -109,9 +109,10 @@ def im2col(tensor, kernel_h, kernel_w, block, stride=1, padding=0, in_layout="CH
         c, h, w = tensor.shape
         tensor = tensor.reshape(h, w, c).transpose(2, 0, 1)
     c = tensor.shape[0]
-    x = torch.from_numpy(tensor.astype(np.float32)).unsqueeze(0)
+    # float64 holds every 32-bit element exactly.
+    x = torch.from_numpy(tensor.astype(np.float64)).unsqueeze(0)
     cols = torch.nn.functional.unfold(x, (kernel_h, kernel_w), stride=stride, padding=padding)
-    cols = cols.squeeze(0).to(torch.uint8).numpy()
+    cols = cols.squeeze(0).numpy().astype(tensor.dtype)
     if out_layout == "COL":
         return cols
     if out_layout == "COL_BLOCK":

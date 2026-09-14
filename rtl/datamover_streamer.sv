@@ -108,6 +108,18 @@ module datamover_streamer
     .clk ( clk_i )
   );
 
+  hci_core_intf #(
+    .DW  ( Bandwidth ),
+    .BW  ( BW ),
+    .AW  ( AW ),
+    .UW  ( UW ),
+    .IW  ( IW ),
+    .EW  ( EW ),
+    .EHW ( EHW)
+  ) tcdm_elem (
+    .clk ( clk_i )
+  );
+
   // Standard HCI core source. The DATA_WIDTH parameter is referred to
   // the HWPE-Stream, since the source also performs realignment, it will
   // expose a 1-word-larger HCI TCDM interface.
@@ -222,8 +234,31 @@ module datamover_streamer
     .clear_i       ( clear_i              ),
     .enable_i      ( 1'b1                 ),
     .tcdm_target   ( tcdm_prefilter[0].target ),
-    .tcdm_initiator( tcdm                 )
+    .tcdm_initiator( tcdm_elem )
   );
   assign flags_o.tcdm_fifo_empty = tcdm_fifo_flags.empty;
+
+  // The streamers count element addresses; the TCDM bus counts bytes.
+  localparam int unsigned ElemBytesLog2 = $clog2(ElemWidth / 8);
+  assign tcdm.req       = tcdm_elem.req;
+  assign tcdm.add       = tcdm_elem.add << ElemBytesLog2;
+  assign tcdm.wen       = tcdm_elem.wen;
+  assign tcdm.data      = tcdm_elem.data;
+  assign tcdm.be        = tcdm_elem.be;
+  assign tcdm.r_ready   = tcdm_elem.r_ready;
+  assign tcdm.user      = tcdm_elem.user;
+  assign tcdm.id        = tcdm_elem.id;
+  assign tcdm.ereq      = tcdm_elem.ereq;
+  assign tcdm.r_eready  = tcdm_elem.r_eready;
+  assign tcdm.ecc       = tcdm_elem.ecc;
+  assign tcdm_elem.gnt       = tcdm.gnt;
+  assign tcdm_elem.r_data    = tcdm.r_data;
+  assign tcdm_elem.r_valid   = tcdm.r_valid;
+  assign tcdm_elem.r_user    = tcdm.r_user;
+  assign tcdm_elem.r_id      = tcdm.r_id;
+  assign tcdm_elem.r_opc     = tcdm.r_opc;
+  assign tcdm_elem.egnt      = tcdm.egnt;
+  assign tcdm_elem.r_evalid  = tcdm.r_evalid;
+  assign tcdm_elem.r_ecc     = tcdm.r_ecc;
 
 endmodule // datamover_streamer

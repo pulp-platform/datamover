@@ -64,7 +64,7 @@ module datamover_top_wrap
   input  logic [NumWords-1:0]                    tcdm_gnt,
   output logic [NumWords-1:0][AddrWidth-1:0]    tcdm_add,
   output logic [NumWords-1:0]                    tcdm_wen,
-  output logic [NumWords-1:0][ElemsPerWord-1:0] tcdm_be,
+  output logic [NumWords-1:0][WordWidth/8-1:0] tcdm_be,
   output logic [NumWords-1:0][WordWidth-1:0]    tcdm_data,
   input  logic [NumWords-1:0][WordWidth-1:0]    tcdm_r_data,
   input  logic [NumWords-1:0]                    tcdm_r_valid,
@@ -122,8 +122,10 @@ module datamover_top_wrap
       // The datamover accesses a number of NumWords adjacent words.
       // Assuming the memory is element-indexed, i.e., every word-element is individually addressable
       // on the address bus: to go from word `n` to word `n+1` we have to skip ElemsPerWord addresses.
-      assign tcdm_add[i]  = tcdm.add + i * ElemsPerWord;
-      assign tcdm_be[i]   = tcdm.be[(i+1)*ElemsPerWord - 1 : i*ElemsPerWord];
+      assign tcdm_add[i]  = tcdm.add + i * (WordWidth / 8);
+      for (genvar e = 0; e < ElemsPerWord; e++) begin : gen_byte_strobe
+        assign tcdm_be[i][e*(ElemWidth/8) +: ElemWidth/8] = {(ElemWidth/8){tcdm.be[i*ElemsPerWord + e]}};
+      end
       assign tcdm_data[i] = tcdm.data[(i+1)*WordWidth - 1 : i*WordWidth];
     end
       assign tcdm.gnt     = &(tcdm_gnt); // only when all words are granted

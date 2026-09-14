@@ -36,19 +36,24 @@ TB_MEM_BUDGET = 4_100_000
 
 
 def check_mem_budget(in_tensor, out_tensor) -> None:
-    in_bytes = int(np.prod(np.asarray(in_tensor).shape))
-    out_bytes = int(np.prod(np.asarray(out_tensor).shape))
+    in_bytes = int(np.asarray(in_tensor).nbytes)
+    out_bytes = int(np.asarray(out_tensor).nbytes)
     total = in_bytes + 2 * out_bytes
     if total > TB_MEM_BUDGET:
         raise ValueError(f"test needs {total} B of TB data memory, budget {TB_MEM_BUDGET} B")
 
 
-def make_input_tensor(params: dict, seed: int) -> np.ndarray:
+def elem_dtype(elem_width: int):
+    """The unsigned numpy dtype of an element of `elem_width` bits."""
+    return {8: np.uint8, 16: np.uint16, 32: np.uint32}[elem_width]
+
+
+def make_input_tensor(params: dict, seed: int, elem_width: int = 8) -> np.ndarray:
     c, m, n = params["SIZE_C"], params["SIZE_M"], params["SIZE_N"]
     if params["COUNT"]:
-        return np.arange(c * m * n, dtype=np.uint8).reshape(c, m, n)
+        return np.arange(c * m * n, dtype=elem_dtype(elem_width)).reshape(c, m, n)
     rng = np.random.default_rng(seed)
-    return rng.integers(0, 256, size=(c, m, n), dtype=np.uint8)
+    return rng.integers(0, 1 << elem_width, size=(c, m, n), dtype=elem_dtype(elem_width))
 
 
 def golden_for(params: dict, in_tensor: np.ndarray, beat: int):
@@ -91,18 +96,18 @@ def golden_for(params: dict, in_tensor: np.ndarray, beat: int):
     raise ValueError(f"Unsupported DATAMOVER_MODE: {mode}")
 
 
-def generate_task_data(entry: dict, seed: int, beat: int) -> TaskData:
+def generate_task_data(entry: dict, seed: int, beat: int, elem_width: int = 8) -> TaskData:
     params = entry["params"]
-    in_tensor, out_tensor = golden_for(params, make_input_tensor(params, seed), beat)
+    in_tensor, out_tensor = golden_for(params, make_input_tensor(params, seed, elem_width), beat)
     check_mem_budget(in_tensor, out_tensor)
     return TaskData(name=entry["name"], params=params, in_tensor=in_tensor, out_tensor=out_tensor)
 
 
-def generate_chain_data(entry: dict, seed: int, beat: int):
+def generate_chain_data(entry: dict, seed: int, beat: int, elem_width: int = 8):
     """Compose a chain of ops, each consuming the previous output as a flat byte
-    sequence. Returns (input_tensor, [(params, out_tensor), ...] per stage)."""
+    element sequence. Returns (input_tensor, [(params, out_tensor), ...] per stage)."""
     chain = entry["chain"]
-    input_tensor = make_input_tensor(chain[0], seed)
+    input_tensor = make_input_tensor(chain[0], seed, elem_width)
     cur = input_tensor
     stages = []
     for params in chain:

@@ -97,7 +97,7 @@ def main() -> int:
     os.makedirs(args.output_dir, exist_ok=True)
 
     if "chain" in entry:
-        input_tensor, stages = generate_chain_data(entry, args.seed, beat_elems(hw))
+        input_tensor, stages = generate_chain_data(entry, args.seed, beat_elems(hw), hw["ELEM_WIDTH"])
         n = len(stages)
         metas = []
         for i, (params, out) in enumerate(stages):
@@ -118,7 +118,7 @@ def main() -> int:
               f"in={tuple(input_tensor.shape)} out={tuple(stages[-1][1].shape)}")
         return 0
 
-    result = generate_task_data(entry, args.seed, beat_elems(hw))
+    result = generate_task_data(entry, args.seed, beat_elems(hw), hw["ELEM_WIDTH"])
     meta = emit_task_artifacts(result, args.output_dir, index=0)
     write_workload_header([meta], hw, args.output_dir)
     write_test_config_mk(hw, args.output_dir)

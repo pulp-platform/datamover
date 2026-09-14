@@ -45,14 +45,14 @@ def emit_task_artifacts(result, output_dir: str, index: int, in_from=None, verif
     buffer feeds this task's input (chain wiring).
     verify: True to emit a golden_out array and check this task's output.
     """
-    out_size = int(np.prod(result.out_tensor.shape))
+    out_size = int(np.asarray(result.out_tensor).nbytes)
     guard = f"TASK{index}_DATA_H"
     path = os.path.join(output_dir, f"task{index}_data.h")
 
     lines = [f"#ifndef {guard}", f"#define {guard}", "", "#include <stdint.h>", "",
              f"#define TASK{index}_OUT_SIZE {out_size}", ""]
     if in_from is None:
-        in_size = int(np.prod(result.in_tensor.shape))
+        in_size = int(np.asarray(result.in_tensor).nbytes)
         lines += [f"#define TASK{index}_IN_SIZE  {in_size}", "",
                   f"uint8_t task{index}_golden_in[{in_size}] __attribute__((aligned(8))) = {{"]
         lines += hex_byte_lines(result.in_tensor)

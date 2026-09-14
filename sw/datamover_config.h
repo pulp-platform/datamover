@@ -51,6 +51,8 @@
 #endif
 #define DATAMOVER_BANDWIDTH_ELEMS (DATAMOVER_BANDWIDTH_ALIGNED / DATAMOVER_ELEM_WIDTH)
 #define DATAMOVER_WORD_ELEMS      (DATAMOVER_WORD_WIDTH / DATAMOVER_ELEM_WIDTH)
+// The pointers are byte addresses; the offsets and the strides count elements.
+#define DATAMOVER_ELEM_BYTES      (DATAMOVER_ELEM_WIDTH / 8)
 // The largest pass count of one unfold or fold job, the width of tensor_size_m.
 #define DATAMOVER_MAX_PASSES      0xFFFF
 
@@ -135,6 +137,10 @@ typedef struct {
 #define DATAMOVER_FIELD(reg, field, val) \
   (((uint32_t)(val) << DATAMOVER_REGIF__##reg##__##field##_bp) & DATAMOVER_REGIF__##reg##__##field##_bm)
 
+static inline uint32_t dm_ptr(const void *base, uint32_t elems) {
+  return (uint32_t)(uintptr_t)base + elems * DATAMOVER_ELEM_BYTES;
+}
+
 static inline uint32_t dm_ceil_div(uint32_t a, uint32_t b) {
   return (a + b - 1) / b;
 }
@@ -192,8 +198,8 @@ static inline __attribute__((always_inline)) void datamover_build_copy(datamover
   uint32_t total_accesses = (size_m * size_n) / DATAMOVER_BANDWIDTH_ELEMS;
   if ((size_m * size_n) % DATAMOVER_BANDWIDTH_ELEMS != 0) total_accesses += 1;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out;
+  cfg->in_ptr           = dm_ptr(in, 0);
+  cfg->out_ptr          = dm_ptr(out, 0);
   cfg->tot_len          = total_accesses;
   cfg->out_tot_len      = total_accesses;
   dm_in(cfg, 0, DATAMOVER_BANDWIDTH_ELEMS, total_accesses);
@@ -225,8 +231,8 @@ static inline __attribute__((always_inline)) void datamover_build_transpose(data
   uint32_t n_tiles = dm_ceil_div(band_cols, BWE);
   uint32_t cols_per_tile = (band_cols >= BWE) ? BWE : band_cols;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in + col_start;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out + col_start * size_m;
+  cfg->in_ptr           = dm_ptr(in, col_start);
+  cfg->out_ptr          = dm_ptr(out, col_start * size_m);
   cfg->tot_len          = size_m * n_tiles;
   cfg->out_tot_len      = n_tiles * (cols_per_tile / t) * chunks;
   dm_in(cfg, 0, size_n, size_m);
@@ -250,8 +256,8 @@ static inline __attribute__((always_inline)) void datamover_build_block_complete
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
   uint32_t n_blocks = size_n / BWE;
 
-  cfg->in_ptr      = (uint32_t)(uintptr_t)in;
-  cfg->out_ptr     = (uint32_t)(uintptr_t)out;
+  cfg->in_ptr      = dm_ptr(in, 0);
+  cfg->out_ptr     = dm_ptr(out, 0);
   cfg->tot_len     = size_m * n_blocks;
   cfg->out_tot_len = size_m * n_blocks;
   dm_in(cfg, 0, BWE, 1);
@@ -277,8 +283,8 @@ static inline __attribute__((always_inline)) void datamover_build_block_leftover
   uint32_t n_blocks = size_n / BWE;
   uint32_t leftover = size_n % BWE;
 
-  cfg->in_ptr      = (uint32_t)(uintptr_t)in  + n_blocks * BWE;
-  cfg->out_ptr     = (uint32_t)(uintptr_t)out + n_blocks * size_m * BWE;
+  cfg->in_ptr      = dm_ptr(in, n_blocks * BWE);
+  cfg->out_ptr     = dm_ptr(out, n_blocks * size_m * BWE);
   cfg->tot_len     = size_m;
   cfg->out_tot_len = size_m;
   dm_in(cfg, 0, BWE, 1);
@@ -302,8 +308,8 @@ static inline __attribute__((always_inline)) void datamover_build_block_rev_comp
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
   uint32_t n_blocks = size_n / BWE;
 
-  cfg->in_ptr      = (uint32_t)(uintptr_t)in;
-  cfg->out_ptr     = (uint32_t)(uintptr_t)out;
+  cfg->in_ptr      = dm_ptr(in, 0);
+  cfg->out_ptr     = dm_ptr(out, 0);
   cfg->tot_len     = size_m * n_blocks;
   cfg->out_tot_len = size_m * n_blocks;
   dm_in(cfg, 0, BWE, size_m * n_blocks);
@@ -329,8 +335,8 @@ static inline __attribute__((always_inline)) void datamover_build_block_rev_left
   uint32_t n_blocks = size_n / BWE;
   uint32_t leftover = size_n % BWE;
 
-  cfg->in_ptr      = (uint32_t)(uintptr_t)in  + n_blocks * size_m * BWE;
-  cfg->out_ptr     = (uint32_t)(uintptr_t)out + n_blocks * BWE;
+  cfg->in_ptr      = dm_ptr(in, n_blocks * size_m * BWE);
+  cfg->out_ptr     = dm_ptr(out, n_blocks * BWE);
   cfg->tot_len     = size_m;
   cfg->out_tot_len = size_m;
   dm_in(cfg, 0, leftover, size_m);
@@ -360,8 +366,8 @@ static inline __attribute__((always_inline)) void datamover_build_unfold(datamov
   uint32_t w_tiles = dm_ceil_div(band_cols, BWE);
   uint32_t cols_per_tile = (band_cols >= BWE) ? BWE : band_cols;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in + col_start;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out + (col_start / side_P) * size_c;
+  cfg->in_ptr           = dm_ptr(in, col_start);
+  cfg->out_ptr          = dm_ptr(out, (col_start / side_P) * size_c);
   cfg->tot_len          = size_c * size_h * w_tiles;
   cfg->out_tot_len      = c_tiles * size_h * band_cols;
   dm_in(cfg, 0, size_h * size_w, size_c);
@@ -391,8 +397,8 @@ static inline __attribute__((always_inline)) void datamover_build_fold(datamover
   uint32_t w_tiles = dm_ceil_div(band_cols, BWE);
   uint32_t cols_per_tile = (band_cols >= BWE) ? BWE : band_cols;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in + (col_start / side_P) * size_c;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out + col_start;
+  cfg->in_ptr           = dm_ptr(in, (col_start / side_P) * size_c);
+  cfg->out_ptr          = dm_ptr(out, col_start);
   cfg->tot_len          = c_tiles * size_h * band_cols;
   cfg->out_tot_len      = size_c * size_h * w_tiles;
   dm_in(cfg, 0, size_c * size_h * size_w / P, side_P);
@@ -422,8 +428,8 @@ static inline __attribute__((always_inline)) void datamover_build_unfold_block(d
   uint32_t tiles  = dm_ceil_div(c_len, BWE);
   uint32_t pitch  = (c_len < BWE) ? c_len : BWE;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in + c_off * BWE;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out + c_off * n_tok * DATAMOVER_UNFOLD_PATCH;
+  cfg->in_ptr           = dm_ptr(in, c_off * BWE);
+  cfg->out_ptr          = dm_ptr(out, c_off * n_tok * DATAMOVER_UNFOLD_PATCH);
   cfg->tot_len          = tiles * blocks * pitch;
   cfg->out_tot_len      = tiles * blocks * BWE;
   dm_in(cfg, 0, BWE, pitch);
@@ -451,8 +457,8 @@ static inline __attribute__((always_inline)) void datamover_build_fold_block(dat
   uint32_t tiles  = dm_ceil_div(c_len, BWE);
   uint32_t pitch  = (c_len < BWE) ? c_len : BWE;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in + c_off * n_tok * DATAMOVER_UNFOLD_PATCH;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out + c_off * BWE;
+  cfg->in_ptr           = dm_ptr(in, c_off * n_tok * DATAMOVER_UNFOLD_PATCH);
+  cfg->out_ptr          = dm_ptr(out, c_off * BWE);
   cfg->tot_len          = tiles * blocks * BWE;
   cfg->out_tot_len      = tiles * blocks * pitch;
   dm_in(cfg, 0, n_tok * pitch, 2);
@@ -527,8 +533,8 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
   uint32_t w_out = (size_w + 2 * pad - Kw) / S + 1;
   uint32_t row_bytes = h_out * w_out;
 
-  cfg->in_ptr     = (uint32_t)(uintptr_t)in;
-  cfg->out_ptr    = (uint32_t)(uintptr_t)out;
+  cfg->in_ptr     = dm_ptr(in, 0);
+  cfg->out_ptr    = dm_ptr(out, 0);
   cfg->matrix_dim = dm_matrix_dim(w_out, h_out);
 
   if (in_layout == DATAMOVER_IM2COL_IN_BLOCK) {
@@ -638,8 +644,8 @@ static inline __attribute__((always_inline)) uint32_t datamover_build_im2col_lef
   uint32_t row_bytes = h_out * w_out;
   uint32_t tot_len   = h_out * Kh * Kw * size_c;
 
-  cfg->in_ptr           = (uint32_t)(uintptr_t)in  + w_full * S;
-  cfg->out_ptr          = (uint32_t)(uintptr_t)out + w_full;
+  cfg->in_ptr           = dm_ptr(in, w_full * S);
+  cfg->out_ptr          = dm_ptr(out, w_full);
   if (S == 2 && w_len > BWE / 2) {
     cfg->tot_len          = 2 * tot_len;
     cfg->out_tot_len      = tot_len;
@@ -691,8 +697,8 @@ static inline __attribute__((always_inline)) void datamover_build_im2row(datamov
 
   if (in_layout == DATAMOVER_IM2COL_IN_CHW) {
     uint32_t rpb = BWE / patch;
-    cfg->in_ptr      = (uint32_t)(uintptr_t)in;
-    cfg->out_ptr     = (uint32_t)(uintptr_t)out;
+    cfg->in_ptr      = dm_ptr(in, 0);
+    cfg->out_ptr     = dm_ptr(out, 0);
     cfg->tot_len     = size_c * size_h * size_w / patch;
     cfg->out_tot_len = cfg->tot_len;
     dm_in(cfg, 0, size_w, rpb);
@@ -715,8 +721,8 @@ static inline __attribute__((always_inline)) void datamover_build_im2row(datamov
       case 1:  run = 16; in_off = pitch;      out_off = 48;  d0_in = pitch + 32; d0_out = 2 * blk - 48; break;
       default: run = 32; in_off = pitch + 16; out_off = blk; d0_in = pitch - 16; d0_out = 32;           break;
     }
-    cfg->in_ptr      = (uint32_t)(uintptr_t)in + in_off;
-    cfg->out_ptr     = (uint32_t)(uintptr_t)out + out_off;
+    cfg->in_ptr      = dm_ptr(in, in_off);
+    cfg->out_ptr     = dm_ptr(out, out_off);
     cfg->tot_len     = 2 * (patch / 4) * n_tok;
     cfg->out_tot_len = cfg->tot_len;
     dm_in(cfg, 0, d0_in, 2);

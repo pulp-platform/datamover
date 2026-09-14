@@ -114,7 +114,7 @@ def validate_candidate(op: str, params: dict, hw, deep: bool = False):
         cfg = load_hw_config(hw)
         beat = beat_elems(cfg)
         full = normalize_params({**OP_TO_PARAMS[op], **test_params(params)}, beat, align_elems(cfg), hw_features(cfg))
-        generate_task_data({"name": "candidate", "params": full}, 0, beat)
+        generate_task_data({"name": "candidate", "params": full}, 0, beat, cfg["ELEM_WIDTH"])
         return auto_test_name(full, hw_tag(hw)), None
     except (ValueError, AssertionError, KeyError, TypeError, IndexError, RuntimeError) as e:
         return None, f"{type(e).__name__}: {e}"

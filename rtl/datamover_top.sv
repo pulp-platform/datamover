@@ -140,6 +140,7 @@ module datamover_top
     .NumCores   ( NumCores                     ),
     .NumContext ( NumContext                   ),
     .IdWidth    ( IdWidth                      ),
+    .ElemWidth  ( ElemWidth                    ),
     .TranspLen  ( BandwidthAligned / ElemWidth )
   ) i_ctrl (
     .clk_i            ( clk_i          ),

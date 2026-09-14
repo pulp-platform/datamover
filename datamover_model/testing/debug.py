@@ -15,12 +15,14 @@ DATAMOVER_IM2COL = 6
 
 
 def _save_dec_hex(arr: np.ndarray, path: str, cols: int = 16) -> None:
-    flat = arr.reshape(-1).astype(np.uint8)
+    flat = np.asarray(arr).reshape(-1)
+    digits = len(str(np.iinfo(flat.dtype).max))
+    nibbles = 2 * flat.dtype.itemsize
     with open(path, "w") as f:
         for row in range(0, len(flat), cols):
             chunk = flat[row:row + cols]
-            dec = "  ".join(f"{v:3d}" for v in chunk)
-            hex_ = " ".join(f"{v:02x}" for v in chunk)
+            dec = "  ".join(f"{int(v):{digits}d}" for v in chunk)
+            hex_ = " ".join(f"{int(v):0{nibbles}x}" for v in chunk)
             f.write(f"[{row:6d}]  {dec}    |  {hex_}\n")
 
 
@@ -51,7 +53,7 @@ def _save_chw(arr: np.ndarray, path: str, marker_stride: int = 0) -> None:
                 for wi in range(w):
                     if marker_stride and wi and wi % marker_stride == 0:
                         parts.append("|")
-                    parts.append(f"{int(arr[ci, hi, wi]) & 0xff:02x}".rjust(w_iw))
+                    parts.append(f"{int(arr[ci, hi, wi]):0{2 * arr.dtype.itemsize}x}".rjust(w_iw))
                 f.write(f"{hi:{h_iw}d} | {' '.join(parts)}\n")
             f.write("\n")
 
@@ -85,7 +87,7 @@ def _save_im2col_matrix(matrix: np.ndarray, path: str, kh: int, kw: int, c: int,
             for col in range(ncol):
                 if col % w_out == 0:
                     parts.append("|")
-                parts.append(f"{int(matrix[r, col]) & 0xff:02x}")
+                parts.append(f"{int(matrix[r, col]):0{2 * matrix.dtype.itemsize}x}")
             f.write(f"{label} : {' '.join(parts)}\n")
 
 

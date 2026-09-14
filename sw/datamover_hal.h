@@ -268,7 +268,8 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
       return DATAMOVER_OK;
     case DATAMOVER_TRANSP:
       for (uint32_t c = 0; c < t->size_c; c++)
-        datamover_transpose(t->in_ptr + c * t->size_m * t->size_n, t->out_ptr + c * t->size_m * t->size_n,
+        datamover_transpose(t->in_ptr + c * t->size_m * t->size_n * DATAMOVER_ELEM_BYTES,
+                            t->out_ptr + c * t->size_m * t->size_n * DATAMOVER_ELEM_BYTES,
                             t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;
     case DATAMOVER_BLOCK_LAYOUT:
