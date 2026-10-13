@@ -9,7 +9,7 @@ package:
 dependencies:
   common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.39.0 }
   hwpe-stream: { git: "https://github.com/pulp-platform/hwpe-stream.git", rev: 19c68aa49b2d60792f115e939adca72360752f6e } # branch: lkesting/partial_tiles
-  hci:         { git: "https://github.com/pulp-platform/hci.git", rev: 8793cf651c9d9fe4f3aa78f53d2dabddaeb56353 } # branch: lkesting/konark
+  hci:         { git: "https://github.com/pulp-platform/hci.git", rev: e1916ccb7f5bbaecb17d646fd90e182b42833748 } # branch: lkesting/konark
   hwpe-ctrl:   { git: "https://github.com/pulp-platform/hwpe-ctrl.git", version: 3.1.1 } # SystemRDL-based hwpe_ctrl_target flow
   ibex:        { git: "https://github.com/pulp-platform/ibex.git", rev: "pulpissimo-v6.1.2", target: datamover_standalone } # RISC-V core for testbench
 
