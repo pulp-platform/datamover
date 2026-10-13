@@ -152,6 +152,20 @@ sweep:im2col:
   extends: .sweep
   variables: {SUITE: im2col_sweep}
 
+# SpyGlass lint of the RTL. Only the violations in rtl/ fail the job.
+spyglass:
+  stage: test
+  needs:
+    - setup
+  script:
+    - make spyglass
+  artifacts:
+    when: always
+    expire_in: 2 days
+    paths:
+      - util/lint/build/spyglass.log
+      - util/lint/build/datamover_top_wrap/consolidated_reports/
+
 # Merges every default-profile database of the test stage into one report.
 coverage-default:
   extends: .py-setup

@@ -26,6 +26,9 @@ include mk/config.mk
 include mk/questa.mk
 include mk/vcs.mk
 
+# SpyGlass lint of the RTL.
+include mk/spyglass.mk
+
 include sw/sw.mk
 
 .PHONY: validate-pipeline-inputs

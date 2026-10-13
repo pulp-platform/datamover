@@ -25,3 +25,7 @@ rtl/ctrl/regif/html/
 # Backend
 nonfree/
 backend/
+docs/*
+
+# SpyGlass lint build
+util/lint/build/
