@@ -192,7 +192,7 @@ addrmap datamover_regif {
 
     reg dm_ctrl_engine {
         field {
-            desc = "im2col unit: the kernel side K, 3 or 5. A kernel of 5 needs Im2colKernel 5.";
+            desc = "im2col unit: the kernel side K, odd, from 3 to Im2colKernel.";
             hw = r;
             sw = rw;
         } im2col_kernel[25:23] = 0;

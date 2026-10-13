@@ -49,7 +49,7 @@ default.
 | `NumCores`, `NumContext`, `IdWidth` | 8, 2, 10 | Event targets, job queue depth, peripheral ID width |
 | `AddrWidth` | 32 | TCDM address width (wrapper only) |
 | `EnableIm2col`, `EnableBuffer` | 1, 1 | Build the im2col unit; build the element buffer (transpose, unfold, fold) |
-| `Im2colKernel`, `Im2colMinLog2W` | 3, 3 | Largest im2col kernel side (3 or 5); log2 of the smallest image row width |
+| `Im2colKernel`, `Im2colMinLog2W` | 3, 3 | Largest im2col kernel side (odd, 3 to 7); log2 of the smallest image row width |
 | `FifoDepth` | 2 | Depth of the engine stream FIFOs |
 
 One beat holds `(Bandwidth - (MisalignedAccesses ? word : 0)) / ElemWidth` elements. The beat is the
@@ -66,6 +66,7 @@ validator:
 | `default` | 576 | 64 | 8 | yes | | 64 | yes |
 | `bw128_w32_nobuf` | 128 | 32 | 8 | no | `ENABLE_BUFFER` 0 | 16 | no |
 | `bw256_w64_e16` | 256 | 64 | 16 | no | | 16 | no |
+| `bw256_w64_k7` | 256 | 64 | 8 | no | `IM2COL_KERNEL` 7 | 32 | im2col |
 
 ## Operating modes
 
@@ -95,8 +96,9 @@ datamover_wait();
 ## Limits
 
 - Without misaligned accesses, every strided row starts and ends on a word.
-- The im2col unit takes K 3 or `Im2colKernel`, stride 1, and a row width that is a power of two from
-  `2**Im2colMinLog2W` to the beat. The stride-2 merge needs `W_out` a multiple of the beat.
+- The im2col unit takes an odd K from 3 to `Im2colKernel`, stride 1, a border of K / 2, and a row
+  width that is a power of two from `2**Im2colMinLog2W` to the beat.
+- The stride-2 merge reads a pre-padded row-major image, with `W_out` a multiple of the beat.
 - HWC im2row needs a 64-element beat.
 - Matrix sizes are 16 bits wide. A transpose with more than one channel runs one job per channel.
 

@@ -20,8 +20,8 @@
 // conv_stride 1: the input is (C x pixels) in NumElems-pixel blocks with image rows of W pixels,
 // W a power of two from 2**Im2colMinLog2W to NumElems. The unit keeps Im2colKernel/2 previous
 // blocks, the current block, and Im2colKernel/2 - 1 next blocks, and it reads the last next block
-// from the input stream. For a kernel side K, 3 or 5, it emits K*K taps per block with a zero
-// border of K/2 pixels.
+// from the input stream. For an odd kernel side K up to Im2colKernel, it emits K*K taps per block
+// with a zero border of K/2 pixels.
 //
 // conv_stride 2: every input beat gives NumElems/2 output pixels, the even input columns. Two
 // beats merge into one output beat.
@@ -32,7 +32,7 @@ module datamover_im2col
 #(
   parameter int unsigned NumElems       = 64,
   parameter int unsigned ElemWidth      = 8,
-  parameter int unsigned Im2colKernel   = 3,  // largest kernel side, 3 or 5
+  parameter int unsigned Im2colKernel   = 3,  // largest kernel side, odd, 3 to 7
   parameter int unsigned Im2colMinLog2W = 3   // log2 of the smallest image row width
 ) (
   input  logic                                   clk_i,
@@ -74,17 +74,18 @@ module datamover_im2col
   logic [CntWidth-1:0]                             n_pixels;
   logic [TapWidth-1:0]                             kh_d, kh_q, kw_d, kw_q, k_last, row_idx, col_idx;
   logic [TapWidth-1:0]                             prime_cnt_d, prime_cnt_q;
-  logic [1:0]                                      reach;
+  logic [TapWidth-1:0]                             reach;
+  logic [Im2colKernelWidth-1:0]                    k_reach;
   logic                                            half_d, half_q, out_valid, out_free;
   logic                                            merge, last_blk, last_tap, need_next, prime_last;
   logic                                            drain_valid, out_load, prime_hs, shift, accept;
 
-  // A kernel of 3 on a 5x5 unit uses the inner taps of the window.
-  if (Reach > 1) begin : gen_reach_runtime
-    assign reach = (ctrl_i.im2col_kernel == 5) ? 2'd2 : 2'd1;
-  end else begin : gen_reach_fixed
-    assign reach = 2'd1;
-  end
+  // A kernel smaller than the unit uses the inner taps of the window. The clamp keeps a kernel
+  // field outside 3 to Im2colKernel inside the window.
+  assign k_reach = ctrl_i.im2col_kernel >> 1;
+  assign reach   = (k_reach == '0)                         ? TapWidth'(1)     :
+                   (k_reach > Im2colKernelWidth'(Reach))   ? TapWidth'(Reach) :
+                                                             TapWidth'(k_reach);
 
   assign merge     = (ctrl_i.conv_stride != 1);
   assign w_idx     = ctrl_i.im2col_log2w - Im2colMinLog2W;
@@ -221,5 +222,12 @@ module datamover_im2col
   `FFARNC(cur_q,       cur_d,       clear_i, '0,    clk_i, rst_ni)
   `FFARNC(fut_q,       fut_d,       clear_i, '0,    clk_i, rst_ni)
   `FFARNC(lo_q,        lo_d,        clear_i, '0,    clk_i, rst_ni)
+
+`ifndef SYNTHESIS
+  initial begin
+    assert ((Im2colKernel & 1) == 1 && Im2colKernel >= 3 && Im2colKernel <= 7)
+      else $fatal(1, "Im2colKernel (%0d) must be odd, from 3 to 7", Im2colKernel);
+  end
+`endif
 
 endmodule // datamover_im2col

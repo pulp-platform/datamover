@@ -92,9 +92,13 @@ test:stallability:
   extends: .suite
   variables: {SUITE: stallability, TEST_JSON: tests/stallability.json}
 
+# bw256_w64_k7 adds the 7x7 unit, so the unit runs with a reach of 1, 2, and 3.
 test:im2col:
   extends: .suite
   variables: {SUITE: im2col, TEST_JSON: tests/im2col.json}
+  parallel:
+    matrix:
+      - HW_CONFIG: [default, bw128_w32, bw256_w64, bw256_w64_k7]
 
 test:control:
   extends: .suite

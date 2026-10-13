@@ -186,7 +186,7 @@ def _validate_im2col_params(params: dict, beat: int, features: dict) -> None:
     if s not in (1, 2):
         raise ValueError(f"im2col CONV_STRIDE must be 1 or 2, got {s}")
     if layout == ("BLOCK", "COL_BLOCK"):
-        kernels = (3, 5) if features["IM2COL_KERNEL"] >= 5 else (3,)
+        kernels = tuple(range(3, features["IM2COL_KERNEL"] + 1, 2))
         if kh != kw or kh not in kernels or s != 1 or pad != kh // 2:
             raise ValueError(f"BLOCK im2col is K x K with K in {kernels}, stride 1, pad K // 2, got K={kh}x{kw} S={s} pad={pad}")
         widths = im2col_unit_widths(beat, features["IM2COL_MIN_LOG2W"])

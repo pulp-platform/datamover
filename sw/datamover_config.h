@@ -497,7 +497,7 @@ static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_
   uint32_t w_out = (size_w + 2 * pad - kernel_w) / conv_stride + 1;
   if (in_layout == DATAMOVER_IM2COL_IN_BLOCK && out_layout == DATAMOVER_IM2COL_OUT_COL_BLOCK) {
     if (kernel_h != kernel_w || conv_stride != 1 || pad != kernel_h / 2) return DATAMOVER_ERR;
-    if (kernel_h != 3 && !(kernel_h == 5 && DATAMOVER_IM2COL_KERNEL >= 5)) return DATAMOVER_ERR;
+    if (kernel_h < 3 || kernel_h > DATAMOVER_IM2COL_KERNEL || (kernel_h & 1) == 0) return DATAMOVER_ERR;
     if (size_w < (1u << DATAMOVER_IM2COL_MIN_LOG2W) || size_w > BWE || (size_w & (size_w - 1)) != 0) return DATAMOVER_ERR;
     return ((size_h * size_w) % BWE == 0) ? DATAMOVER_OK : DATAMOVER_ERR;
   }
@@ -516,7 +516,7 @@ static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_
 
 // Tensor (C,H,W) -> im2col matrix (Kh*Kw*C, H_out*W_out); row = ci*Kh*Kw+kh*Kw+kw, col = oh*W_out+ow.
 // conv_stride applies to both spatial dims. Three paths:
-// - BLOCK in, COL_BLOCK out: the im2col unit, K x K with K 3 or 5 and a border of K / 2 pixels, stride 1,
+// - BLOCK in, COL_BLOCK out: the im2col unit, K x K with K odd up to DATAMOVER_IM2COL_KERNEL, a border of K / 2, stride 1,
 //   W a power of two from 2**DATAMOVER_IM2COL_MIN_LOG2W to the beat.
 // - CHW in, stride 2, w_out above 32: the im2col unit merges two half beats; COL_BLOCK needs
 //   w_out a multiple of the beat, COL takes the leftover columns in a second job.

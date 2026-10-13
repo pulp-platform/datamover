@@ -34,7 +34,7 @@ module datamover_top
   parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
   parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col unit
   parameter bit          EnableBuffer       = datamover_pkg::EnableBuffer,       // instantiate the element buffer
-  parameter int unsigned Im2colKernel       = datamover_pkg::Im2colKernel,       // largest im2col unit kernel, 3 or 5
+  parameter int unsigned Im2colKernel       = datamover_pkg::Im2colKernel,       // largest im2col unit kernel, odd, 3 to 7
   parameter int unsigned Im2colMinLog2W     = datamover_pkg::Im2colMinLog2W,     // log2 of the smallest im2col unit row width
   parameter int unsigned FifoDepth          = datamover_pkg::FifoDepth,          // depth of the engine stream FIFOs
   parameter hci_size_parameter_t `HCI_SIZE_PARAM(tcdm) = '0,

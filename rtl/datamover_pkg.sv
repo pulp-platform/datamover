@@ -61,7 +61,7 @@ package datamover_pkg;
   localparam bit          EnableIm2col       = 1'b1;
   // The element buffer is instantiated when EnableBuffer is set: transpose, unfold, and fold need it.
   localparam bit          EnableBuffer       = 1'b1;
-  // The im2col unit supports kernels up to Im2colKernel (3 or 5) and rows from 2**Im2colMinLog2W pixels.
+  // The im2col unit supports odd kernels up to Im2colKernel (3 to 7) and rows from 2**Im2colMinLog2W pixels.
   localparam int unsigned Im2colKernel       = 3;
   localparam int unsigned Im2colMinLog2W     = 3;
   localparam int unsigned FifoDepth          = 2;
@@ -83,7 +83,7 @@ package datamover_pkg;
     logic [ConvStrideWidth-1:0]     conv_stride;    // im2col column subsample, 1 or 2
     logic                             im2col_pack;    // im2col: run the im2col unit
     logic [Im2colLog2wWidth-1:0]    im2col_log2w;   // im2col unit: log2 of the image row width
-    logic [Im2colKernelWidth-1:0]    im2col_kernel;  // im2col unit: kernel side, 3 or 5
+    logic [Im2colKernelWidth-1:0]    im2col_kernel;  // im2col unit: kernel side, odd, 3 to Im2colKernel
     datamover_mode_e                  datamover_mode;
     logic [TensorSizeWidth-1:0]     tensor_size_m;
     logic [TensorSizeWidth-1:0]     tensor_size_n;
