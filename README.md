@@ -5,10 +5,14 @@
 [![License HW](https://img.shields.io/badge/License%20HW-SHL--0.51-green)](https://solderpad.org/licenses/SHL-0.51/)
 [![License SW](https://img.shields.io/badge/License%20SW-Apache--2.0-orange)](https://www.apache.org/licenses/LICENSE-2.0)
 [![CI status](https://github.com/pulp-platform/datamover/actions/workflows/gitlab-ci.yml/badge.svg?branch=lkesting/konark)](https://github.com/pulp-platform/datamover/actions/workflows/gitlab-ci.yml?query=branch%3Alkesting%2Fkonark)
+[![RTL coverage](https://iis-git.ee.ethz.ch/github-mirror/datamover/badges/lkesting%2Fkonark/coverage.svg?job=coverage-default&key_text=coverage+default&key_width=110)](https://iis-git.ee.ethz.ch/github-mirror/datamover/-/jobs/artifacts/lkesting%2Fkonark/browse/simulation/vcs/cov/default/urgReport?job=coverage-default)
 
-**Ratha** (formerly Datamover) is a parameterizable HWPE that operates on tensors stored in TCDM, reading from one region and writing back the transformed result to another. Supported transformations are element-wise transpose, mapping a tensor to 'CIM layout', a blocked layout with 64 elements consumed by the Surya accelerator, and unfold/fold for MobileViT-style convolutions. This repository contains the SystemVerilog RTL, a Python golden model, and a RISC-V core driven testbench with JSON-defined test suites.
+**Ratha** (formerly Datamover) is an HWPE that reads a tensor from TCDM, transforms it, and writes
+the result to another TCDM region. It transposes, converts to and from the block layout (column
+blocks of one beat), unfolds and folds MobileViT patches, and makes im2col operands. The repository
+holds the RTL, a Python golden model, and an Ibex testbench with JSON test suites.
 
-## 🚀 Quick Start
+## Quick start
 
 ```bash
 uv sync --python 3.11
@@ -17,88 +21,132 @@ bender-0.31.0 checkout
 make run-all-tests
 ```
 
-`make run-all-tests` auto-loads the `riscv` env wrapper; single-test invocations must be prefixed with `riscv` manually.
+`make run-all-tests` loads the `riscv` environment. Prefix a single-test command with `riscv`.
 
-## Repository Structure
+## Repository structure
 
-- `rtl/` — `datamover_top{_wrap}.sv`, `datamover_engine.sv`, `datamover_im2col.sv`, `datamover_buffer.sv`, `datamover_streamer.sv`, `datamover_package.sv`
-- `rtl/ctrl/` — SystemRDL register map (`datamover_regif.rdl`), control wrapper around `hwpe_ctrl_target` + regif + job FSM (`datamover_ctrl.sv`), and the generated register file (`regif/`)
-- `rtl/verif/` — Ibex-driven SystemVerilog testbench (`tb_datamover.sv`, `tb_dummy_memory.sv`)
-- `scripts/` — register-interface generation from the RDL (`gen_regif.sh`)
-- `sw/` — Software for the testbench and the HAL (`datamover_config.h`, `datamover_hal.h`, generated `datamover_regif.h`, `tb_datamover.c`)
-- `datamover_model/` — Python package: `golden_model/` (transforms), `headers/` (C header emit), `workloads/` (suite parsing + `cli`), `testing/` (`runner`, `validate`, reports)
-- `configs/` — `hw_configs.json`
-- `tests/` — JSON test suites
-- `mk/config.mk` — HW config, workload defaults
-- `modelsim/` — simulation infra; RTL is compiled once per HW tag into `builds/<BUILD_TAG>/` and shared by every test, while per-test stimuli live in `tests/<TEST_NAME>/`
+| Path | Content |
+|---|---|
+| `rtl/` | `datamover_top{_wrap}`, engine, im2col unit, element buffer, streamer, `datamover_pkg` |
+| `rtl/ctrl/` | Register map (`datamover_regif.rdl`), control (`datamover_ctrl.sv`), generated register file (`regif/`, `make regif`) |
+| `rtl/verif/` | Testbench (`tb_datamover.sv`, `tb_dummy_memory.sv`) |
+| `sw/` | HAL (`datamover_hal.h`, `datamover_config.h`) and the testbench program |
+| `datamover_model/` | Golden model, workload parser and validator, test runner |
+| `configs/`, `tests/` | HW profiles (`hw_configs.json`) and JSON test suites |
+| `mk/` | HW config and test flow, Questa, VCS with coverage, SpyGlass lint |
+| `util/lint/` | SpyGlass script and report check |
 
-## Hardware Parameters
+## Hardware parameters
 
-Set via `config.mk` defaults or per-test via `configs/hw_configs.json`:
+`datamover_top` has HCI ports, `datamover_top_wrap` has flat ports. `datamover_pkg` holds every
+default.
 
-| Parameter             | Meaning |
-|-----------------------|---------|
-| `BANDWIDTH`           | Total HWPE↔TCDM port width (bits) |
-| `WORD_WIDTH`          | Memory-bank word width (bits) |
-| `ELEM_WIDTH`          | Element width (bits) |
-| `MISALIGNED_ACCESSES` | Non-power-of-two strobed accesses |
+| Parameter | Default | Meaning |
+|---|---|---|
+| `Bandwidth` | 576 | TCDM port width in bits, a multiple of the word width |
+| `ElemsPerWord`, `ElemWidth` | 8, 8 | Elements per memory word; element width in bits (8, 16, or 32) |
+| `MisalignedAccesses` | 1 | Accesses that start inside a word; the realignment takes one word of the port |
+| `NumCores`, `NumContext`, `IdWidth` | 8, 2, 10 | Event targets, job queue depth, peripheral ID width |
+| `AddrWidth` | 32 | TCDM address width (wrapper only) |
+| `EnableIm2col`, `EnableBuffer` | 1, 1 | Build the im2col unit; build the element buffer (transpose, unfold, fold) |
+| `Im2colKernel`, `Im2colMinLog2W` | 3, 3 | Largest im2col kernel side (3 or 5); log2 of the smallest image row width |
+| `FifoDepth` | 2 | Depth of the engine stream FIFOs |
 
-**Constraints**: `BANDWIDTH` must divide by `WORD_WIDTH`; `WORD_WIDTH/ELEM_WIDTH` must be a power of two. Transpose only supports `NUM_ELEM_WORD ∈ {2, 4}`; granularity is selected at runtime via `TRANSP_MODE`.
+One beat holds `(Bandwidth - (MisalignedAccesses ? word : 0)) / ElemWidth` elements. The beat is the
+block width of the block layout and the widest im2col row. Pointers and TCDM addresses count bytes;
+strides and lengths count elements.
 
-## Operating Modes
+`HW_CONFIG` selects a profile of `configs/hw_configs.json` for the testbench, the HAL, and the
+validator:
 
-| `DATAMOVER_MODE` | Description |
-|------------------|-------------|
-| 0 | **Copy** — straight-through |
-| 1 | **Transpose** — granularity via `TRANSP_MODE` (1/2/4 elements) |
-| 2 | **CIM fwd/rev** — blocked layout (blocks of 64), `CIM_MODE` selects direction, `ROW_TILE_SIZE` controls geometry |
-| 3 | **CIMT fwd/rev** |
-| 4 | **Unfold** (MobileViT) — `LAYOUT` CHW (row-major) or CIM (64-column blocks on both sides) |
-| 5 | **Fold** (MobileViT) — inverse of unfold, same `LAYOUT` |
-| 6 | **im2col** — `KERNEL_SIZE_H/W`, `CONV_STRIDE`, `CONV_PAD`, `IM2COL_IN`, `IM2COL_OUT`. The im2col unit (`EnableIm2col`) writes 64-pixel block rows: 3x3, stride 1, pad 1 from a CIM input, or stride 2 from a row-major image. Other kernels pass through with beats of `W_out` pixels. `ROW_CIM` is im2row for kernel == stride |
+| Profile | Bandwidth | Word | Element | Misaligned | Features | Elements per beat | CI |
+|---|---|---|---|---|---|---|---|
+| `bw128_w32` | 128 | 32 | 8 | no | | 16 | yes |
+| `bw256_w64` | 256 | 64 | 8 | no | `IM2COL_KERNEL` 5 | 32 | yes |
+| `default` | 576 | 64 | 8 | yes | | 64 | yes |
+| `bw128_w32_nobuf` | 128 | 32 | 8 | no | `ENABLE_BUFFER` 0 | 16 | no |
+| `bw256_w64_e16` | 256 | 64 | 16 | no | | 16 | no |
 
-For register layout, see [datamover_package.sv](rtl/datamover_package.sv).
+## Operating modes
 
-## Running Tests
+| `DATAMOVER_MODE` | Operation |
+|---|---|
+| 0 | Copy |
+| 1 | Transpose of 1, 2, or 4 element groups (`TRANSP_MODE`) |
+| 2 | Block layout, forward or reverse (`BLOCK_MODE`) |
+| 3 | Block layout transpose |
+| 4, 5 | Unfold and fold of 2x2 patches, `LAYOUT` CHW or BLOCK |
+| 6 | im2col: the im2col unit (K x K, stride 1, border K / 2, BLOCK input), the stride-2 merge, a pass-through for other kernels, and im2row (`ROW_BLOCK`) for kernel == stride |
 
-```bash
-# Single test (note: riscv prefix required)
-riscv make run-sim-pipeline TEST_JSON=tests/copy.json TEST_NAME=COPY_8x8 GUI=0
+## HAL
 
-# A whole suite
-make run-test TEST_JSON=tests/cim.json PARALLEL=8
+`sw/datamover_hal.h` is header-only. Define `DATAMOVER_BASE_ADDR` and the `DATAMOVER_*` build macros
+(see `sw/sw.mk`) before the include.
 
-# A single test by name (headless by default; add GUI=1 to open in Questa)
-make run-test TEST_JSON=tests/cim.json TEST=<TEST_NAME>
-
-# All enabled suites
-make run-all-tests PARALLEL=8
+```c
+datamover_task_config_t task = { .mode = DATAMOVER_BLOCK_LAYOUT, .in_ptr = src, .out_ptr = dst,
+                                  .size_c = 1, .size_m = 196, .size_n = 768, .block_mode = 0 };
+if (datamover_run(&task) != DATAMOVER_OK) { /* the build cannot serve this shape */ }
+datamover_wait();
 ```
 
-### Quick tests (no JSON)
+`datamover_run` returns `DATAMOVER_ERR` for a job the build cannot serve.
 
-Run a single transform directly from the command line; HW comes from `HW_CONFIG`
-(a profile in `configs/hw_configs.json`, default `default`). Defined in `mk/config.mk`:
+## Limits
+
+- Without misaligned accesses, every strided row starts and ends on a word.
+- The im2col unit takes K 3 or `Im2colKernel`, stride 1, and a row width that is a power of two from
+  `2**Im2colMinLog2W` to the beat. The stride-2 merge needs `W_out` a multiple of the beat.
+- HWC im2row needs a 64-element beat.
+- Matrix sizes are 16 bits wide. A transpose with more than one channel runs one job per channel.
+
+`datamover_model/workloads/suite.py` checks the same rules and skips a test entry that the profile
+cannot serve.
+
+## Tests
 
 ```bash
-riscv make test-copy SIZE_M=64 SIZE_N=64 GUI=0
-riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2 HW_CONFIG=bw128_w32
-riscv make test-cim-layout SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
-riscv make test-cim-layout-reverse SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
-riscv make test-cim-layout-transpose SIZE_M=64 SIZE_N=128 ROW_TILE_SIZE=64 HW_CONFIG=bw128_w32
-riscv make test-unfold SIZE_C=64 SIZE_M=16 SIZE_N=16
-riscv make test-fold   SIZE_C=64 SIZE_M=16 SIZE_N=16
+make tests TEST_JSON=tests/block.json PARALLEL=8                # one suite
+make tests TEST_JSON=tests/block.json TEST=<NAME> GUI=1         # one test in the Questa GUI
+make tests TEST_JSON=tests/block.json HW_CONFIG=bw128_w32       # one suite on another profile
+riscv make test-transpose SIZE_M=64 SIZE_N=128 TRANSP_MODE=2    # one job without JSON, see mk/config.mk
+make gen-tests                                                  # sweeps of tests/specs/ per profile
 ```
 
-`TEST_NAME` is auto-derived; add `COUNT=1` for counting stimuli or `GUI=0` for headless.
+Each test runs in `simulation/tests/<TEST_NAME>/`; the reports go to `reports/`. A suite with its
+own `hw_config` runs on that profile only. `tests/control.json` (`CTRL_TEST=1`) also checks the
+control target: register read-back, read-only writes, a byte store, autotrigger, and a soft clear
+during a job.
 
-JUnit/JSON/CSV reports land in `reports/`; each test runs in `modelsim/build_<TEST_NAME>/`. Suites live in `tests/*.json`; HW configs in `configs/hw_configs.json`. Test entries use `params` (e.g. `DATAMOVER_MODE`, `TRANSP_MODE`, `CIM_MODE`, `ROW_TILE_SIZE`, `SIZE_M`, `SIZE_N`, `SIZE_C`, `COUNT`, `LAYOUT`, `IM2COL_IN`, `IM2COL_OUT`) and an optional per-test `hw_config`; the name is auto-generated when omitted. `datamover_model/workloads/suite.py` lists the defaults and the checks.
+The CI runs every portable suite and sweep on the three CI profiles. The `default` jobs run on VCS
+with coverage, the others on Questa.
+
+## Lint
+
+```bash
+make spyglass
+```
+
+`make spyglass` lints `datamover_top_wrap` with SpyGlass (`lint/lint_rtl`). A violation in `rtl/`
+fails the check; the dependencies are counted but do not fail it.
+
+## Code coverage
+
+```bash
+make tests TEST_JSON=tests/konark_ci.json ENGINE=vcs COV=1
+make vcs-cov-report
+# open simulation/vcs/cov/default/urgReport/dashboard.html
+```
+
+One report covers one HW config. In the CI, each test job exports its database
+(`make vcs-cov-export COV_NAME=<suite>`), and the `coverage-default` job merges them.
+`simulation/vcs/cov.cfg` limits the coverage to `tb_datamover.i_dut`.
 
 ## Cleanup
 
 ```bash
-make clean        # build artifacts + reports
-make clean-all    # also remove .bender
+make clean        # build artifacts and reports
+make clean-all    # also .bender
 ```
 
 ## Contributors
