@@ -235,7 +235,7 @@ module datamover_streamer
   assign flags_o.tcdm_fifo_empty = tcdm_fifo_flags.empty;
 
   // The streamers count element addresses; the TCDM bus counts bytes.
-  localparam int unsigned ElemBytesLog2 = $clog2(ElemWidth / 8);
+  localparam int unsigned ElemBytesLog2 = $clog2(ElemWidth / ByteWidth);
   assign tcdm.req       = tcdm_elem.req;
   assign tcdm.add       = tcdm_elem.add << ElemBytesLog2;
   assign tcdm.wen       = tcdm_elem.wen;

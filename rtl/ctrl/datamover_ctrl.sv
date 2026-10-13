@@ -198,7 +198,7 @@ module datamover_ctrl
   assign ctrl_streamer_o.data_out_sink_ctrl.req_start  = (state_q == DM_STARTING);
   // The pointer registers hold byte addresses; the address generators count elements.
   // The address generators get no second strides, no second lengths, and no alternate sweeps.
-  localparam int unsigned ElemBytesLog2 = $clog2(ElemWidth / 8);
+  localparam int unsigned ElemBytesLog2 = $clog2(ElemWidth / ByteWidth);
   assign ctrl_streamer_o.data_in_source_ctrl.addressgen_ctrl = '{
     base_addr:     job_dep_regs.in_ptr.value.value >> ElemBytesLog2,
     tot_len:       job_dep_regs.tot_len.value.value,

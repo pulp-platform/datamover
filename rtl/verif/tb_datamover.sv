@@ -40,58 +40,58 @@ module tb_datamover;
 `ifndef IM2COL_MIN_LOG2W
   `define IM2COL_MIN_LOG2W 3
 `endif
-`ifndef PROB_STALL
-  `define PROB_STALL 0.0
+`ifndef ProbStall
+  `define ProbStall 0.0
 `endif
 
-  localparam int unsigned Bandwidth           = `BANDWIDTH;
+  localparam int unsigned Bandwidth          = `BANDWIDTH;
   localparam int unsigned WordWidth          = `WORD_WIDTH;
   localparam int unsigned ElemWidth          = `ELEM_WIDTH;
   localparam int unsigned MisalignedAccesses = `MISALIGNED_ACCESSES;
-  localparam bit          EnableBuffer        = `ENABLE_BUFFER;
-  localparam int unsigned Im2colKernel        = `IM2COL_KERNEL;
-  localparam int unsigned Im2colMinLog2W      = `IM2COL_MIN_LOG2W;
-  localparam real         PROB_STALL          = `PROB_STALL;
+  localparam bit          EnableBuffer       = `ENABLE_BUFFER;
+  localparam int unsigned Im2colKernel       = `IM2COL_KERNEL;
+  localparam int unsigned Im2colMinLog2W     = `IM2COL_MIN_LOG2W;
+  localparam real         ProbStall          = `PROB_STALL;
   localparam int unsigned ElemsPerWord       = WordWidth / ElemWidth;
   localparam int unsigned NumWords           = Bandwidth / WordWidth;
 
   // The Ibex data port is 32-bit. tb_dummy_memory uses WordWidth-wide banks
   // natively; an aligner places the Ibex's 32-bit data into the right slice
   // of the wide bus. WordWidth must be a multiple of 32.
-  localparam int unsigned NUM_SLOTS  = WordWidth / 32;
-  localparam int unsigned SLOT_BITS  = (NUM_SLOTS <= 1) ? 1 : $clog2(NUM_SLOTS);
-  localparam int unsigned ALIGN_BITS = $clog2(WordWidth / 8);
+  localparam int unsigned NumSlots  = WordWidth / 32;
+  localparam int unsigned SlotBits  = (NumSlots <= 1) ? 1 : $clog2(NumSlots);
+  localparam int unsigned AlignBits = $clog2(WordWidth / ByteWidth);
   // Total number of WordWidth-wide TCDM ports: datamover footprint + Ibex.
   localparam int unsigned MP = NumWords + 1;
 
   // Must match sw/link.ld and sw/s19tomem.py. tb_dummy_memory storage is
-  // 32-bit-wide regardless of bank port width, so MEMORY_SIZE counts 32-bit
+  // 32-bit-wide regardless of bank port width, so MemorySize counts 32-bit
   // entries (4 MB / 4).
-  localparam int unsigned INSTR_MEM_SIZE = 16   * 1024;
-  localparam int unsigned MEMORY_SIZE    = 1024 * 1024;
+  localparam int unsigned InstrMemSize = 16   * 1024;
+  localparam int unsigned MemorySize   = 1024 * 1024;
 
-  localparam logic [31:0] INSTR_BASE_ADDR = 32'h1c000000;
-  localparam logic [31:0] TCDM_DATA_BASE  = 32'h1c010000;
+  localparam logic [31:0] InstrBaseAddr = 32'h1c000000;
+  localparam logic [31:0] TcdmDataBase  = 32'h1c010000;
 
   // Address decode by upper byte: avoids overlap between HWPE/MBOX and TCDM data.
-  localparam logic [7:0] HWPE_REGION_MSB    = 8'h10;
-  localparam logic [7:0] TCDM_REGION_MSB    = 8'h1c;
-  localparam logic [7:0] TB_MBOX_REGION_MSB = 8'h80;
+  localparam logic [7:0] HwpeRegionMsb   = 8'h10;
+  localparam logic [7:0] TcdmRegionMsb   = 8'h1c;
+  localparam logic [7:0] TbMboxRegionMsb = 8'h80;
 
-  localparam logic [31:0] TB_MBOX_BASE_ADDR        = 32'h80000000;
-  localparam logic [31:0] TB_MBOX_ERRORS_ADDR      = TB_MBOX_BASE_ADDR + 32'h0;
-  localparam logic [31:0] TB_MBOX_PUTC_ADDR        = TB_MBOX_BASE_ADDR + 32'h4;
-  localparam logic [31:0] TB_MBOX_CYCLES_ADDR      = TB_MBOX_BASE_ADDR + 32'h8;
-  localparam logic [31:0] TB_MBOX_VERIFY_PTR_ADDR  = TB_MBOX_BASE_ADDR + 32'h10;
-  localparam logic [31:0] TB_MBOX_VERIFY_GOLD_ADDR = TB_MBOX_BASE_ADDR + 32'h18;
-  localparam logic [31:0] TB_MBOX_VERIFY_SIZE_ADDR = TB_MBOX_BASE_ADDR + 32'h20;
+  localparam logic [31:0] TbMboxBaseAddr       = 32'h80000000;
+  localparam logic [31:0] TbMboxErrorsAddr     = TbMboxBaseAddr + 32'h0;
+  localparam logic [31:0] TbMboxPutcAddr       = TbMboxBaseAddr + 32'h4;
+  localparam logic [31:0] TbMboxCyclesAddr     = TbMboxBaseAddr + 32'h8;
+  localparam logic [31:0] TbMboxVerifyPtrAddr  = TbMboxBaseAddr + 32'h10;
+  localparam logic [31:0] TbMboxVerifyGoldAddr = TbMboxBaseAddr + 32'h18;
+  localparam logic [31:0] TbMboxVerifySizeAddr = TbMboxBaseAddr + 32'h20;
 
-  localparam string STIM_INSTR = "./stim_instr.txt";
-  localparam string STIM_DATA  = "./stim_data.txt";
+  localparam string StimInstr = "./stim_instr.txt";
+  localparam string StimData  = "./stim_data.txt";
 
-  localparam TCP = 1.0ns;
-  localparam TA  = 0.2ns;
-  localparam TT  = 0.8ns;
+  localparam realtime TCP = 1.0ns;
+  localparam realtime TA  = 0.2ns;
+  localparam realtime TT  = 0.8ns;
 
   initial begin
     if (WordWidth < 32 || (WordWidth % 32) != 0)
@@ -105,16 +105,15 @@ module tb_datamover;
 
   // 32-bit-wide instruction port; WordWidth-wide TCDM ports for both the
   // datamover footprint and the Ibex (via aligner).
-  hwpe_stream_intf_tcdm #(.DATA_WIDTH(32), .ELEMENT_WIDTH(8))
-    instr [0:0] (.clk(clk_i));
-  hwpe_stream_intf_tcdm #(.DATA_WIDTH(WordWidth), .ELEMENT_WIDTH(8))
+  hwpe_stream_intf_tcdm instr [0:0] (.clk(clk_i));
+  hwpe_stream_intf_tcdm #(.DATA_WIDTH(WordWidth), .ELEMENT_WIDTH(ByteWidth))
     tcdm [MP-1:0] (.clk(clk_i));
 
   logic [NumWords-1:0]                    dm_tcdm_req;
   logic [NumWords-1:0]                    dm_tcdm_gnt;
   logic [NumWords-1:0][31:0]              dm_tcdm_add;
   logic [NumWords-1:0]                    dm_tcdm_wen;
-  logic [NumWords-1:0][WordWidth/8-1:0] dm_tcdm_be;
+  logic [NumWords-1:0][WordWidth/ByteWidth-1:0] dm_tcdm_be;
   logic [NumWords-1:0][WordWidth-1:0]    dm_tcdm_data;
   logic [NumWords-1:0][WordWidth-1:0]    dm_tcdm_r_data;
   logic [NumWords-1:0]                    dm_tcdm_r_valid;
@@ -149,9 +148,9 @@ module tb_datamover;
     #TCP;
   endtask
 
-  wire is_periph_req = (data_addr[31:24] == HWPE_REGION_MSB);
-  wire is_mbox_req   = (data_addr[31:24] == TB_MBOX_REGION_MSB);
-  wire is_tcdm_req   = (data_addr[31:24] == TCDM_REGION_MSB);
+  wire is_periph_req = (data_addr[31:24] == HwpeRegionMsb);
+  wire is_mbox_req   = (data_addr[31:24] == TbMboxRegionMsb);
+  wire is_tcdm_req   = (data_addr[31:24] == TcdmRegionMsb);
 
   always_comb begin : bind_periph
     periph_req  = data_req & is_periph_req;
@@ -198,9 +197,9 @@ module tb_datamover;
   end
 
   always_comb begin
-    if (other_r_addr == TB_MBOX_CYCLES_ADDR)
+    if (other_r_addr == TbMboxCyclesAddr)
       other_r_data = cnt_cycles;
-    else if (other_r_addr == TB_MBOX_VERIFY_SIZE_ADDR)
+    else if (other_r_addr == TbMboxVerifySizeAddr)
       other_r_data = verify_errors;
     else
       other_r_data = '0;
@@ -222,38 +221,38 @@ module tb_datamover;
 
   // Ibex 32-bit data port -> last TCDM port (WordWidth-wide) via aligner.
   // For WW=32 the aligner is identity. For wider WW, the active 32-bit slice
-  // within the WW-byte word is selected by data_addr[ALIGN_BITS-1:2].
-  wire [SLOT_BITS-1:0] core_slot;
-  if (NUM_SLOTS <= 1) begin : g_slot_one
+  // within the WW-byte word is selected by data_addr[AlignBits-1:2].
+  wire [SlotBits-1:0] core_slot;
+  if (NumSlots <= 1) begin : g_slot_one
     assign core_slot = '0;
   end else begin : g_slot_many
-    assign core_slot = data_addr[ALIGN_BITS-1:2];
+    assign core_slot = data_addr[AlignBits-1:2];
   end
 
   logic [WordWidth-1:0]            core_wide_data;
-  logic [(WordWidth/8)-1:0]        core_wide_be;
+  logic [(WordWidth/ByteWidth)-1:0]        core_wide_be;
   generate
-    for (genvar k = 0; k < NUM_SLOTS; k++) begin : g_core_wide
+    for (genvar k = 0; k < NumSlots; k++) begin : g_core_wide
       assign core_wide_data[(k+1)*32-1 -: 32] = data_wdata;
-      assign core_wide_be  [(k+1)*4-1  -: 4 ] = (core_slot == k[SLOT_BITS-1:0]) ? data_be : 4'b0;
+      assign core_wide_be  [(k+1)*4-1  -: 4 ] = (core_slot == k[SlotBits-1:0]) ? data_be : 4'b0;
     end
   endgenerate
 
   assign tcdm[MP-1].req  = data_req & is_tcdm_req;
-  assign tcdm[MP-1].add  = data_addr & ~((WordWidth/8) - 1);
+  assign tcdm[MP-1].add  = data_addr & ~((WordWidth/ByteWidth) - 1);
   assign tcdm[MP-1].wen  = ~data_we;
   assign tcdm[MP-1].be   = core_wide_be;
   assign tcdm[MP-1].data = core_wide_data;
 
   // Latch slot at request time so the read-data mux uses the right slice.
-  logic [SLOT_BITS-1:0] core_slot_q;
+  logic [SlotBits-1:0] core_slot_q;
   always_ff @(posedge clk_i) begin
     if (data_req & is_tcdm_req)
       core_slot_q <= core_slot;
   end
 
   logic [31:0] core_r_data_sel;
-  if (NUM_SLOTS <= 1) begin : g_rsel_one
+  if (NumSlots <= 1) begin : g_rsel_one
     assign core_r_data_sel = tcdm[MP-1].r_data[31:0];
   end else begin : g_rsel_many
     assign core_r_data_sel = tcdm[MP-1].r_data[core_slot_q*32 +: 32];
@@ -308,16 +307,16 @@ module tb_datamover;
   );
 
   tb_dummy_memory #(
-    .MP                ( MP              ),
-    .BANK_WORD_WIDTH   ( WordWidth      ),
-    .STORAGE_WIDTH     ( 32              ),
-    .ELEMENT_WIDTH     ( 8 ),
-    .MEMORY_SIZE       ( MEMORY_SIZE     ),
-    .BASE_ADDR         ( TCDM_DATA_BASE  ),
-    .PROB_STALL        ( PROB_STALL      ),
-    .TCP               ( TCP             ),
-    .TA                ( TA              ),
-    .TT                ( TT              )
+    .MP              ( MP           ),
+    .BANK_WORD_WIDTH ( WordWidth    ),
+    .STORAGE_WIDTH   ( 32           ),
+    .ELEMENT_WIDTH   ( ByteWidth    ),
+    .MEMORY_SIZE     ( MemorySize   ),
+    .BASE_ADDR       ( TcdmDataBase ),
+    .PROB_STALL      ( ProbStall    ),
+    .TCP             ( TCP          ),
+    .TA              ( TA           ),
+    .TT              ( TT           )
   ) i_dummy_memory (
     .clk_i       ( clk_i ),
     .randomize_i ( 1'b0  ),
@@ -346,15 +345,15 @@ module tb_datamover;
   end
 
   tb_dummy_memory #(
-    .MP              ( 1               ),
-    .BANK_WORD_WIDTH  ( 32             ),
-    .ELEMENT_WIDTH   ( 8 ),
-    .MEMORY_SIZE     ( INSTR_MEM_SIZE  ),
-    .BASE_ADDR       ( INSTR_BASE_ADDR ),
-    .PROB_STALL      ( 0               ),
-    .TCP             ( TCP             ),
-    .TA              ( TA              ),
-    .TT              ( TT              )
+    .MP              ( 1             ),
+    .BANK_WORD_WIDTH ( 32            ),
+    .ELEMENT_WIDTH   ( ByteWidth     ),
+    .MEMORY_SIZE     ( InstrMemSize  ),
+    .BASE_ADDR       ( InstrBaseAddr ),
+    .PROB_STALL      ( 0             ),
+    .TCP             ( TCP           ),
+    .TA              ( TA            ),
+    .TT              ( TT            )
   ) i_dummy_instr_memory (
     .clk_i       ( clk_i ),
     .randomize_i ( 1'b0  ),
@@ -388,7 +387,7 @@ module tb_datamover;
     .rst_ni              ( rst_ni          ),
     .test_en_i           ( 1'b0            ),
     .hart_id_i           ( 32'hFFFFFFFF    ),
-    .boot_addr_i         ( INSTR_BASE_ADDR ),
+    .boot_addr_i         ( InstrBaseAddr ),
     .instr_req_o         ( instr_req       ),
     .instr_gnt_i         ( instr_gnt       ),
     .instr_rvalid_i      ( instr_rvalid    ),
@@ -437,23 +436,23 @@ module tb_datamover;
   int errors = -1;
 
   // tb_dummy_memory storage is 32-bit per entry; backdoor compare uses that.
-  localparam int unsigned STORAGE_BYTES = 4;
+  localparam int unsigned StorageBytes = 4;
 
   always_ff @(posedge clk_i) begin
-    if ((data_addr == TB_MBOX_ERRORS_ADDR) && (data_we == 1'b1) && (data_req == 1'b1)) begin
+    if ((data_addr == TbMboxErrorsAddr) && (data_we == 1'b1) && (data_req == 1'b1)) begin
       errors <= data_wdata;
       $display("[TB] Error count written: %0d", data_wdata);
     end
-    if ((data_addr == TB_MBOX_PUTC_ADDR) && (data_we == 1'b1) && (data_req == 1'b1)) begin
+    if ((data_addr == TbMboxPutcAddr) && (data_we == 1'b1) && (data_req == 1'b1)) begin
       $write("%c", data_wdata);
     end
-    if ((data_addr == TB_MBOX_VERIFY_PTR_ADDR) && (data_we == 1'b1) && (data_req == 1'b1)) begin
+    if ((data_addr == TbMboxVerifyPtrAddr) && (data_we == 1'b1) && (data_req == 1'b1)) begin
       verify_ptr <= data_wdata;
     end
-    if ((data_addr == TB_MBOX_VERIFY_GOLD_ADDR) && (data_we == 1'b1) && (data_req == 1'b1)) begin
+    if ((data_addr == TbMboxVerifyGoldAddr) && (data_we == 1'b1) && (data_req == 1'b1)) begin
       verify_gold <= data_wdata;
     end
-    if ((data_addr == TB_MBOX_VERIFY_SIZE_ADDR) && (data_we == 1'b1) && (data_req == 1'b1)) begin
+    if ((data_addr == TbMboxVerifySizeAddr) && (data_we == 1'b1) && (data_req == 1'b1)) begin
       // Compare output vs golden directly from TCDM memory.
       int act_idx, act_off, gold_idx, gold_off;
       logic [7:0] act_b, gold_b;
@@ -461,12 +460,12 @@ module tb_datamover;
 
       verify_mismatch_cnt = 0;
       for (int i = 0; i < int'(data_wdata); i++) begin
-        act_idx  = (verify_ptr  + i - TCDM_DATA_BASE) / STORAGE_BYTES;
-        act_off  = (verify_ptr  + i - TCDM_DATA_BASE) % STORAGE_BYTES;
-        gold_idx = (verify_gold + i - TCDM_DATA_BASE) / STORAGE_BYTES;
-        gold_off = (verify_gold + i - TCDM_DATA_BASE) % STORAGE_BYTES;
-        act_b  = i_dummy_memory.memory[act_idx][act_off*8 +: 8];
-        gold_b = i_dummy_memory.memory[gold_idx][gold_off*8 +: 8];
+        act_idx  = (verify_ptr  + i - TcdmDataBase) / StorageBytes;
+        act_off  = (verify_ptr  + i - TcdmDataBase) % StorageBytes;
+        gold_idx = (verify_gold + i - TcdmDataBase) / StorageBytes;
+        gold_off = (verify_gold + i - TcdmDataBase) % StorageBytes;
+        act_b  = i_dummy_memory.memory[act_idx][act_off*ByteWidth +: ByteWidth];
+        gold_b = i_dummy_memory.memory[gold_idx][gold_off*ByteWidth +: ByteWidth];
         if (act_b !== gold_b) begin
           if (verify_mismatch_cnt < MaxMismatchLog)
             first_mismatch_log[verify_mismatch_cnt] = '{idx: i, act: act_b, gold: gold_b};
@@ -508,8 +507,8 @@ module tb_datamover;
   end
 
   initial begin
-    $readmemh(STIM_INSTR, tb_datamover.i_dummy_instr_memory.memory);
-    $readmemh(STIM_DATA,  tb_datamover.i_dummy_memory.memory);
+    $readmemh(StimInstr, tb_datamover.i_dummy_instr_memory.memory);
+    $readmemh(StimData,  tb_datamover.i_dummy_memory.memory);
 
     #(60*TCP);
     fetch_enable = 1'b1;
