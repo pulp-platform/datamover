@@ -270,12 +270,6 @@ module tb_datamover;
   logic dut_busy;
 
   datamover_top_wrap #(
-`ifndef SYNTHESIS
-    .WAIVE_RQ3_ASSERT  ( 1'b1 ),
-    .WAIVE_RQ4_ASSERT  ( 1'b1 ),
-    .WAIVE_RSP3_ASSERT ( 1'b1 ),
-    .WAIVE_RSP5_ASSERT ( 1'b1 ),
-`endif
     .AddrWidth          ( 32                 ),
     .IdWidth            ( 10                 ),
     .Bandwidth          ( Bandwidth          ),

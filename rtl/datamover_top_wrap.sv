@@ -27,12 +27,6 @@ module datamover_top_wrap
   import hci_package::*;
   import datamover_pkg::*;
 #(
-`ifndef SYNTHESIS
-  parameter bit WAIVE_RQ3_ASSERT  = 1'b0,
-  parameter bit WAIVE_RQ4_ASSERT  = 1'b0,
-  parameter bit WAIVE_RSP3_ASSERT = 1'b0,
-  parameter bit WAIVE_RSP5_ASSERT = 1'b0,
-`endif
   parameter int unsigned AddrWidth          = datamover_pkg::AddrWidth,          // width of address bus
   parameter int unsigned IdWidth            = datamover_pkg::IdWidth,            // control slave peripheral ID width
   parameter int unsigned Bandwidth          = datamover_pkg::Bandwidth,          // total bandwidth of HWPE to TCDM (in bits)
@@ -96,12 +90,6 @@ module datamover_top_wrap
   };
 
   hci_core_intf #(
-  `ifndef SYNTHESIS
-    .WAIVE_RQ3_ASSERT  ( WAIVE_RQ3_ASSERT  ),
-    .WAIVE_RQ4_ASSERT  ( WAIVE_RQ4_ASSERT  ),
-    .WAIVE_RSP3_ASSERT ( WAIVE_RSP3_ASSERT ),
-    .WAIVE_RSP5_ASSERT ( WAIVE_RSP5_ASSERT ),
-  `endif
     .DW  ( Bandwidth   ),
     .AW  ( AddrWidth  ),
     .BW  ( ElemWidth  ),

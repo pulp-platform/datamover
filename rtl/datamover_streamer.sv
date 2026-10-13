@@ -70,10 +70,6 @@ module datamover_streamer
     .IW  ( IW ),
     .EW  ( EW ),
     .EHW ( EHW)
-    // `ifndef SYNTHESIS
-    // ,.WAIVE_RQ4_ASSERT ( 1'b1 )    // ToDo: make sure that these waives are not hiding real issues in the design
-    // ,.WAIVE_RQ3_ASSERT ( 1'b1 )
-    // `endif
   ) virt_tcdm [0:1] (
     .clk ( clk_i )
   );
