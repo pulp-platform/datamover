@@ -56,6 +56,14 @@ package datamover_pkg;
     $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__im2col_log2w__out_t);
   localparam int unsigned Im2colKernelWidth =
     $bits(datamover_regif_pkg::datamover_regif__dm_ctrl_engine__im2col_kernel__out_t);
+  localparam int unsigned PadKernelWidth =
+    $bits(datamover_regif_pkg::datamover_regif__dm_im2col_pad__kernel_h__out_t);
+  localparam int unsigned PadWidth =
+    $bits(datamover_regif_pkg::datamover_regif__dm_im2col_pad__pad_top__out_t);
+  localparam int unsigned PadShiftWidth =
+    $bits(datamover_regif_pkg::datamover_regif__dm_im2col_pad__shift__out_t);
+  localparam int unsigned PadRightWidth =
+    $bits(datamover_regif_pkg::datamover_regif__dm_im2col_pad__pad_right__out_t);
 
   // The im2col unit is instantiated when EnableIm2col is set on datamover_top.
   localparam bit          EnableIm2col       = 1'b1;
@@ -84,6 +92,13 @@ package datamover_pkg;
     logic                             im2col_pack;    // im2col: run the im2col unit
     logic [Im2colLog2wWidth-1:0]    im2col_log2w;   // im2col unit: log2 of the image row width
     logic [Im2colKernelWidth-1:0]    im2col_kernel;  // im2col unit: kernel side, odd, 3 to Im2colKernel
+    logic [PadKernelWidth-1:0]       pad_kernel_h;   // row-major im2col: kernel height
+    logic [PadKernelWidth-1:0]       pad_kernel_w;   // row-major im2col: kernel width
+    logic [PadWidth-1:0]             pad_top;        // row-major im2col: zero rows above the image
+    logic [PadWidth-1:0]             pad_bottom;     // row-major im2col: zero rows below the image
+    logic [PadWidth-1:0]             pad_left;       // row-major im2col: zero columns left of the image
+    logic [PadRightWidth-1:0]        pad_right;      // row-major im2col: lanes of the last beat past the image
+    logic [PadShiftWidth-1:0]        pad_shift;      // row-major im2col: start offset in the first aligned word
     datamover_mode_e                  datamover_mode;
     logic [TensorSizeWidth-1:0]     tensor_size_m;
     logic [TensorSizeWidth-1:0]     tensor_size_n;

@@ -233,6 +233,44 @@ addrmap datamover_regif {
         } transp_mode[2:0] = 0;
     };
 
+    reg dm_im2col_pad {
+        field {
+            desc = "Row-major im2col: lanes of the last beat of a row past the image, for the last kernel column.";
+            hw = r;
+            sw = rw;
+        } pad_right[30:24] = 0;
+        field {
+            desc = "Row-major im2col without misaligned accesses: start offset of the first kernel column in the first aligned word, in elements.";
+            hw = r;
+            sw = rw;
+        } shift[22:20] = 0;
+        field {
+            desc = "Row-major im2col: zero columns left of the image, for the first kernel column.";
+            hw = r;
+            sw = rw;
+        } pad_left[18:16] = 0;
+        field {
+            desc = "Row-major im2col: zero rows below the image, for the last kernel row.";
+            hw = r;
+            sw = rw;
+        } pad_bottom[14:12] = 0;
+        field {
+            desc = "Row-major im2col: zero rows above the image, for the first kernel row.";
+            hw = r;
+            sw = rw;
+        } pad_top[10:8] = 0;
+        field {
+            desc = "Row-major im2col: kernel width Kw, 1 to 15.";
+            hw = r;
+            sw = rw;
+        } kernel_w[7:4] = 0;
+        field {
+            desc = "Row-major im2col: kernel height Kh, 1 to 15.";
+            hw = r;
+            sw = rw;
+        } kernel_h[3:0] = 0;
+    };
+
     // No job-independent registers in the datamover.
     regfile hwpe_ctrl_job_indep {
         hwpe_reserved reserved;
@@ -261,6 +299,7 @@ addrmap datamover_regif {
         dm_matrix_dim  matrix_dim    @ 0x48;  // idx 18
         dm_channels    channels      @ 0x4c;  // idx 19
         dm_ctrl_engine ctrl_engine   @ 0x50;  // idx 20
+        dm_im2col_pad  im2col_pad    @ 0x54;  // idx 21
     };
 
     // Top-level address map: mandatory ctrl regs at 0x00, job-indep at 0x20,

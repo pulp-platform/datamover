@@ -246,6 +246,13 @@ module datamover_ctrl
   assign engine_ctrl_d.im2col_pack    = job_dep_regs.ctrl_engine.im2col_pack.value;
   assign engine_ctrl_d.im2col_log2w   = job_dep_regs.ctrl_engine.im2col_log2w.value;
   assign engine_ctrl_d.im2col_kernel  = job_dep_regs.ctrl_engine.im2col_kernel.value;
+  assign engine_ctrl_d.pad_kernel_h   = job_dep_regs.im2col_pad.kernel_h.value;
+  assign engine_ctrl_d.pad_kernel_w   = job_dep_regs.im2col_pad.kernel_w.value;
+  assign engine_ctrl_d.pad_top        = job_dep_regs.im2col_pad.pad_top.value;
+  assign engine_ctrl_d.pad_bottom     = job_dep_regs.im2col_pad.pad_bottom.value;
+  assign engine_ctrl_d.pad_left       = job_dep_regs.im2col_pad.pad_left.value;
+  assign engine_ctrl_d.pad_right      = job_dep_regs.im2col_pad.pad_right.value;
+  assign engine_ctrl_d.pad_shift      = job_dep_regs.im2col_pad.shift.value;
   assign engine_ctrl_d.tensor_size_m  = job_dep_regs.matrix_dim.tensor_size_m.value;
   assign engine_ctrl_d.tensor_size_n  = job_dep_regs.matrix_dim.tensor_size_n.value;
   assign engine_ctrl_d.num_channels   = job_dep_regs.channels.num_channels.value;

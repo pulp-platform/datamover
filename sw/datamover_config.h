@@ -476,6 +476,26 @@ static inline __attribute__((always_inline)) void datamover_build_fold_block(dat
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_FOLD, 0x3, 0xF, DATAMOVER_TRANSP_1ELEM);
 }
 
+// Largest pad and kernel side of a row-major im2col job: the widths of the DM_IM2COL_PAD fields.
+#define DATAMOVER_IM2COL_MAX_PAD    (DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_TOP_bm >> DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_TOP_bp)
+#define DATAMOVER_IM2COL_MAX_KERNEL (DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_H_bm >> DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_H_bp)
+
+// Output columns of the first row-major im2col job: all below one beat, else the complete beats.
+// The leftover job takes the rest.
+static inline uint32_t dm_im2col_w_main(uint32_t w_out) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  return (w_out < BWE) ? w_out : (w_out / BWE) * BWE;
+}
+
+// Lanes of the last beat of a row past the image, for the last kernel column. A job covers the
+// output columns [ow0, ow0 + w_seg); a row is conv_stride * w_seg input columns in whole beats.
+static inline int32_t dm_im2col_right(uint32_t size_w, uint32_t kernel_w, uint32_t conv_stride, uint32_t pad,
+                                      uint32_t ow0, uint32_t w_seg) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  int32_t x0 = (int32_t)(ow0 * conv_stride) - (int32_t)pad;
+  return x0 + (int32_t)(kernel_w - 1 + dm_ceil_div(conv_stride * w_seg, BWE) * BWE) - (int32_t)size_w;
+}
+
 // The im2col shapes the builders program; datamover_model/workloads/suite.py states the same rules.
 static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                                        uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride,
@@ -501,26 +521,85 @@ static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_
     if (size_w < (1u << DATAMOVER_IM2COL_MIN_LOG2W) || size_w > BWE || (size_w & (size_w - 1)) != 0) return DATAMOVER_ERR;
     return ((size_h * size_w) % BWE == 0) ? DATAMOVER_OK : DATAMOVER_ERR;
   }
-  if (in_layout != DATAMOVER_IM2COL_IN_CHW || pad != 0) return DATAMOVER_ERR;
+  if (in_layout != DATAMOVER_IM2COL_IN_CHW) return DATAMOVER_ERR;
   if (out_layout == DATAMOVER_IM2COL_OUT_COL_BLOCK) {
     if (conv_stride != 2 || w_out % BWE != 0) return DATAMOVER_ERR;
   } else if (out_layout != DATAMOVER_IM2COL_OUT_COL) {
     return DATAMOVER_ERR;
   }
+  if (pad > DATAMOVER_IM2COL_MAX_PAD) return DATAMOVER_ERR;
+  if (pad != 0) {
+    // The engine counts the kernel taps to place the border; the last beat holds the right border.
+    uint32_t w_main = dm_im2col_w_main(w_out);
+    if (kernel_h > DATAMOVER_IM2COL_MAX_KERNEL || kernel_w > DATAMOVER_IM2COL_MAX_KERNEL) return DATAMOVER_ERR;
+    if (dm_im2col_right(size_w, kernel_w, conv_stride, pad, 0, w_main) > (int32_t)BWE) return DATAMOVER_ERR;
+    if (w_main < w_out && dm_im2col_right(size_w, kernel_w, conv_stride, pad, w_main, w_out - w_main) > (int32_t)BWE)
+      return DATAMOVER_ERR;
+  }
 #if DATAMOVER_MISALIGNED_ACCESSES == 0
-  // The row-major paths read a beat at every kernel column offset: only a word-aligned row works.
-  if (kernel_w != 1 || size_w % DATAMOVER_WORD_ELEMS != 0 || w_out % DATAMOVER_WORD_ELEMS != 0) return DATAMOVER_ERR;
+  // The source reads word-aligned beats; the engine shifts two beats by the kernel column offset.
+  uint32_t shift = (0u - pad) & (DATAMOVER_WORD_ELEMS - 1);
+  if (size_w % DATAMOVER_WORD_ELEMS != 0 || w_out % DATAMOVER_WORD_ELEMS != 0) return DATAMOVER_ERR;
+  if ((kernel_w > 1 || shift != 0) && (kernel_h > DATAMOVER_IM2COL_MAX_KERNEL ||
+                                      kernel_w > DATAMOVER_IM2COL_MAX_KERNEL || shift + kernel_w > BWE))
+    return DATAMOVER_ERR;
 #endif
   return DATAMOVER_OK;
 }
 
+// Source and zero border of a row-major im2col job, the output columns [ow0, ow0 + w_seg) of every
+// output row. A segment is the n beats of conv_stride * w_seg input columns of one output row and
+// one kernel tap. The source reads the segments in the order output row, kernel column, kernel row,
+// channel, and starts pad rows and pad columns before the image. Without misaligned accesses it
+// reads n + 1 word-aligned beats per segment, the same beats for every kernel column, and the engine
+// shifts them.
+static inline __attribute__((always_inline)) void dm_im2col_rows(datamover_cfg_t *cfg, const void *in,
+                                          uint32_t size_c, uint32_t size_h, uint32_t size_w,
+                                          uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride, uint32_t pad,
+                                          uint32_t ow0, uint32_t w_seg) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  const uint32_t S = conv_stride;
+  uint32_t h_out = (size_h + 2 * pad - kernel_h) / S + 1;
+  int32_t x0 = (int32_t)(ow0 * S) - (int32_t)pad;
+  uint32_t beats = dm_ceil_div(S * w_seg, BWE);
+  uint32_t shift = 0, kw_stride = 1;
+#if DATAMOVER_MISALIGNED_ACCESSES == 0
+  shift = (uint32_t)x0 & (DATAMOVER_WORD_ELEMS - 1);
+  if (kernel_w > 1 || shift != 0) {
+    kw_stride = 0;
+    beats += 1;
+  }
+#endif
+  cfg->in_ptr  = dm_ptr(in, (uint32_t)(x0 - (int32_t)shift - (int32_t)(pad * size_w)));
+  cfg->tot_len = beats * h_out * kernel_w * kernel_h * size_c;
+  dm_in(cfg, 0, BWE, beats);
+  dm_in(cfg, 1, S * size_w, h_out);
+  dm_in(cfg, 2, kw_stride, kernel_w);
+  dm_in(cfg, 3, size_w, kernel_h);
+  dm_in(cfg, 4, size_h * size_w, 0);
+  // The engine counts the kernel taps only for a job with a border or a realignment.
+  cfg->im2col_pad = 0;
+  if (pad != 0 || kw_stride == 0) {
+    int32_t bottom = (int32_t)((h_out - 1) * S + kernel_h) - (int32_t)(pad + size_h);
+    int32_t right  = pad ? dm_im2col_right(size_w, kernel_w, S, pad, ow0, w_seg) : 0;
+    cfg->im2col_pad = DATAMOVER_FIELD(DM_IM2COL_PAD, KERNEL_H, kernel_h)
+                    | DATAMOVER_FIELD(DM_IM2COL_PAD, KERNEL_W, kernel_w)
+                    | DATAMOVER_FIELD(DM_IM2COL_PAD, SHIFT, shift)
+                    | DATAMOVER_FIELD(DM_IM2COL_PAD, PAD_TOP, pad)
+                    | DATAMOVER_FIELD(DM_IM2COL_PAD, PAD_BOTTOM, bottom > 0 ? bottom : 0)
+                    | DATAMOVER_FIELD(DM_IM2COL_PAD, PAD_LEFT, x0 < 0 ? -x0 : 0)
+                    | DATAMOVER_FIELD(DM_IM2COL_PAD, PAD_RIGHT, right > 0 ? right : 0);
+  }
+}
+
 // Tensor (C,H,W) -> im2col matrix (Kh*Kw*C, H_out*W_out); row = ci*Kh*Kw+kh*Kw+kw, col = oh*W_out+ow.
-// conv_stride applies to both spatial dims. Three paths:
+// conv_stride and pad apply to both spatial dims. Three paths:
 // - BLOCK in, COL_BLOCK out: the im2col unit, K x K with K odd up to DATAMOVER_IM2COL_KERNEL, a border of K / 2, stride 1,
 //   W a power of two from 2**DATAMOVER_IM2COL_MIN_LOG2W to the beat.
-// - CHW in, stride 2, w_out above 32: the im2col unit merges two half beats; COL_BLOCK needs
+// - CHW in, stride 2, w_out above half a beat: the im2col unit merges two half beats; COL_BLOCK needs
 //   w_out a multiple of the beat, COL takes the leftover columns in a second job.
-// - CHW in, COL out: pass-through, beats of w_out pixels, no pad.
+// - CHW in, COL out: pass-through, beats of w_out pixels.
+// The CHW paths take a zero border of up to DATAMOVER_IM2COL_MAX_PAD; the engine makes it.
 static inline __attribute__((always_inline)) void datamover_build_im2col(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                           uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride, uint32_t pad,
@@ -560,30 +639,27 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
     return;
   }
 
+  uint32_t w_main = dm_im2col_w_main(w_out);
+  dm_im2col_rows(cfg, in, size_c, size_h, size_w, Kh, Kw, S, pad, 0, w_main);
+  cfg->matrix_dim = dm_matrix_dim(w_main, h_out);
+
   if (S == 2 && w_out > BWE / 2) {
-    uint32_t w_blocks = (w_out < BWE) ? 1 : w_out / BWE;
-    cfg->tot_len          = 2 * w_blocks * h_out * Kh * Kw * size_c;
+    uint32_t w_blocks = dm_ceil_div(w_main, BWE);
     cfg->out_tot_len      = w_blocks * h_out * Kh * Kw * size_c;
-    dm_in(cfg, 0, BWE, 2 * w_blocks);
-    dm_in(cfg, 1, S * size_w, h_out);
-    dm_in(cfg, 2, 1, Kw);
-    dm_in(cfg, 3, size_w, Kh);
     if (out_layout == DATAMOVER_IM2COL_OUT_COL_BLOCK) {
       dm_out(cfg, 0, Kh * Kw * size_c * BWE, w_blocks);
       dm_out(cfg, 1, Kh * Kw * size_c * BWE * w_blocks, h_out);
       dm_out(cfg, 2, BWE, Kw);
       dm_out(cfg, 3, Kw * BWE, Kh);
       dm_out(cfg, 4, Kh * Kw * BWE, 0);
-  dm_in(cfg, 4, size_h * size_w, 0);
     } else {
       dm_out(cfg, 0, BWE, w_blocks);
       dm_out(cfg, 1, w_out, h_out);
       dm_out(cfg, 2, row_bytes, Kw);
       dm_out(cfg, 3, Kw * row_bytes, Kh);
       dm_out(cfg, 4, Kh * Kw * row_bytes, 0);
-  dm_in(cfg, 4, size_h * size_w, 0);
     }
-    dm_channels(cfg, Kh * Kw * size_c * BWE * w_blocks * h_out, size_c);
+    dm_channels(cfg, cfg->out_tot_len * BWE, size_c);
     cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PACK, 1);
@@ -591,43 +667,31 @@ static inline __attribute__((always_inline)) void datamover_build_im2col(datamov
   }
 
   if (w_out < BWE) {
-    uint32_t tot_len      = h_out * Kh * Kw * size_c;
-    cfg->tot_len          = tot_len;
-    cfg->out_tot_len      = tot_len;
-    dm_in(cfg, 0, S * size_w, h_out);
-    dm_in(cfg, 1, 1, Kw);
-    dm_in(cfg, 2, size_w, Kh);
-    dm_in(cfg, 3, size_h * size_w, size_c);
+    cfg->out_tot_len      = h_out * Kh * Kw * size_c;
     dm_out(cfg, 0, w_out, h_out);
     dm_out(cfg, 1, row_bytes, Kw);
     dm_out(cfg, 2, Kw * row_bytes, Kh);
     dm_out(cfg, 3, Kh * Kw * row_bytes, size_c);
     dm_out(cfg, 4, 0, 0);
-  dm_in(cfg, 4, 0, 0);
-    dm_channels(cfg, tot_len * BWE, size_c);
-    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE)
+    dm_channels(cfg, cfg->out_tot_len * BWE, size_c);
+    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0xF, DATAMOVER_TRANSP_NONE)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
   } else {
-    uint32_t w_tiles      = w_out / BWE;
-    uint32_t tot_len      = w_tiles * h_out * Kh * Kw * size_c;
-    cfg->tot_len          = tot_len;
-    cfg->out_tot_len      = tot_len;
-    dm_in(cfg, 0, BWE, w_tiles);
-    dm_in(cfg, 1, S * size_w, h_out);
-    dm_in(cfg, 2, 1, Kw);
-    dm_in(cfg, 3, size_w, Kh);
+    uint32_t w_tiles      = w_main / BWE;
+    cfg->out_tot_len      = w_tiles * h_out * Kh * Kw * size_c;
     dm_out(cfg, 0, BWE, w_tiles);
     dm_out(cfg, 1, w_out, h_out);
     dm_out(cfg, 2, row_bytes, Kw);
     dm_out(cfg, 3, Kw * row_bytes, Kh);
     dm_out(cfg, 4, Kh * Kw * row_bytes, 0);
-  dm_in(cfg, 4, size_h * size_w, 0);
-    dm_channels(cfg, Kh * Kw * size_c * row_bytes, size_c);
+    dm_channels(cfg, cfg->out_tot_len * BWE, size_c);
     cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
                           | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
   }
 }
 
+// The leftover output columns of a row-major im2col job with COL out: one output beat per output
+// row and kernel tap. The stride-2 merge serves more than half a beat.
 static inline __attribute__((always_inline)) uint32_t datamover_build_im2col_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
                                           uint32_t size_c, uint32_t size_h, uint32_t size_w,
                                           uint32_t kernel_h, uint32_t kernel_w, uint32_t conv_stride, uint32_t pad) {
@@ -637,51 +701,24 @@ static inline __attribute__((always_inline)) uint32_t datamover_build_im2col_lef
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
   uint32_t h_out = (size_h + 2 * pad - Kh) / S + 1;
   uint32_t w_out = (size_w + 2 * pad - Kw) / S + 1;
-  if (pad != 0 || w_out < BWE) return 0;
-  uint32_t w_full = (w_out / BWE) * BWE;
+  uint32_t w_full = dm_im2col_w_main(w_out);
   uint32_t w_len  = w_out - w_full;
   if (w_len == 0) return 0;
   uint32_t row_bytes = h_out * w_out;
-  uint32_t tot_len   = h_out * Kh * Kw * size_c;
 
-  cfg->in_ptr           = dm_ptr(in, w_full * S);
+  dm_im2col_rows(cfg, in, size_c, size_h, size_w, Kh, Kw, S, pad, w_full, w_len);
   cfg->out_ptr          = dm_ptr(out, w_full);
-  if (S == 2 && w_len > BWE / 2) {
-    cfg->tot_len          = 2 * tot_len;
-    cfg->out_tot_len      = tot_len;
-    dm_in(cfg, 0, BWE, 2);
-    dm_in(cfg, 1, S * size_w, h_out);
-    dm_in(cfg, 2, 1, Kw);
-    dm_in(cfg, 3, size_w, Kh);
-    dm_out(cfg, 0, w_out, h_out);
-    dm_out(cfg, 1, row_bytes, Kw);
-    dm_out(cfg, 2, Kw * row_bytes, Kh);
-    dm_out(cfg, 3, Kh * Kw * row_bytes, size_c);
-    dm_out(cfg, 4, 0, 0);
-  dm_in(cfg, 4, size_h * size_w, 0);
-    cfg->matrix_dim = dm_matrix_dim(w_len, h_out);
-    dm_channels(cfg, tot_len * BWE, size_c);
-    cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0xF, 0xF, DATAMOVER_TRANSP_NONE)
-                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
-                          | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PACK, 1);
-    return 1;
-  }
-  cfg->tot_len          = tot_len;
-  cfg->out_tot_len      = tot_len;
-  dm_in(cfg, 0, S * size_w, h_out);
-  dm_in(cfg, 1, 1, Kw);
-  dm_in(cfg, 2, size_w, Kh);
-  dm_in(cfg, 3, size_h * size_w, size_c);
+  cfg->out_tot_len      = h_out * Kh * Kw * size_c;
   dm_out(cfg, 0, w_out, h_out);
   dm_out(cfg, 1, row_bytes, Kw);
   dm_out(cfg, 2, Kw * row_bytes, Kh);
   dm_out(cfg, 3, Kh * Kw * row_bytes, size_c);
   dm_out(cfg, 4, 0, 0);
-  dm_in(cfg, 4, 0, 0);
   cfg->matrix_dim = dm_matrix_dim(w_len, h_out);
-  dm_channels(cfg, tot_len * BWE, size_c);
-  cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0x7, DATAMOVER_TRANSP_NONE)
-                        | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S);
+  dm_channels(cfg, cfg->out_tot_len * BWE, size_c);
+  cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_IM2COL, 0x7, 0xF, DATAMOVER_TRANSP_NONE)
+                        | DATAMOVER_FIELD(DM_CTRL_ENGINE, CONV_STRIDE, S)
+                        | DATAMOVER_FIELD(DM_CTRL_ENGINE, IM2COL_PACK, (S == 2 && w_len > BWE / 2) ? 1 : 0);
   return 1;
 }
 

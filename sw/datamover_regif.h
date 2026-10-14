@@ -177,6 +177,36 @@ typedef struct {
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_KERNEL_bw 3
 #define DATAMOVER_REGIF__DM_CTRL_ENGINE__IM2COL_KERNEL_reset 0x0
 
+// reg - datamover_regif::dm_im2col_pad
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_H_bm 0xf
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_H_bp 0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_H_bw 4
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_H_reset 0x0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_W_bm 0xf0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_W_bp 4
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_W_bw 4
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__KERNEL_W_reset 0x0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_TOP_bm 0x700
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_TOP_bp 8
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_TOP_bw 3
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_TOP_reset 0x0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_BOTTOM_bm 0x7000
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_BOTTOM_bp 12
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_BOTTOM_bw 3
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_BOTTOM_reset 0x0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_LEFT_bm 0x70000
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_LEFT_bp 16
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_LEFT_bw 3
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_LEFT_reset 0x0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__SHIFT_bm 0x700000
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__SHIFT_bp 20
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__SHIFT_bw 3
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__SHIFT_reset 0x0
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_RIGHT_bm 0x7f000000
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_RIGHT_bp 24
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_RIGHT_bw 7
+#define DATAMOVER_REGIF__DM_IM2COL_PAD__PAD_RIGHT_reset 0x0
+
 // regfile - datamover_regif::hwpe_ctrl_job_dep
 typedef struct {
     uint32_t in_ptr;
@@ -200,6 +230,7 @@ typedef struct {
     uint32_t matrix_dim;
     uint32_t channels;
     uint32_t ctrl_engine;
+    uint32_t im2col_pad;
 } datamover_regif__hwpe_ctrl_job_dep_t;
 
 // addrmap - datamover_regif
@@ -211,7 +242,7 @@ typedef struct {
 } datamover_regif_t;
 
 
-static_assert(sizeof(datamover_regif_t) == 0x94, "Packing error");
+static_assert(sizeof(datamover_regif_t) == 0x98, "Packing error");
 
 #ifdef __cplusplus
 }

@@ -21,6 +21,7 @@ sources:
   - rtl/ctrl/regif/datamover_regif.sv      # SystemRDL-generated register file
   - rtl/datamover_buffer.sv
   - rtl/datamover_im2col.sv
+  - rtl/datamover_im2col_pad.sv
   - rtl/datamover_engine.sv
   - rtl/datamover_streamer.sv
   # Level 2

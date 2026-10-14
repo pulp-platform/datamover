@@ -5,7 +5,7 @@ package datamover_regif_pkg;
 
     localparam DATAMOVER_REGIF_DATA_WIDTH = 32;
     localparam DATAMOVER_REGIF_MIN_ADDR_WIDTH = 32;
-    localparam DATAMOVER_REGIF_SIZE = 'h94;
+    localparam DATAMOVER_REGIF_SIZE = 'h98;
 
     typedef struct packed {
         logic [31:0] next;
@@ -240,6 +240,44 @@ package datamover_regif_pkg;
     } datamover_regif__dm_ctrl_engine__out_t;
 
     typedef struct packed {
+        logic [3:0] value;
+    } datamover_regif__dm_im2col_pad__kernel_h__out_t;
+
+    typedef struct packed {
+        logic [3:0] value;
+    } datamover_regif__dm_im2col_pad__kernel_w__out_t;
+
+    typedef struct packed {
+        logic [2:0] value;
+    } datamover_regif__dm_im2col_pad__pad_top__out_t;
+
+    typedef struct packed {
+        logic [2:0] value;
+    } datamover_regif__dm_im2col_pad__pad_bottom__out_t;
+
+    typedef struct packed {
+        logic [2:0] value;
+    } datamover_regif__dm_im2col_pad__pad_left__out_t;
+
+    typedef struct packed {
+        logic [2:0] value;
+    } datamover_regif__dm_im2col_pad__shift__out_t;
+
+    typedef struct packed {
+        logic [6:0] value;
+    } datamover_regif__dm_im2col_pad__pad_right__out_t;
+
+    typedef struct packed {
+        datamover_regif__dm_im2col_pad__kernel_h__out_t kernel_h;
+        datamover_regif__dm_im2col_pad__kernel_w__out_t kernel_w;
+        datamover_regif__dm_im2col_pad__pad_top__out_t pad_top;
+        datamover_regif__dm_im2col_pad__pad_bottom__out_t pad_bottom;
+        datamover_regif__dm_im2col_pad__pad_left__out_t pad_left;
+        datamover_regif__dm_im2col_pad__shift__out_t shift;
+        datamover_regif__dm_im2col_pad__pad_right__out_t pad_right;
+    } datamover_regif__dm_im2col_pad__out_t;
+
+    typedef struct packed {
         datamover_regif__dm_value32__out_t in_ptr;
         datamover_regif__dm_value32__out_t out_ptr;
         datamover_regif__dm_value32__out_t tot_len;
@@ -261,6 +299,7 @@ package datamover_regif_pkg;
         datamover_regif__dm_matrix_dim__out_t matrix_dim;
         datamover_regif__dm_channels__out_t channels;
         datamover_regif__dm_ctrl_engine__out_t ctrl_engine;
+        datamover_regif__dm_im2col_pad__out_t im2col_pad;
     } datamover_regif__hwpe_ctrl_job_dep__out_t;
 
     typedef struct packed {

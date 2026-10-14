@@ -77,7 +77,7 @@ validator:
 | 2 | Block layout, forward or reverse (`BLOCK_MODE`) |
 | 3 | Block layout transpose |
 | 4, 5 | Unfold and fold of 2x2 patches, `LAYOUT` CHW or BLOCK |
-| 6 | im2col: the im2col unit (K x K, stride 1, border K / 2, BLOCK input), the stride-2 merge, a pass-through for other kernels, and im2row (`ROW_BLOCK`) for kernel == stride |
+| 6 | im2col: the im2col unit (K x K, stride 1, border K / 2, BLOCK input), the stride-2 merge and a pass-through for CHW input with a zero border (`CONV_PAD`), and im2row (`ROW_BLOCK`) for kernel == stride |
 
 ## HAL
 
@@ -98,7 +98,14 @@ datamover_wait();
 - Without misaligned accesses, every strided row starts and ends on a word.
 - The im2col unit takes an odd K from 3 to `Im2colKernel`, stride 1, a border of K / 2, and a row
   width that is a power of two from `2**Im2colMinLog2W` to the beat.
-- The stride-2 merge reads a pre-padded row-major image, with `W_out` a multiple of the beat.
+- The CHW paths (stride-2 merge and pass-through) take a stride of 1 or 2 and a zero border from 0
+  to 7. The engine zeroes the border, so the input is the image itself. The source also reads the
+  border outside the image, up to `pad` rows and one beat before and after it, and the engine
+  discards these elements. A padded job takes a kernel side up to 15, and the right border must
+  fit the last beat of a row.
+- Without misaligned accesses, the CHW paths read word-aligned beats and shift them in the engine:
+  one more beat per row, and a start offset plus `Kw` of at most one beat.
+- The stride-2 merge to `COL_BLOCK` needs `W_out` a multiple of the beat.
 - HWC im2row needs a 64-element beat.
 - Matrix sizes are 16 bits wide. A transpose with more than one channel runs one job per channel.
 

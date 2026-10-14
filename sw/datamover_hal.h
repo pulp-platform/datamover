@@ -72,6 +72,7 @@ static inline __attribute__((always_inline)) void datamover_program(const datamo
   r->matrix_dim       = cfg->matrix_dim;
   r->channels         = cfg->channels;
   r->ctrl_engine      = cfg->ctrl_engine;
+  r->im2col_pad       = cfg->im2col_pad;
 }
 
 // Acquire a free slot, program the built image, and trigger the job.

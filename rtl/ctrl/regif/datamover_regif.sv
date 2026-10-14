@@ -101,6 +101,7 @@ module datamover_regif (
             logic matrix_dim;
             logic channels;
             logic ctrl_engine;
+            logic im2col_pad;
         } hwpe_job_dep;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -146,6 +147,7 @@ module datamover_regif (
         decoded_reg_strb.hwpe_job_dep.matrix_dim = cpuif_req_masked & (cpuif_addr == 32'h88);
         decoded_reg_strb.hwpe_job_dep.channels = cpuif_req_masked & (cpuif_addr == 32'h8c);
         decoded_reg_strb.hwpe_job_dep.ctrl_engine = cpuif_req_masked & (cpuif_addr == 32'h90);
+        decoded_reg_strb.hwpe_job_dep.im2col_pad = cpuif_req_masked & (cpuif_addr == 32'h94);
         decoded_err = '0;
     end
 
@@ -359,6 +361,36 @@ module datamover_regif (
                     logic load_next;
                 } im2col_kernel;
             } ctrl_engine;
+            struct {
+                struct {
+                    logic [3:0] next;
+                    logic load_next;
+                } kernel_h;
+                struct {
+                    logic [3:0] next;
+                    logic load_next;
+                } kernel_w;
+                struct {
+                    logic [2:0] next;
+                    logic load_next;
+                } pad_top;
+                struct {
+                    logic [2:0] next;
+                    logic load_next;
+                } pad_bottom;
+                struct {
+                    logic [2:0] next;
+                    logic load_next;
+                } pad_left;
+                struct {
+                    logic [2:0] next;
+                    logic load_next;
+                } shift;
+                struct {
+                    logic [6:0] next;
+                    logic load_next;
+                } pad_right;
+            } im2col_pad;
         } hwpe_job_dep;
     } field_combo_t;
     field_combo_t field_combo;
@@ -526,6 +558,29 @@ module datamover_regif (
                     logic [2:0] value;
                 } im2col_kernel;
             } ctrl_engine;
+            struct {
+                struct {
+                    logic [3:0] value;
+                } kernel_h;
+                struct {
+                    logic [3:0] value;
+                } kernel_w;
+                struct {
+                    logic [2:0] value;
+                } pad_top;
+                struct {
+                    logic [2:0] value;
+                } pad_bottom;
+                struct {
+                    logic [2:0] value;
+                } pad_left;
+                struct {
+                    logic [2:0] value;
+                } shift;
+                struct {
+                    logic [6:0] value;
+                } pad_right;
+            } im2col_pad;
         } hwpe_job_dep;
     } field_storage_t;
     field_storage_t field_storage;
@@ -1391,6 +1446,167 @@ module datamover_regif (
         end
     end
     assign hwif_out.hwpe_job_dep.ctrl_engine.im2col_kernel.value = field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.kernel_h
+    always_comb begin
+        automatic logic [3:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.kernel_h.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.kernel_h.value & ~decoded_wr_biten[3:0]) | (decoded_wr_data[3:0] & decoded_wr_biten[3:0]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.kernel_h.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.kernel_h.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.kernel_h.value <= 4'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.kernel_h.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.kernel_h.value <= field_combo.hwpe_job_dep.im2col_pad.kernel_h.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.kernel_h.value = field_storage.hwpe_job_dep.im2col_pad.kernel_h.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.kernel_w
+    always_comb begin
+        automatic logic [3:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.kernel_w.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.kernel_w.value & ~decoded_wr_biten[7:4]) | (decoded_wr_data[7:4] & decoded_wr_biten[7:4]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.kernel_w.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.kernel_w.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.kernel_w.value <= 4'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.kernel_w.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.kernel_w.value <= field_combo.hwpe_job_dep.im2col_pad.kernel_w.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.kernel_w.value = field_storage.hwpe_job_dep.im2col_pad.kernel_w.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.pad_top
+    always_comb begin
+        automatic logic [2:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.pad_top.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.pad_top.value & ~decoded_wr_biten[10:8]) | (decoded_wr_data[10:8] & decoded_wr_biten[10:8]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.pad_top.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.pad_top.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.pad_top.value <= 3'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.pad_top.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.pad_top.value <= field_combo.hwpe_job_dep.im2col_pad.pad_top.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.pad_top.value = field_storage.hwpe_job_dep.im2col_pad.pad_top.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.pad_bottom
+    always_comb begin
+        automatic logic [2:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.pad_bottom.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.pad_bottom.value & ~decoded_wr_biten[14:12]) | (decoded_wr_data[14:12] & decoded_wr_biten[14:12]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.pad_bottom.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.pad_bottom.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.pad_bottom.value <= 3'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.pad_bottom.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.pad_bottom.value <= field_combo.hwpe_job_dep.im2col_pad.pad_bottom.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.pad_bottom.value = field_storage.hwpe_job_dep.im2col_pad.pad_bottom.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.pad_left
+    always_comb begin
+        automatic logic [2:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.pad_left.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.pad_left.value & ~decoded_wr_biten[18:16]) | (decoded_wr_data[18:16] & decoded_wr_biten[18:16]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.pad_left.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.pad_left.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.pad_left.value <= 3'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.pad_left.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.pad_left.value <= field_combo.hwpe_job_dep.im2col_pad.pad_left.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.pad_left.value = field_storage.hwpe_job_dep.im2col_pad.pad_left.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.shift
+    always_comb begin
+        automatic logic [2:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.shift.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.shift.value & ~decoded_wr_biten[22:20]) | (decoded_wr_data[22:20] & decoded_wr_biten[22:20]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.shift.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.shift.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.shift.value <= 3'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.shift.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.shift.value <= field_combo.hwpe_job_dep.im2col_pad.shift.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.shift.value = field_storage.hwpe_job_dep.im2col_pad.shift.value;
+    // Field: datamover_regif.hwpe_job_dep.im2col_pad.pad_right
+    always_comb begin
+        automatic logic [6:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.hwpe_job_dep.im2col_pad.pad_right.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.hwpe_job_dep.im2col_pad && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.hwpe_job_dep.im2col_pad.pad_right.value & ~decoded_wr_biten[30:24]) | (decoded_wr_data[30:24] & decoded_wr_biten[30:24]);
+            load_next_c = '1;
+        end
+        field_combo.hwpe_job_dep.im2col_pad.pad_right.next = next_c;
+        field_combo.hwpe_job_dep.im2col_pad.pad_right.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.hwpe_job_dep.im2col_pad.pad_right.value <= 7'h0;
+        end else begin
+            if(field_combo.hwpe_job_dep.im2col_pad.pad_right.load_next) begin
+                field_storage.hwpe_job_dep.im2col_pad.pad_right.value <= field_combo.hwpe_job_dep.im2col_pad.pad_right.next;
+            end
+        end
+    end
+    assign hwif_out.hwpe_job_dep.im2col_pad.pad_right.value = field_storage.hwpe_job_dep.im2col_pad.pad_right.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1516,6 +1732,15 @@ module datamover_regif (
             readback_data_var[19] = field_storage.hwpe_job_dep.ctrl_engine.im2col_pack.value;
             readback_data_var[22:20] = field_storage.hwpe_job_dep.ctrl_engine.im2col_log2w.value;
             readback_data_var[25:23] = field_storage.hwpe_job_dep.ctrl_engine.im2col_kernel.value;
+        end
+        if(rd_mux_addr == 32'h94) begin
+            readback_data_var[3:0] = field_storage.hwpe_job_dep.im2col_pad.kernel_h.value;
+            readback_data_var[7:4] = field_storage.hwpe_job_dep.im2col_pad.kernel_w.value;
+            readback_data_var[10:8] = field_storage.hwpe_job_dep.im2col_pad.pad_top.value;
+            readback_data_var[14:12] = field_storage.hwpe_job_dep.im2col_pad.pad_bottom.value;
+            readback_data_var[18:16] = field_storage.hwpe_job_dep.im2col_pad.pad_left.value;
+            readback_data_var[22:20] = field_storage.hwpe_job_dep.im2col_pad.shift.value;
+            readback_data_var[30:24] = field_storage.hwpe_job_dep.im2col_pad.pad_right.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

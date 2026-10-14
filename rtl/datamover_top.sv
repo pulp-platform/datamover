@@ -117,14 +117,15 @@ module datamover_top
   // copy, transpose, block layout, unfold, fold, and im2col.
   // An internal buffer (elem_matrix) of size BWxBW is used to reshuffle the data.
   datamover_engine #(
-    .FifoDepth        ( FifoDepth        ),
-    .EnableIm2col     ( EnableIm2col     ),
-    .EnableBuffer     ( EnableBuffer     ),
-    .Im2colKernel     ( Im2colKernel     ),
-    .Im2colMinLog2W   ( Im2colMinLog2W   ),
-    .BandwidthAligned ( BandwidthAligned ),
-    .ElemsPerWord     ( ElemsPerWord     ),
-    .ElemWidth        ( ElemWidth        )
+    .FifoDepth          ( FifoDepth          ),
+    .EnableIm2col       ( EnableIm2col       ),
+    .EnableBuffer       ( EnableBuffer       ),
+    .Im2colKernel       ( Im2colKernel       ),
+    .Im2colMinLog2W     ( Im2colMinLog2W     ),
+    .BandwidthAligned   ( BandwidthAligned   ),
+    .ElemsPerWord       ( ElemsPerWord       ),
+    .ElemWidth          ( ElemWidth          ),
+    .MisalignedAccesses ( MisalignedAccesses )
   ) i_engine (
     .clk_i      ( clk_i          ),
     .rst_ni     ( rst_ni         ),

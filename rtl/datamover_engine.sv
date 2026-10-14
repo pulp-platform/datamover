@@ -24,14 +24,15 @@ module datamover_engine
   import hci_package::*;
   import datamover_pkg::*;
 #(
-  parameter int unsigned FifoDepth        = 2,
-  parameter bit          EnableIm2col     = 1'b1,
-  parameter bit          EnableBuffer     = 1'b1,
-  parameter int unsigned Im2colKernel     = 3,
-  parameter int unsigned Im2colMinLog2W   = 3,
-  parameter int unsigned BandwidthAligned = 512,
-  parameter int unsigned ElemsPerWord     = 4,    // number of elements in a bank word
-  parameter int unsigned ElemWidth        = 8,    // element width (in bits)
+  parameter int unsigned FifoDepth          = 2,
+  parameter bit          EnableIm2col       = 1'b1,
+  parameter bit          EnableBuffer       = 1'b1,
+  parameter int unsigned Im2colKernel       = 3,
+  parameter int unsigned Im2colMinLog2W     = 3,
+  parameter int unsigned BandwidthAligned   = 512,
+  parameter int unsigned ElemsPerWord       = 4,    // number of elements in a bank word
+  parameter int unsigned ElemWidth          = 8,    // element width (in bits)
+  parameter int unsigned MisalignedAccesses = 1,
   // Dependent parameters: do not modify!
   localparam int unsigned WordWidth = ElemsPerWord * ElemWidth // should correspond to bank width
 ) (
@@ -152,9 +153,24 @@ module datamover_engine
     .push_i  ( data_in          ),
     .pop_o   ( data_in_postfifo )
   );
-  assign data_in_unrolled = data_in_postfifo.data;
-  assign data_in_valid = data_in_postfifo.valid;
-  assign data_in_postfifo.ready = data_in_ready;
+  // The zero border of the row-major im2col paths. Every other mode passes through. The loop
+  // counters return to zero at the end of a job, so only the soft clear resets them.
+  datamover_im2col_pad #(
+    .NumElems           ( NumElems           ),
+    .ElemWidth          ( ElemWidth          ),
+    .MisalignedAccesses ( MisalignedAccesses )
+  ) i_im2col_pad (
+    .clk_i   ( clk_i                        ),
+    .rst_ni  ( rst_ni                       ),
+    .clear_i ( clear_i                      ),
+    .ctrl_i  ( ctrl_i                       ),
+    .data_i  ( data_in_postfifo.data        ),
+    .valid_i ( data_in_postfifo.valid       ),
+    .ready_o ( data_in_postfifo.ready       ),
+    .data_o  ( data_in_unrolled             ),
+    .valid_o ( data_in_valid                ),
+    .ready_i ( data_in_ready                )
+  );
   hwpe_stream_fifo #(
     .DATA_WIDTH ( BandwidthAligned ),
     .ELEMENT_WIDTH ( ElemWidth ),

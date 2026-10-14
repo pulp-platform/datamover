@@ -109,13 +109,13 @@ def normalize_params(raw: dict, beat: int, align: int = 1, features: dict = None
         _validate_im2col_params(out, beat, features)
     if out["DATAMOVER_MODE"] in (4, 5):
         _validate_unfold_params(out, beat)
-    _validate_alignment(out, align)
+    _validate_alignment(out, align, beat)
     if not features["ENABLE_BUFFER"] and out["DATAMOVER_MODE"] in (1, 3, 4, 5):
         raise ValueError(f"DATAMOVER_MODE {out['DATAMOVER_MODE']} needs the element buffer, the profile has ENABLE_BUFFER 0")
     return out
 
 
-def _validate_alignment(params: dict, align: int) -> None:
+def _validate_alignment(params: dict, align: int, beat: int) -> None:
     """Every row of a strided access is a whole number of words without misaligned accesses."""
     if align == 1:
         return
@@ -126,11 +126,15 @@ def _validate_alignment(params: dict, align: int) -> None:
         # The token matrix has rows of SIZE_C; the row-major image has rows of W.
         rows = (params["SIZE_C"],) + ((n,) if params["LAYOUT"] == "CHW" else ())
     if mode == 6 and params["IM2COL_IN"] != "BLOCK" and params["IM2COL_OUT"] != "ROW_BLOCK":
-        # The pass-through and the stride-2 paths read a beat at every kernel column offset.
-        kw, s = params["KERNEL_SIZE_W"], params["CONV_STRIDE"]
-        if kw != 1:
-            raise ValueError(f"row-major im2col needs KERNEL_SIZE_W 1 without misaligned accesses, got {kw}")
-        rows = (n, (n - kw) // s + 1)
+        # The source reads word-aligned beats; the engine shifts two beats by the kernel column offset.
+        kw, s, pad = params["KERNEL_SIZE_W"], params["CONV_STRIDE"], params["CONV_PAD"]
+        shift = -pad % align
+        kh = params["KERNEL_SIZE_H"]
+        if (kw > 1 or shift) and (max(kh, kw) > IM2COL_MAX_KERNEL or shift + kw > beat):
+            raise ValueError(f"row-major im2col without misaligned accesses counts kernel sides up to "
+                             f"{IM2COL_MAX_KERNEL} and shifts by up to {beat - 1} elements, got a start offset "
+                             f"of {shift} and a kernel {kh}x{kw}")
+        rows = (n, (n + 2 * pad - kw) // s + 1)
     for r in rows:
         if r % align != 0:
             raise ValueError(f"a row of {r} elements needs a multiple of {align} without misaligned accesses")
@@ -172,6 +176,38 @@ def _validate_im2row_params(params: dict, beat: int) -> None:
         raise ValueError(f"HWC ROW_BLOCK needs a 64-element beat, 48-byte patch rows and a kernel side that is a multiple of 4, got beat={beat} K={k} C={c}")
 
 
+# Widths of the DM_IM2COL_PAD fields: the pad of a row-major im2col job and the kernel side its
+# engine counts.
+IM2COL_MAX_PAD = 7
+IM2COL_MAX_KERNEL = 15
+
+
+def im2col_w_main(w_out: int, beat: int) -> int:
+    """Output columns of the first row-major im2col job; the leftover job takes the rest."""
+    return w_out if w_out < beat else w_out // beat * beat
+
+
+def im2col_right(n: int, kw: int, s: int, pad: int, ow0: int, w_seg: int, beat: int) -> int:
+    """Lanes of the last beat of a row past the image, for the last kernel column (the HAL's dm_im2col_right)."""
+    return ow0 * s - pad + kw - 1 + -(-s * w_seg // beat) * beat - n
+
+
+def _validate_row_major_pad(params: dict, beat: int, w_out: int) -> None:
+    """The engine makes the zero border of the CHW paths: the pad fields bound it."""
+    kh, kw, s, pad, n = (params[k] for k in ("KERNEL_SIZE_H", "KERNEL_SIZE_W", "CONV_STRIDE", "CONV_PAD", "SIZE_N"))
+    if pad > IM2COL_MAX_PAD:
+        raise ValueError(f"row-major im2col takes CONV_PAD up to {IM2COL_MAX_PAD}, the width of the pad fields, got {pad}")
+    if pad == 0:
+        return
+    if max(kh, kw) > IM2COL_MAX_KERNEL:
+        raise ValueError(f"a padded row-major im2col counts kernel sides up to {IM2COL_MAX_KERNEL}, got {kh}x{kw}")
+    w_main = im2col_w_main(w_out, beat)
+    jobs = [(0, w_main)] + ([(w_main, w_out - w_main)] if w_main < w_out else [])
+    for ow0, w_seg in jobs:
+        if im2col_right(n, kw, s, pad, ow0, w_seg, beat) > beat:
+            raise ValueError(f"the right border of a row-major im2col must fit the last beat of a row, got W={n} K={kw} S={s} pad={pad}")
+
+
 def _validate_im2col_params(params: dict, beat: int, features: dict) -> None:
     """The relations of the HAL paths."""
     kh, kw = params["KERNEL_SIZE_H"], params["KERNEL_SIZE_W"]
@@ -192,13 +228,13 @@ def _validate_im2col_params(params: dict, beat: int, features: dict) -> None:
         widths = im2col_unit_widths(beat, features["IM2COL_MIN_LOG2W"])
         if n not in widths or (m * n) % beat != 0:
             raise ValueError(f"BLOCK im2col needs W in {widths} and H*W a multiple of {beat}, got {m}x{n}")
-    elif layout == ("CHW", "COL_BLOCK"):
-        w_out = (n - kw) // s + 1
-        if s != 2 or pad != 0 or w_out % beat != 0:
-            raise ValueError(f"CHW to COL_BLOCK needs stride 2, no pad, and w_out a multiple of {beat}, got S={s} pad={pad} w_out={w_out}")
-    elif layout == ("CHW", "COL"):
-        if pad != 0:
-            raise ValueError("CONV_PAD needs IM2COL_IN=BLOCK and IM2COL_OUT=COL_BLOCK")
+    elif layout in (("CHW", "COL_BLOCK"), ("CHW", "COL")):
+        if pad < 0 or m + 2 * pad < kh or n + 2 * pad < kw:
+            raise ValueError(f"the padded image {m}x{n} with pad {pad} must hold the kernel {kh}x{kw}")
+        w_out = (n + 2 * pad - kw) // s + 1
+        if layout[1] == "COL_BLOCK" and (s != 2 or w_out % beat != 0):
+            raise ValueError(f"CHW to COL_BLOCK needs stride 2 and w_out a multiple of {beat}, got S={s} w_out={w_out}")
+        _validate_row_major_pad(params, beat, w_out)
     else:
         raise ValueError(f"unsupported im2col layouts {layout}")
 
