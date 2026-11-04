@@ -59,6 +59,7 @@ from pathlib import Path
 # with the copies of this module in the accelerator repos, so the sweep can move into a shared
 # testing package later.
 
+from datamover_model.testing.utilization import transfer_elems
 from datamover_model.workloads.generator import generate_task_data
 from datamover_model.workloads.suite import (
     align_elems,
@@ -86,6 +87,9 @@ OPS = tuple(sorted(OP_TO_PARAMS))
 # String-valued params that are values, not expressions.
 STR_KEEP = ("LAYOUT", "IM2COL_IN", "IM2COL_OUT")
 DEFAULT_MAX_TESTS = 30
+# The test time grows with the bytes a test reads and writes. The cap is the size of the
+# largest fixed test, COPY_512x512, so that every sweep test fits the CI timeout.
+MAX_TRANSFER_BYTES = 512 * 1024
 
 
 def load_hw(spec: dict):
@@ -105,15 +109,17 @@ def load_hw(spec: dict):
 def validate_candidate(op: str, params: dict, hw, deep: bool = False):
     """Return (derived_name, None) if the candidate is legal, else return (None, reason).
 
-    `normalize_params` enforces the parameter rules. The golden-model run enforces
-    every shape rule and the TB memory budget; the datamover has no separate task
-    class, so the golden run is the shape validator and always runs (`deep` has no
-    effect here).
+    `normalize_params` enforces the parameter rules. `MAX_TRANSFER_BYTES` caps the test
+    time. The golden-model run enforces every shape rule and the TB memory budget; the
+    datamover has no separate task class, so the golden run is the shape validator and
+    always runs (`deep` has no effect here).
     """
     try:
         cfg = load_hw_config(hw)
         beat = beat_elems(cfg)
         full = normalize_params({**OP_TO_PARAMS[op], **test_params(params)}, beat, align_elems(cfg), hw_features(cfg))
+        if sum(transfer_elems(full)) * cfg["ELEM_WIDTH"] // 8 > MAX_TRANSFER_BYTES:
+            return None, f"the test moves more than {MAX_TRANSFER_BYTES} B"
         generate_task_data({"name": "candidate", "params": full}, 0, beat, cfg["ELEM_WIDTH"])
         return auto_test_name(full, hw_tag(hw)), None
     except (ValueError, AssertionError, KeyError, TypeError, IndexError, RuntimeError) as e:

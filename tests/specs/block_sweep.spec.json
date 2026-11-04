@@ -1,7 +1,7 @@
 {
   "name": "block_sweep",
   "op": "block",
-  "description": "SNAP rounds N down to the row alignment of the profile (a no-op with misaligned accesses). M and N: max 65535 (16-bit matrix_dim and stride/len regs). M*N: max ~1.3 MiB (the 4 MB TB data memory holds 3 buffers per test).",
+  "description": "SHAPE picks the matrix class: the empty entry keeps the square draw of SIZE_M and SIZE_N, the other entries draw a wide or a tall matrix. Each class holds at most 256 Ki elements, the transfer cap of the generator. SNAP rounds N down to the row alignment of the profile (a no-op with misaligned accesses). M and N: max 65535 (16-bit matrix_dim and stride/len regs).",
   "max_tests": 30,
   "seed": 1,
   "constraints": [
@@ -9,8 +9,14 @@
   ],
   "axes": {
     "BLOCK_MODE": [0, 1],
-    "SIZE_M": {"min": 1, "max": 8192},
-    "SIZE_N": {"min": 1, "max": 8192},
+    "SIZE_M": {"min": 1, "max": 512},
+    "SIZE_N": {"min": 1, "max": 512},
+    "SHAPE": [
+      {},
+      {},
+      {"SIZE_M": {"min": 1, "max": 32}, "SIZE_N": {"min": 512, "max": 8192}},
+      {"SIZE_M": {"min": 512, "max": 8192}, "SIZE_N": {"min": 1, "max": 32}}
+    ],
     "SNAP": [{"SIZE_N": "max(ALIGN, SIZE_N - SIZE_N % ALIGN)"}]
   }
 }

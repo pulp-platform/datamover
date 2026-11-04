@@ -4,8 +4,10 @@ Each `*.spec.json` file in this directory describes one parameter sweep of a dat
 
 The generator is [`datamover_model/workloads/sweep.py`](../../datamover_model/workloads/sweep.py).
 The generator expands one spec into one suite per profile in `tests/generated/<profile>/`. The generator keeps only the
-combinations that pass `normalize_params` and the golden-model run, which also checks the TB
-memory budget. A spec has no `"tests"` key. Thus the runner ignores the spec file and finds the
+combinations that pass `normalize_params`, the transfer cap, and the golden-model run, which also
+checks the TB memory budget. The transfer cap (`MAX_TRANSFER_BYTES` in `sweep.py`, 512 KiB) limits
+the bytes that a test reads and writes. The SW build and the simulation time grow with these bytes,
+so the cap keeps every sweep test inside the CI timeout. A spec has no `"tests"` key. Thus the runner ignores the spec file and finds the
 generated suites only.
 
 ## Commands
@@ -47,7 +49,8 @@ variables: `"KERNEL_SIZE_W": "KERNEL_SIZE_H"`. The name of the param itself stan
 plain draw, so an expression can snap it: `"SIZE_M": "SIZE_M - SIZE_M % 8"`. The constant `BEAT`,
 the elements per beat of the profile, is a variable of every expression, so a size can follow the
 block width: `"SIZE_N": "SIZE_N - SIZE_N % BEAT"`. A group entry that appears more than once gets
-more draws, which balances a path with a low legal rate against the others. A spec may carry
+more draws, which balances a path with a low legal rate against the others. An empty group entry
+`{}` keeps the plain draws of the other axes. A spec may carry
 `"constraints"`, a list of expressions that every candidate must satisfy:
 
 ```jsonc

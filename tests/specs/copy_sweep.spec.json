@@ -1,7 +1,7 @@
 {
   "name": "copy_sweep",
   "op": "copy",
-  "description": "M and N: max 65535 (16-bit matrix_dim regs). C*M*N: max ~1.3 MiB (the 4 MB TB data memory holds 3 buffers per test).",
+  "description": "M and N: max 65535 (16-bit matrix_dim regs). C*M*N: max 256 Ki elements (the transfer cap of the generator).",
   "max_tests": 30,
   "seed": 1,
   "axes": {
