@@ -1,5 +1,4 @@
 {
-  "hw_config": "default",
   "tests": [
     {"name": "CHAIN_T8_T16_T32_copy", "chain": [
       {"DATAMOVER_MODE": 1, "TRANSP_MODE": 1, "SIZE_M": 64, "SIZE_N": 64},

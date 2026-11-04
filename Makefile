@@ -100,7 +100,7 @@ run-test run-all-tests: tests
 SPEC_GLOB      ?= tests/specs/*.spec.json
 GENERATED_GLOB ?= tests/generated/*/*.json
 # One generated suite per spec and per profile: tests/generated/<profile>/<name>.json
-HW_CONFIGS     ?= default bw128_w32 bw256_w64
+HW_CONFIGS     ?= default bw128_w32 bw256_w64 gwaihir
 
 .PHONY: gen-tests tests-generated
 gen-tests:

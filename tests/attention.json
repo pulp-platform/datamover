@@ -1,5 +1,4 @@
 {
-  "hw_config": "default",
   "description": "Attention operands in the block layout: K transposed per head (mode 3) and a row-major softmax output moved into blocks (mode 2). MobileViT v1 stages 32, 16, 8 and ViT-S.",
   "tests": [
     {"name": "MVIT_KT_32_256x36",          "params": {"DATAMOVER_MODE": 3, "TRANSP_MODE": 1, "SIZE_M": 256, "SIZE_N": 36}},

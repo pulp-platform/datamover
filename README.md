@@ -64,7 +64,7 @@ validator:
 | `bw128_w32` | 128 | 32 | 8 | no | | 16 | yes |
 | `bw256_w64` | 256 | 64 | 8 | no | `IM2COL_KERNEL` 5 | 32 | yes |
 | `default` | 576 | 64 | 8 | yes | | 64 | yes |
-| `gwaihir` | 576 | 64 | 8 | yes | `ENABLE_IM2COL` 0 | 64 | no |
+| `gwaihir` | 576 | 64 | 8 | yes | `ENABLE_IM2COL` 0 | 64 | yes, no im2col |
 | `bw128_w32_nobuf` | 128 | 32 | 8 | no | `ENABLE_BUFFER` 0 | 16 | no |
 | `bw256_w64_e16` | 256 | 64 | 16 | no | | 16 | no |
 | `bw256_w64_k7` | 256 | 64 | 8 | no | `IM2COL_KERNEL` 7 | 32 | im2col |
@@ -128,8 +128,9 @@ own `hw_config` runs on that profile only. `tests/control.json` (`CTRL_TEST=1`) 
 control target: register read-back, read-only writes, a byte store, autotrigger, and a soft clear
 during a job.
 
-The CI runs every portable suite and sweep on the three CI profiles. The `default` jobs run on VCS
-with coverage, the others on Questa.
+The CI runs every portable suite and sweep on the four CI profiles; `gwaihir` skips the im2col
+suite and sweep. The H tile suites (`konark_ci`, `patch_embed`, `attention`, `gwaihir`) run on
+`default` and `gwaihir`. The `default` jobs run on VCS with coverage, the others on Questa.
 
 ## Lint
 

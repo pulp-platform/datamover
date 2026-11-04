@@ -33,6 +33,7 @@ setup:
 # One job per suite and per profile. The default profile runs on VCS with coverage and
 # exports its database; the other profiles run on Questa. HW_CONFIG is the profile of every
 # entry without its own hw_config; a suite that pins hw_config runs that profile only.
+# gwaihir is the H tile profile: default without the im2col hardware.
 .suite:
   extends: .py-setup
   stage: test
@@ -40,7 +41,7 @@ setup:
     - setup
   parallel:
     matrix:
-      - HW_CONFIG: [default, bw128_w32, bw256_w64]
+      - HW_CONFIG: [default, bw128_w32, bw256_w64, gwaihir]
   script:
     - if [ "$HW_CONFIG" = default ]; then export ENGINE=vcs COV=1; fi
     - make run-test TEST_JSON=${TEST_JSON} HW_CONFIG=${HW_CONFIG} PARALLEL=${PARALLEL} TIMEOUT=${TIMEOUT} NO_DEBUG=${NO_DEBUG} || RC=$?
@@ -61,6 +62,13 @@ setup:
   parallel:
     matrix:
       - HW_CONFIG: [default]
+
+# The H tile suites run on the two 576-bit profiles.
+.suite-576:
+  extends: .suite
+  parallel:
+    matrix:
+      - HW_CONFIG: [default, gwaihir]
 
 # A sweep spec expands to one suite per profile; the job generates and runs its own profile.
 .sweep:
@@ -92,7 +100,8 @@ test:stallability:
   extends: .suite
   variables: {SUITE: stallability, TEST_JSON: tests/stallability.json}
 
-# bw256_w64_k7 adds the 7x7 unit, so the unit runs with a reach of 1, 2, and 3.
+# bw256_w64_k7 adds the 7x7 unit, so the unit runs with a reach of 1, 2, and 3. gwaihir has no
+# im2col hardware.
 test:im2col:
   extends: .suite
   variables: {SUITE: im2col, TEST_JSON: tests/im2col.json}
@@ -105,7 +114,7 @@ test:control:
   variables: {SUITE: control, TEST_JSON: tests/control.json}
 
 test:konark_ci:
-  extends: .suite-default
+  extends: .suite-576
   variables: {SUITE: konark_ci, TEST_JSON: tests/konark_ci.json}
 
 test:mvit_im2col:
@@ -121,12 +130,16 @@ test:mvit_stall:
   variables: {SUITE: mvit_stall, TEST_JSON: tests/mvit_stall.json}
 
 test:patch_embed:
-  extends: .suite-default
+  extends: .suite-576
   variables: {SUITE: patch_embed, TEST_JSON: tests/patch_embed.json}
 
 test:attention:
-  extends: .suite-default
+  extends: .suite-576
   variables: {SUITE: attention, TEST_JSON: tests/attention.json}
+
+test:gwaihir:
+  extends: .suite-576
+  variables: {SUITE: gwaihir, TEST_JSON: tests/gwaihir.json}
 
 sweep:copy:
   extends: .sweep
@@ -155,6 +168,9 @@ sweep:fold:
 sweep:im2col:
   extends: .sweep
   variables: {SUITE: im2col_sweep}
+  parallel:
+    matrix:
+      - HW_CONFIG: [default, bw128_w32, bw256_w64]
 
 # SpyGlass lint of the RTL. Only the violations in rtl/ fail the job.
 spyglass:

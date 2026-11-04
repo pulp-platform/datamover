@@ -1,5 +1,4 @@
 {
-  "hw_config": "default",
   "tests": [
     {
       "name": "196x768_copy",
