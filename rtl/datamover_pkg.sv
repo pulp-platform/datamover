@@ -65,8 +65,8 @@ package datamover_pkg;
   localparam int unsigned PadRightWidth =
     $bits(datamover_regif_pkg::datamover_regif__dm_im2col_pad__pad_right__out_t);
 
-  // The im2col mode is instantiated when EnableIm2col is set on datamover_top: the im2col unit, the
-  // zero border, and the stride-2 merge.
+  // The im2col hardware is instantiated when EnableIm2col is set on datamover_top: the im2col unit, the
+  // zero border, and the stride-2 merge. im2row (ROW_BLOCK) needs none of it.
   localparam bit          EnableIm2col       = 1'b1;
   // The element buffer is instantiated when EnableBuffer is set: transpose, unfold, and fold need it.
   localparam bit          EnableBuffer       = 1'b1;

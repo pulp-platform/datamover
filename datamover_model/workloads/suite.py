@@ -18,6 +18,7 @@ PARAM_DEFAULTS = {
     "DATAMOVER_MODE": 0,
     "TRANSP_MODE": 1,
     "BLOCK_MODE": 0,
+    "BLOCK_ELEMS": 0,     # block layout: elements per block row; 0 = one beat
     "SIZE_C": 1,
     "SIZE_M": 1,
     "SIZE_N": 1,
@@ -105,13 +106,16 @@ def normalize_params(raw: dict, beat: int, align: int = 1, features: dict = None
         raise ValueError(f"TRANSP_MODE must be in {{0,1,2,4}}, got {out['TRANSP_MODE']}")
     if out["BLOCK_MODE"] not in (0, 1):
         raise ValueError(f"BLOCK_MODE must be 0 or 1, got {out['BLOCK_MODE']}")
+    b = out["BLOCK_ELEMS"]
+    if b and not (beat % b == 0 or b % beat == 0):
+        raise ValueError(f"BLOCK_ELEMS must divide the beat ({beat}) or be a multiple of it, got {b}")
     if out["DATAMOVER_MODE"] == 6:
         _validate_im2col_params(out, beat, features)
     if out["DATAMOVER_MODE"] in (4, 5):
         _validate_unfold_params(out, beat)
     _validate_alignment(out, align, beat)
-    if not features["ENABLE_IM2COL"] and out["DATAMOVER_MODE"] == 6:
-        raise ValueError("DATAMOVER_MODE 6 needs the im2col mode, the profile has ENABLE_IM2COL 0")
+    if not features["ENABLE_IM2COL"] and out["DATAMOVER_MODE"] == 6 and out["IM2COL_OUT"] != "ROW_BLOCK":
+        raise ValueError("im2col other than ROW_BLOCK needs the im2col hardware, the profile has ENABLE_IM2COL 0")
     if not features["ENABLE_BUFFER"] and out["DATAMOVER_MODE"] in (1, 3, 4, 5):
         raise ValueError(f"DATAMOVER_MODE {out['DATAMOVER_MODE']} needs the element buffer, the profile has ENABLE_BUFFER 0")
     return out
@@ -256,7 +260,7 @@ def auto_test_name(params: dict, hw_tag: str = "") -> str:
         base = f"TRANSP{params['TRANSP_MODE']}_{m}x{n}"
     elif mode == 2:
         tag = "FWD" if params["BLOCK_MODE"] == 0 else "REV"
-        base = f"BLOCK{tag}_{m}x{n}"
+        base = f"BLOCK{tag}_{m}x{n}" + (f"_B{params['BLOCK_ELEMS']}" if params["BLOCK_ELEMS"] else "")
     elif mode == 3:
         base = f"BLOCKTR{params['TRANSP_MODE']}_{m}x{n}"
     elif mode == 4:

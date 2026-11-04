@@ -108,34 +108,56 @@ static inline __attribute__((always_inline)) void datamover_transpose(uint8_t *m
 }
 
 // One job for the complete column blocks, one for the leftover columns.
-static inline __attribute__((always_inline)) void datamover_block_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
-                                        uint32_t size_n) {
+// Block layout with blocks of `block` elements (dm_block_ok). The leftover columns after the
+// complete blocks form one image of narrower rows, one job per beat of its rows.
+static inline __attribute__((always_inline)) void datamover_block_layout_w(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+                                          uint32_t size_n, uint32_t block) {
   datamover_cfg_t cfg = {0};
-  uint32_t leftover = size_n % DATAMOVER_BANDWIDTH_ELEMS;
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t n_blocks = size_n / block;
+  uint32_t leftover = size_n % block;
+  uint8_t *image    = matrix_out + n_blocks * block * size_m * DATAMOVER_ELEM_BYTES;
 
-  if (size_n >= DATAMOVER_BANDWIDTH_ELEMS) {
-    datamover_build_block_complete(&cfg, matrix_in, matrix_out, size_m, size_n);
+  if (n_blocks != 0) {
+    datamover_build_block_complete(&cfg, matrix_in, matrix_out, size_m, size_n, block);
     datamover_launch(&cfg);
   }
-  if (leftover != 0) {
-    datamover_build_block_leftover(&cfg, matrix_in, matrix_out, size_m, size_n);
+  for (uint32_t c = 0; c < leftover; c += BWE) {
+    uint32_t width = leftover - c < BWE ? leftover - c : BWE;
+    datamover_build_block_strip(&cfg, matrix_in, image + c * DATAMOVER_ELEM_BYTES, size_m, size_n,
+                                n_blocks * block + c, width, leftover);
     datamover_launch(&cfg);
   }
 }
 
+static inline __attribute__((always_inline)) void datamover_block_layout_reverse_w(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+                                                  uint32_t size_n, uint32_t block) {
+  datamover_cfg_t cfg = {0};
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t n_blocks = size_n / block;
+  uint32_t leftover = size_n % block;
+  uint8_t *image    = matrix_in + n_blocks * block * size_m * DATAMOVER_ELEM_BYTES;
+
+  if (n_blocks != 0) {
+    datamover_build_block_rev_complete(&cfg, matrix_in, matrix_out, size_m, size_n, block);
+    datamover_launch(&cfg);
+  }
+  for (uint32_t c = 0; c < leftover; c += BWE) {
+    uint32_t width = leftover - c < BWE ? leftover - c : BWE;
+    datamover_build_block_rev_strip(&cfg, image + c * DATAMOVER_ELEM_BYTES, matrix_out, size_m, size_n,
+                                    n_blocks * block + c, width, leftover);
+    datamover_launch(&cfg);
+  }
+}
+
+static inline __attribute__((always_inline)) void datamover_block_layout(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
+                                        uint32_t size_n) {
+  datamover_block_layout_w(matrix_in, matrix_out, size_m, size_n, DATAMOVER_BANDWIDTH_ELEMS);
+}
+
 static inline __attribute__((always_inline)) void datamover_block_layout_reverse(uint8_t *matrix_in, uint8_t *matrix_out, uint32_t size_m,
                                                 uint32_t size_n) {
-  datamover_cfg_t cfg = {0};
-  uint32_t leftover = size_n % DATAMOVER_BANDWIDTH_ELEMS;
-
-  if (size_n >= DATAMOVER_BANDWIDTH_ELEMS) {
-    datamover_build_block_rev_complete(&cfg, matrix_in, matrix_out, size_m, size_n);
-    datamover_launch(&cfg);
-  }
-  if (leftover != 0) {
-    datamover_build_block_rev_leftover(&cfg, matrix_in, matrix_out, size_m, size_n);
-    datamover_launch(&cfg);
-  }
+  datamover_block_layout_reverse_w(matrix_in, matrix_out, size_m, size_n, DATAMOVER_BANDWIDTH_ELEMS);
 }
 
 // block layout: one job for the complete channel tiles, one for the leftover channels.
@@ -273,12 +295,15 @@ static inline __attribute__((always_inline)) datamover_status_t datamover_run(co
                             t->out_ptr + c * t->size_m * t->size_n * DATAMOVER_ELEM_BYTES,
                             t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;
-    case DATAMOVER_BLOCK_LAYOUT:
+    case DATAMOVER_BLOCK_LAYOUT: {
+      uint32_t block = t->block_elems ? t->block_elems : DATAMOVER_BANDWIDTH_ELEMS;
+      if (!dm_block_ok(block)) return DATAMOVER_ERR;
       if (t->block_mode == 0)
-        datamover_block_layout(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
+        datamover_block_layout_w(t->in_ptr, t->out_ptr, t->size_m, t->size_n, block);
       else
-        datamover_block_layout_reverse(t->in_ptr, t->out_ptr, t->size_m, t->size_n);
+        datamover_block_layout_reverse_w(t->in_ptr, t->out_ptr, t->size_m, t->size_n, block);
       return DATAMOVER_OK;
+    }
     case DATAMOVER_BLOCK_LAYOUT_TRANSPOSE:
       datamover_block_layout_transpose(t->in_ptr, t->out_ptr, t->size_m, t->size_n, t->transp_mode);
       return DATAMOVER_OK;

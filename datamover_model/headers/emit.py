@@ -23,6 +23,7 @@ PARAM_KEYS = (
     "DATAMOVER_MODE",
     "TRANSP_MODE",
     "BLOCK_MODE",
+    "BLOCK_ELEMS",
     "SIZE_C",
     "SIZE_M",
     "SIZE_N",

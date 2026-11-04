@@ -48,7 +48,7 @@ default.
 | `MisalignedAccesses` | 1 | Accesses that start inside a word; the realignment takes one word of the port |
 | `NumCores`, `NumContext`, `IdWidth` | 8, 2, 10 | Event targets, job queue depth, peripheral ID width |
 | `AddrWidth` | 32 | TCDM address width (wrapper only) |
-| `EnableIm2col`, `EnableBuffer` | 1, 1 | Build the im2col mode (unit, zero border, stride-2 merge); build the element buffer (transpose, unfold, fold) |
+| `EnableIm2col`, `EnableBuffer` | 1, 1 | Build the im2col hardware (unit, zero border, stride-2 merge; im2row needs none); build the element buffer (transpose, unfold, fold) |
 | `Im2colKernel`, `Im2colMinLog2W` | 3, 3 | Largest im2col kernel side (odd, 3 to 7); log2 of the smallest image row width |
 | `FifoDepth` | 2 | Depth of the engine stream FIFOs |
 
@@ -75,7 +75,7 @@ validator:
 |---|---|
 | 0 | Copy |
 | 1 | Transpose of 1, 2, or 4 element groups (`TRANSP_MODE`) |
-| 2 | Block layout, forward or reverse (`BLOCK_MODE`) |
+| 2 | Block layout, forward or reverse (`BLOCK_MODE`); blocks of one beat, or of `BLOCK_ELEMS` elements: a divisor or a multiple of the beat |
 | 3 | Block layout transpose |
 | 4, 5 | Unfold and fold of 2x2 patches, `LAYOUT` CHW or BLOCK |
 | 6 | im2col: the im2col unit (K x K, stride 1, border K / 2, BLOCK input), the stride-2 merge and a pass-through for CHW input with a zero border (`CONV_PAD`), and im2row (`ROW_BLOCK`) for kernel == stride |

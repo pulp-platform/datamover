@@ -35,7 +35,7 @@ module datamover_top_wrap
   parameter int unsigned NumCores           = datamover_pkg::NumCores,           // number of cores for event inputs
   parameter int unsigned NumContext         = datamover_pkg::NumContext,         // number of context for control slave regfile
   parameter int unsigned MisalignedAccesses = datamover_pkg::MisalignedAccesses, // enable misaligned accesses on TCDM interface
-  parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col mode
+  parameter bit          EnableIm2col       = datamover_pkg::EnableIm2col,       // instantiate the im2col hardware
   parameter bit          EnableBuffer       = datamover_pkg::EnableBuffer,       // instantiate the element buffer
   parameter int unsigned Im2colKernel       = datamover_pkg::Im2colKernel,       // largest im2col unit kernel, odd, 3 to 7
   parameter int unsigned Im2colMinLog2W     = datamover_pkg::Im2colMinLog2W,     // log2 of the smallest im2col unit row width

@@ -73,8 +73,9 @@ def golden_for(params: dict, in_tensor: np.ndarray, beat: int):
         return in_tensor, out
     if mode == 2:
         flat = in_tensor.reshape(m, n)
-        out = block_layout(flat, beat, m, n) if params["BLOCK_MODE"] == 0 \
-            else block_layout_reverse(flat, beat, m, n)
+        block = params["BLOCK_ELEMS"] or beat
+        out = block_layout(flat, block, m, n) if params["BLOCK_MODE"] == 0 \
+            else block_layout_reverse(flat, block, m, n)
         return in_tensor, np.asarray(out).reshape(-1)
     if mode == 3:
         flat = in_tensor.reshape(m, n)

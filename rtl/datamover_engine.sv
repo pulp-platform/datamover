@@ -256,7 +256,7 @@ module datamover_engine
 
   assign strb_mode = (ctrl_i.total_elements == 0)                      ? '1 :
                      (ctrl_i.datamover_mode == DATAMOVER_COPY)         ? strb_copy :
-                     im2col_mode                                       ? strb_im2col :
+                     (ctrl_i.datamover_mode == DATAMOVER_IM2COL)       ? strb_im2col :
                      (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? strb_block :
                      buffer_mode                                       ? strb_buffer :
                                                                          '1;

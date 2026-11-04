@@ -121,6 +121,7 @@ typedef struct {
   datamover_mode_t        mode;
   datamover_transp_mode_t transp_mode;
   uint32_t                block_mode;       // 0 = row-major -> block, 1 = block -> row-major
+  uint32_t                block_elems;      // block layout: elements per block row; 0 = one beat
   uint32_t                size_c;
   uint32_t                size_m;
   uint32_t                size_n;
@@ -253,41 +254,53 @@ static inline __attribute__((always_inline)) void datamover_build_transpose(data
   cfg->ctrl_engine      = dm_ctrl_engine(DATAMOVER_TRANSP, 0x3, 0x1, transp_mode);
 }
 
-// Block layout forward (row-major -> block), the complete column blocks of one beat each.
-static inline __attribute__((always_inline)) void datamover_build_block_complete(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                uint32_t size_m, uint32_t size_n) {
+// A block width is at most one beat, or a whole number of beats.
+static inline uint32_t dm_block_ok(uint32_t block) {
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t n_blocks = size_n / BWE;
+  return block != 0 && (BWE % block == 0 || block % BWE == 0);
+}
+
+// Block layout forward (row-major -> block), the complete column blocks of `block` elements.
+// A block below one beat fills `block` lanes of each beat; one above it takes block / beat beats.
+static inline __attribute__((always_inline)) void datamover_build_block_complete(datamover_cfg_t *cfg, const void *in, const void *out,
+                                                uint32_t size_m, uint32_t size_n, uint32_t block) {
+  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  uint32_t n_blocks = size_n / block;
+  uint32_t k        = block > BWE ? block / BWE : 1;
+  uint32_t lanes    = block > BWE ? BWE : block;
 
   cfg->in_ptr      = dm_ptr(in, 0);
   cfg->out_ptr     = dm_ptr(out, 0);
-  cfg->tot_len     = size_m * n_blocks;
-  cfg->out_tot_len = size_m * n_blocks;
-  dm_in(cfg, 0, BWE, 1);
+  cfg->tot_len     = k * size_m * n_blocks;
+  cfg->out_tot_len = k * size_m * n_blocks;
+  dm_in(cfg, 0, BWE, k);
   dm_in(cfg, 1, size_n, size_m);
-  dm_in(cfg, 2, BWE, 0);
+  dm_in(cfg, 2, block, 0);
   dm_in(cfg, 3, 0, 0);
   dm_in(cfg, 4, 0, 0);
-  dm_out(cfg, 0, BWE, size_m);
-  dm_out(cfg, 1, BWE * size_m, n_blocks);
+  dm_out(cfg, 0, lanes, k * size_m);
+  dm_out(cfg, 1, block * size_m, n_blocks);
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  // The rows stay the matrix rows: the beat count would overflow the 16-bit field above 65535 beats.
-  cfg->matrix_dim = dm_matrix_dim(n_blocks * BWE, size_m);
-  dm_channels(cfg, n_blocks * BWE * size_m, 1);
+  // The n size sets the lanes of a beat, so a block below one beat is the n size and the rows
+  // count every block. Otherwise the rows stay the matrix rows: the beat count would overflow the
+  // 16-bit field above 65535 beats.
+  cfg->matrix_dim = block < BWE ? dm_matrix_dim(block, size_m * n_blocks)
+                                : dm_matrix_dim(n_blocks * block, size_m);
+  dm_channels(cfg, n_blocks * block * size_m, 1);
   cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_BLOCK_LAYOUT, 0x1, 0x3, DATAMOVER_TRANSP_NONE);
 }
 
-// Block layout forward, the leftover columns after the complete blocks.
-static inline __attribute__((always_inline)) void datamover_build_block_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                uint32_t size_m, uint32_t size_n) {
+// Block layout forward, one strip of `width` columns (at most one beat) from column `col` into
+// the image rows of `pitch` elements at `out`.
+static inline __attribute__((always_inline)) void datamover_build_block_strip(datamover_cfg_t *cfg, const void *in, const void *out,
+                                                uint32_t size_m, uint32_t size_n, uint32_t col,
+                                                uint32_t width, uint32_t pitch) {
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t n_blocks = size_n / BWE;
-  uint32_t leftover = size_n % BWE;
 
-  cfg->in_ptr      = dm_ptr(in, n_blocks * BWE);
-  cfg->out_ptr     = dm_ptr(out, n_blocks * size_m * BWE);
+  cfg->in_ptr      = dm_ptr(in, col);
+  cfg->out_ptr     = dm_ptr(out, 0);
   cfg->tot_len     = size_m;
   cfg->out_tot_len = size_m;
   dm_in(cfg, 0, BWE, 1);
@@ -295,54 +308,54 @@ static inline __attribute__((always_inline)) void datamover_build_block_leftover
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
   dm_in(cfg, 4, 0, 0);
-  dm_out(cfg, 0, leftover, size_m);
+  dm_out(cfg, 0, pitch, size_m);
   dm_out(cfg, 1, 0, 0);
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(leftover, size_m);
-  dm_channels(cfg, leftover * size_m, 1);
+  cfg->matrix_dim = dm_matrix_dim(width, size_m);
+  dm_channels(cfg, width * size_m, 1);
   cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_BLOCK_LAYOUT, 0x0, 0x1, DATAMOVER_TRANSP_NONE);
 }
 
 // Block layout reverse (block -> row-major), the complete column blocks.
 static inline __attribute__((always_inline)) void datamover_build_block_rev_complete(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                    uint32_t size_m, uint32_t size_n) {
+                                                    uint32_t size_m, uint32_t size_n, uint32_t block) {
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t n_blocks = size_n / BWE;
+  uint32_t n_blocks = size_n / block;
+  uint32_t k        = block > BWE ? block / BWE : 1;
+  uint32_t lanes    = block > BWE ? BWE : block;
 
   cfg->in_ptr      = dm_ptr(in, 0);
   cfg->out_ptr     = dm_ptr(out, 0);
-  cfg->tot_len     = size_m * n_blocks;
-  cfg->out_tot_len = size_m * n_blocks;
-  dm_in(cfg, 0, BWE, size_m * n_blocks);
-  dm_in(cfg, 1, 0, 0);
+  cfg->tot_len     = k * size_m * n_blocks;
+  cfg->out_tot_len = k * size_m * n_blocks;
+  dm_in(cfg, 0, lanes, k * size_m);
+  dm_in(cfg, 1, block * size_m, n_blocks);
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
   dm_in(cfg, 4, 0, 0);
-  dm_out(cfg, 0, size_n, size_m);
-  dm_out(cfg, 1, BWE, n_blocks);
-  dm_out(cfg, 2, 0, 0);
+  dm_out(cfg, 0, BWE, k);
+  dm_out(cfg, 1, size_n, size_m);
+  dm_out(cfg, 2, block, n_blocks);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  // The rows stay the matrix rows: the beat count would overflow the 16-bit field above 65535 beats.
-  cfg->matrix_dim = dm_matrix_dim(n_blocks * BWE, size_m);
-  dm_channels(cfg, BWE * size_m * n_blocks, 1);
-  cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_BLOCK_LAYOUT, 0x1, 0x0, DATAMOVER_TRANSP_NONE);
+  cfg->matrix_dim = block < BWE ? dm_matrix_dim(block, size_m * n_blocks)
+                                : dm_matrix_dim(n_blocks * block, size_m);
+  dm_channels(cfg, block * size_m * n_blocks, 1);
+  cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_BLOCK_LAYOUT, 0x3, 0x1, DATAMOVER_TRANSP_NONE);
 }
 
-// Block layout reverse, the leftover columns after the complete blocks.
-static inline __attribute__((always_inline)) void datamover_build_block_rev_leftover(datamover_cfg_t *cfg, const void *in, const void *out,
-                                                    uint32_t size_m, uint32_t size_n) {
-  const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  uint32_t n_blocks = size_n / BWE;
-  uint32_t leftover = size_n % BWE;
-
-  cfg->in_ptr      = dm_ptr(in, n_blocks * size_m * BWE);
-  cfg->out_ptr     = dm_ptr(out, n_blocks * BWE);
+// Block layout reverse, one strip of `width` columns (at most one beat) from the image rows of
+// `pitch` elements at `in` into column `col`.
+static inline __attribute__((always_inline)) void datamover_build_block_rev_strip(datamover_cfg_t *cfg, const void *in, const void *out,
+                                                    uint32_t size_m, uint32_t size_n, uint32_t col,
+                                                    uint32_t width, uint32_t pitch) {
+  cfg->in_ptr      = dm_ptr(in, 0);
+  cfg->out_ptr     = dm_ptr(out, col);
   cfg->tot_len     = size_m;
   cfg->out_tot_len = size_m;
-  dm_in(cfg, 0, leftover, size_m);
+  dm_in(cfg, 0, pitch, size_m);
   dm_in(cfg, 1, 0, 0);
   dm_in(cfg, 2, 0, 0);
   dm_in(cfg, 3, 0, 0);
@@ -352,8 +365,8 @@ static inline __attribute__((always_inline)) void datamover_build_block_rev_left
   dm_out(cfg, 2, 0, 0);
   dm_out(cfg, 3, 0, 0);
   dm_out(cfg, 4, 0, 0);
-  cfg->matrix_dim = dm_matrix_dim(leftover, size_m);
-  dm_channels(cfg, leftover * size_m, 1);
+  cfg->matrix_dim = dm_matrix_dim(width, size_m);
+  dm_channels(cfg, width * size_m, 1);
   cfg->ctrl_engine = dm_ctrl_engine(DATAMOVER_BLOCK_LAYOUT, 0x0, 0x0, DATAMOVER_TRANSP_NONE);
 }
 
@@ -505,7 +518,8 @@ static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_
                                                        uint32_t pad, datamover_im2col_in_t in_layout,
                                                        datamover_im2col_out_t out_layout) {
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
-  if (!DATAMOVER_ENABLE_IM2COL) return DATAMOVER_ERR;
+  // im2row (ROW_BLOCK) is pure addressing, so a build without the im2col hardware keeps it.
+  if (!DATAMOVER_ENABLE_IM2COL && out_layout != DATAMOVER_IM2COL_OUT_ROW_BLOCK) return DATAMOVER_ERR;
   if (kernel_h == 0 || kernel_w == 0 || conv_stride == 0) return DATAMOVER_ERR;
   if (size_h + 2 * pad < kernel_h || size_w + 2 * pad < kernel_w) return DATAMOVER_ERR;
   if (out_layout == DATAMOVER_IM2COL_OUT_ROW_BLOCK) {
