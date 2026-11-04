@@ -98,6 +98,13 @@ module datamover_engine
   logic [NumElems-1:0][ElemWidth-1:0] im2col_data;
   logic                                   im2col_valid, im2col_ready;
 
+  typedef struct packed {
+    logic [NumElems-1:0][ElemWidth-1:0] data;
+    logic [NumElems-1:0]                strb;
+  } buf_beat_t;
+  buf_beat_t                              buf_rd, buf_rd_q;
+  logic                                   buf_rd_valid, buf_rd_ready, buf_rd_valid_q, rd_hs;
+
   assign im2col_mode = EnableIm2col && (ctrl_i.datamover_mode == DATAMOVER_IM2COL);
   assign im2col_unit = im2col_mode && ctrl_i.im2col_pack;
 
@@ -112,7 +119,7 @@ module datamover_engine
         end
       end
       READ: begin
-        if (((cnt_q == phase_len-ctrl_i.transp_stride)) && (data_out_valid & data_out_ready)) begin
+        if (((cnt_q == phase_len-ctrl_i.transp_stride)) && rd_hs) begin
           fsm_d = WRITE;
         end
       end
@@ -233,7 +240,7 @@ module datamover_engine
   assign pass_cnt_d      = (tile_done && last_inner_tile && last_outer_tile) ? pass_cnt_q + 1'b1 : pass_cnt_q;
   assign buffer_job_done = last_inner_tile && last_outer_tile && last_pass && clear_elem_matrix;
 
-  logic [NumElems-1:0] strb_copy, strb_buffer, strb_block, strb_im2col;
+  logic [NumElems-1:0] strb_copy, strb_buffer, strb_block, strb_im2col, strb_mode;
 
   assign strb_copy   = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((StrbOne << remaining_elems) - 1) : '1;
 
@@ -247,19 +254,21 @@ module datamover_engine
   assign strb_im2col = (im2col_unit && ctrl_i.conv_stride == 1) ? '1 :
                        (ctrl_i.tensor_size_n < NumElems) ? ((StrbOne << ctrl_i.tensor_size_n) - 1) : strb_copy;
 
-  assign data_out_prefifo.strb = (ctrl_i.total_elements == 0)                        ? '1 :
-                                 (ctrl_i.datamover_mode == DATAMOVER_COPY)           ? strb_copy :
-                                 im2col_mode                                         ? strb_im2col :
-                                 (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? strb_block :
-                                 buffer_mode                                         ? strb_buffer :
-                                                                                       '1;
+  assign strb_mode = (ctrl_i.total_elements == 0)                      ? '1 :
+                     (ctrl_i.datamover_mode == DATAMOVER_COPY)         ? strb_copy :
+                     im2col_mode                                       ? strb_im2col :
+                     (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? strb_block :
+                     buffer_mode                                       ? strb_buffer :
+                                                                         '1;
 
+  assign data_out_prefifo.strb = buffer_mode ? buf_rd_q.strb : strb_mode;
   assign data_out_prefifo.data = data_out_unrolled;
   assign data_out_prefifo.valid = data_out_valid;
   assign data_out_ready = data_out_prefifo.ready;
 
   // Write counter
-  assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : data_out_valid & data_out_ready;
+  assign rd_hs  = buffer_mode ? buf_rd_valid & buf_rd_ready : data_out_valid & data_out_ready;
+  assign cnt_en = fsm_q == WRITE ? data_in_valid & data_in_ready : rd_hs;
   assign cnt_d = cnt_en ? ((cnt_q < (phase_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
 
   // Pass-through modes count output beats; buffer modes count tiles.
@@ -268,7 +277,9 @@ module datamover_engine
   assign execution_done     = buffer_mode ? buffer_job_done :
                               (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
 
-  assign tot_cnt_incr = data_out_prefifo.valid & data_out_prefifo.ready;
+  // The read register pushes the last buffer beat after the job clears the counters, so buffer
+  // jobs, which end on the tile count, do not count beats.
+  assign tot_cnt_incr = data_out_prefifo.valid & data_out_prefifo.ready & ~buffer_mode;
   assign tot_cnt_d    = tot_cnt_incr ? tot_cnt_q + 1 : tot_cnt_q;
 
   if (EnableIm2col) begin : gen_im2col
@@ -359,10 +370,32 @@ module datamover_engine
     assign elem_matrix_q = '{default: '0};
   end
 
+  // The buffer drains through a register stage, so the column select does not reach the output FIFO.
+  for (genvar ii = 0; ii < NumElems; ii++) begin : gen_buffer_read
+    assign buf_rd.data[ii] = elem_matrix_q[ii][cnt_q];
+  end
+  assign buf_rd.strb  = strb_mode;
+  assign buf_rd_valid = buffer_mode && (fsm_q == READ);
+
+  stream_register #(
+    .T ( buf_beat_t )
+  ) i_buffer_read_reg (
+    .clk_i      ( clk_i          ),
+    .rst_ni     ( rst_ni         ),
+    .clr_i      ( clear_i        ),
+    .testmode_i ( test_mode_i    ),
+    .valid_i    ( buf_rd_valid   ),
+    .ready_o    ( buf_rd_ready   ),
+    .data_i     ( buf_rd         ),
+    .valid_o    ( buf_rd_valid_q ),
+    .ready_i    ( data_out_ready ),
+    .data_o     ( buf_rd_q       )
+  );
+
   // Output assignment
   for(genvar ii=0; ii<NumElems; ii++) begin : gen_output
     assign data_out_unrolled[ii] =
-        buffer_mode                                ? elem_matrix_q[ii][cnt_q]
+        buffer_mode                                ? buf_rd_q.data[ii]
       : im2col_unit                                ? im2col_data[ii]
       : im2col_mode && (ctrl_i.conv_stride == 2)   ? data_in_unrolled[(ii < NumElems/2) ? 2*ii : 2*ii - NumElems]
                                                    : data_in_unrolled[ii];
@@ -370,7 +403,7 @@ module datamover_engine
 
   assign data_in_ready  = buffer_mode ? fsm_q == WRITE :
                           im2col_unit ? im2col_ready : data_out_ready;
-  assign data_out_valid = buffer_mode ? fsm_q == READ  :
+  assign data_out_valid = buffer_mode ? buf_rd_valid_q :
                           im2col_unit ? im2col_valid : data_in_valid;
 
   // Sequential logic
