@@ -94,11 +94,12 @@ module datamover_engine
 
   logic                                   execution_done;
 
-  logic                                   im2col_unit;
+  logic                                   im2col_mode, im2col_unit;
   logic [NumElems-1:0][ElemWidth-1:0] im2col_data;
   logic                                   im2col_valid, im2col_ready;
 
-  assign im2col_unit = EnableIm2col && (ctrl_i.datamover_mode == DATAMOVER_IM2COL) && ctrl_i.im2col_pack;
+  assign im2col_mode = EnableIm2col && (ctrl_i.datamover_mode == DATAMOVER_IM2COL);
+  assign im2col_unit = im2col_mode && ctrl_i.im2col_pack;
 
   // FSM: WRITE -> READ on input handshake at end of write, READ -> WRITE on output handshake at end of read
   always_comb
@@ -153,24 +154,30 @@ module datamover_engine
     .push_i  ( data_in          ),
     .pop_o   ( data_in_postfifo )
   );
-  // The zero border of the row-major im2col paths. Every other mode passes through. The loop
-  // counters return to zero at the end of a job, so only the soft clear resets them.
-  datamover_im2col_pad #(
-    .NumElems           ( NumElems           ),
-    .ElemWidth          ( ElemWidth          ),
-    .MisalignedAccesses ( MisalignedAccesses )
-  ) i_im2col_pad (
-    .clk_i   ( clk_i                        ),
-    .rst_ni  ( rst_ni                       ),
-    .clear_i ( clear_i                      ),
-    .ctrl_i  ( ctrl_i                       ),
-    .data_i  ( data_in_postfifo.data        ),
-    .valid_i ( data_in_postfifo.valid       ),
-    .ready_o ( data_in_postfifo.ready       ),
-    .data_o  ( data_in_unrolled             ),
-    .valid_o ( data_in_valid                ),
-    .ready_i ( data_in_ready                )
-  );
+  if (EnableIm2col) begin : gen_im2col_pad
+    // The zero border of the row-major im2col paths. Every other mode passes through. The loop
+    // counters return to zero at the end of a job, so only the soft clear resets them.
+    datamover_im2col_pad #(
+      .NumElems           ( NumElems           ),
+      .ElemWidth          ( ElemWidth          ),
+      .MisalignedAccesses ( MisalignedAccesses )
+    ) i_im2col_pad (
+      .clk_i   ( clk_i                        ),
+      .rst_ni  ( rst_ni                       ),
+      .clear_i ( clear_i                      ),
+      .ctrl_i  ( ctrl_i                       ),
+      .data_i  ( data_in_postfifo.data        ),
+      .valid_i ( data_in_postfifo.valid       ),
+      .ready_o ( data_in_postfifo.ready       ),
+      .data_o  ( data_in_unrolled             ),
+      .valid_o ( data_in_valid                ),
+      .ready_i ( data_in_ready                )
+    );
+  end else begin : gen_no_im2col_pad
+    assign data_in_unrolled       = data_in_postfifo.data;
+    assign data_in_valid          = data_in_postfifo.valid;
+    assign data_in_postfifo.ready = data_in_ready;
+  end
   hwpe_stream_fifo #(
     .DATA_WIDTH ( BandwidthAligned ),
     .ELEMENT_WIDTH ( ElemWidth ),
@@ -242,7 +249,7 @@ module datamover_engine
 
   assign data_out_prefifo.strb = (ctrl_i.total_elements == 0)                        ? '1 :
                                  (ctrl_i.datamover_mode == DATAMOVER_COPY)           ? strb_copy :
-                                 (ctrl_i.datamover_mode == DATAMOVER_IM2COL)         ? strb_im2col :
+                                 im2col_mode                                         ? strb_im2col :
                                  (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? strb_block :
                                  buffer_mode                                         ? strb_buffer :
                                                                                        '1;
@@ -355,10 +362,10 @@ module datamover_engine
   // Output assignment
   for(genvar ii=0; ii<NumElems; ii++) begin : gen_output
     assign data_out_unrolled[ii] =
-        buffer_mode                       ? elem_matrix_q[ii][cnt_q]
-      : im2col_unit                       ? im2col_data[ii]
-      : ctrl_i.conv_stride == 2           ? data_in_unrolled[(ii < NumElems/2) ? 2*ii : 2*ii - NumElems]
-                                          : data_in_unrolled[ii];
+        buffer_mode                                ? elem_matrix_q[ii][cnt_q]
+      : im2col_unit                                ? im2col_data[ii]
+      : im2col_mode && (ctrl_i.conv_stride == 2)   ? data_in_unrolled[(ii < NumElems/2) ? 2*ii : 2*ii - NumElems]
+                                                   : data_in_unrolled[ii];
   end // gen_output
 
   assign data_in_ready  = buffer_mode ? fsm_q == WRITE :

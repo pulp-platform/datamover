@@ -12,7 +12,7 @@ from pathlib import Path
 
 HW_KEYS = ("BANDWIDTH", "WORD_WIDTH", "ELEM_WIDTH", "MISALIGNED_ACCESSES")
 # Optional feature keys of a profile; a profile without the key has the default.
-HW_FEATURES = {"ENABLE_BUFFER": 1, "IM2COL_KERNEL": 3, "IM2COL_MIN_LOG2W": 3}
+HW_FEATURES = {"ENABLE_IM2COL": 1, "ENABLE_BUFFER": 1, "IM2COL_KERNEL": 3, "IM2COL_MIN_LOG2W": 3}
 
 PARAM_DEFAULTS = {
     "DATAMOVER_MODE": 0,
@@ -110,6 +110,8 @@ def normalize_params(raw: dict, beat: int, align: int = 1, features: dict = None
     if out["DATAMOVER_MODE"] in (4, 5):
         _validate_unfold_params(out, beat)
     _validate_alignment(out, align, beat)
+    if not features["ENABLE_IM2COL"] and out["DATAMOVER_MODE"] == 6:
+        raise ValueError("DATAMOVER_MODE 6 needs the im2col mode, the profile has ENABLE_IM2COL 0")
     if not features["ENABLE_BUFFER"] and out["DATAMOVER_MODE"] in (1, 3, 4, 5):
         raise ValueError(f"DATAMOVER_MODE {out['DATAMOVER_MODE']} needs the element buffer, the profile has ENABLE_BUFFER 0")
     return out

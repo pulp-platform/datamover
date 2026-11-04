@@ -20,6 +20,7 @@ endef
 $(foreach var,$(call load_hw_config,$(HW_CONFIG)),$(eval $(var)))
 
 # Feature keys a profile may omit
+ENABLE_IM2COL    ?= 1
 ENABLE_BUFFER    ?= 1
 IM2COL_KERNEL    ?= 3
 IM2COL_MIN_LOG2W ?= 3
@@ -66,7 +67,7 @@ SIM_TEST_DIR := $(SIM_DIR)/tests/$(TEST_NAME)
 # ============================================================================
 # Build tag + simulation engine
 # ============================================================================
-BUILD_TAG := $(shell python -c "from datamover_model.workloads.suite import build_tag; print(build_tag({'BANDWIDTH':$(BANDWIDTH),'WORD_WIDTH':$(WORD_WIDTH),'ELEM_WIDTH':$(ELEM_WIDTH),'MISALIGNED_ACCESSES':$(MISALIGNED_ACCESSES),'ENABLE_BUFFER':$(ENABLE_BUFFER),'IM2COL_KERNEL':$(IM2COL_KERNEL),'IM2COL_MIN_LOG2W':$(IM2COL_MIN_LOG2W)}, '$(strip $(STALL))'))")
+BUILD_TAG := $(shell python -c "from datamover_model.workloads.suite import build_tag; print(build_tag({'BANDWIDTH':$(BANDWIDTH),'WORD_WIDTH':$(WORD_WIDTH),'ELEM_WIDTH':$(ELEM_WIDTH),'MISALIGNED_ACCESSES':$(MISALIGNED_ACCESSES),'ENABLE_IM2COL':$(ENABLE_IM2COL),'ENABLE_BUFFER':$(ENABLE_BUFFER),'IM2COL_KERNEL':$(IM2COL_KERNEL),'IM2COL_MIN_LOG2W':$(IM2COL_MIN_LOG2W)}, '$(strip $(STALL))'))")
 
 TOP_MODULE ?= tb_datamover
 
@@ -82,6 +83,7 @@ SIM_DEFINES  = -DBANDWIDTH=$(BANDWIDTH)
 SIM_DEFINES += -DWORD_WIDTH=$(WORD_WIDTH)
 SIM_DEFINES += -DELEM_WIDTH=$(ELEM_WIDTH)
 SIM_DEFINES += -DMISALIGNED_ACCESSES=$(MISALIGNED_ACCESSES)
+SIM_DEFINES += -DENABLE_IM2COL=$(ENABLE_IM2COL)
 SIM_DEFINES += -DENABLE_BUFFER=$(ENABLE_BUFFER)
 SIM_DEFINES += -DIM2COL_KERNEL=$(IM2COL_KERNEL)
 SIM_DEFINES += -DIM2COL_MIN_LOG2W=$(IM2COL_MIN_LOG2W)

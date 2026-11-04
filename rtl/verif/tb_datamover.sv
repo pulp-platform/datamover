@@ -31,6 +31,9 @@ module tb_datamover;
 `ifndef MISALIGNED_ACCESSES
   `define MISALIGNED_ACCESSES 1
 `endif
+`ifndef ENABLE_IM2COL
+  `define ENABLE_IM2COL 1
+`endif
 `ifndef ENABLE_BUFFER
   `define ENABLE_BUFFER 1
 `endif
@@ -48,6 +51,7 @@ module tb_datamover;
   localparam int unsigned WordWidth          = `WORD_WIDTH;
   localparam int unsigned ElemWidth          = `ELEM_WIDTH;
   localparam int unsigned MisalignedAccesses = `MISALIGNED_ACCESSES;
+  localparam bit          EnableIm2col       = `ENABLE_IM2COL;
   localparam bit          EnableBuffer       = `ENABLE_BUFFER;
   localparam int unsigned Im2colKernel       = `IM2COL_KERNEL;
   localparam int unsigned Im2colMinLog2W     = `IM2COL_MIN_LOG2W;
@@ -277,6 +281,7 @@ module tb_datamover;
     .NumCores           ( 8                  ),
     .NumContext         ( 2                  ),
     .MisalignedAccesses ( MisalignedAccesses ),
+    .EnableIm2col       ( EnableIm2col       ),
     .EnableBuffer       ( EnableBuffer       ),
     .Im2colKernel       ( Im2colKernel       ),
     .Im2colMinLog2W     ( Im2colMinLog2W     )

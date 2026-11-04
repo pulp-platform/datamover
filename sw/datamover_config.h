@@ -34,6 +34,9 @@
 #ifndef DATAMOVER_MISALIGNED_ACCESSES
 #define DATAMOVER_MISALIGNED_ACCESSES 0
 #endif
+#ifndef DATAMOVER_ENABLE_IM2COL
+#define DATAMOVER_ENABLE_IM2COL 1
+#endif
 #ifndef DATAMOVER_ENABLE_BUFFER
 #define DATAMOVER_ENABLE_BUFFER 1
 #endif
@@ -502,6 +505,7 @@ static inline datamover_status_t datamover_im2col_check(uint32_t size_c, uint32_
                                                        uint32_t pad, datamover_im2col_in_t in_layout,
                                                        datamover_im2col_out_t out_layout) {
   const uint32_t BWE = DATAMOVER_BANDWIDTH_ELEMS;
+  if (!DATAMOVER_ENABLE_IM2COL) return DATAMOVER_ERR;
   if (kernel_h == 0 || kernel_w == 0 || conv_stride == 0) return DATAMOVER_ERR;
   if (size_h + 2 * pad < kernel_h || size_w + 2 * pad < kernel_w) return DATAMOVER_ERR;
   if (out_layout == DATAMOVER_IM2COL_OUT_ROW_BLOCK) {
