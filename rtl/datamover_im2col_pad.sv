@@ -50,16 +50,13 @@ module datamover_im2col_pad
   localparam logic [NumElems-1:0] StrbOne = {{(NumElems-1){1'b0}}, 1'b1};
 
   logic [NumElems-1:0][ElemWidth-1:0] base;
-  logic [NumElems-1:0]                keep, keep_l, keep_r;
+  logic [NumElems-1:0]                keep_d, keep_q;
   logic [SegWidth-1:0]                n_seg, r_d, r_q;
-  logic [TensorSizeWidth-1:0]         oh_d, oh_q, oh_rev;
-  logic [PadKernelWidth-1:0]          kw_d, kw_q, kh_d, kh_q, kw_rev, kh_rev;
-  logic [PosWidth-1:0]                seg_len, top_pos, bot_pos;
-  logic [PadWidth-1:0]                left_n;
-  logic [PadRightWidth-1:0]           right_n;
+  logic [TensorSizeWidth-1:0]         oh_d, oh_q;
+  logic [PadKernelWidth-1:0]          kw_d, kw_q, kh_d, kh_q;
+  logic [PosWidth-1:0]                seg_len;
   logic                               active, half, out_hs, step;
   logic                               r_last, oh_last, kw_last, kh_last;
-  logic                               row_zero, left_on, right_on;
 
   // The merge and the pass-through read row-major images; the stride-1 unit reads the block layout.
   // The HAL sets the kernel fields only for a job with a border or a realignment.
@@ -81,26 +78,42 @@ module datamover_im2col_pad
   assign kw_d    = (step && r_last && oh_last) ? (kw_last ? '0 : kw_q + 1'b1) : kw_q;
   assign kh_d    = (step && r_last && oh_last && kw_last) ? (kh_last ? '0 : kh_q + 1'b1) : kh_q;
 
-  // Rows: the image row is oh * stride + kh - pad_top. pad_bottom counts from the last row backwards.
-  assign oh_rev   = ctrl_i.tensor_size_m - 1'b1 - oh_q;
-  assign kh_rev   = ctrl_i.pad_kernel_h - 1'b1 - kh_q;
-  assign kw_rev   = ctrl_i.pad_kernel_w - 1'b1 - kw_q;
-  assign top_pos  = (PosWidth'(oh_q) << half) + PosWidth'(kh_q);
-  assign bot_pos  = (PosWidth'(oh_rev) << half) + PosWidth'(kh_rev);
-  assign row_zero = (top_pos < PosWidth'(ctrl_i.pad_top)) || (bot_pos < PosWidth'(ctrl_i.pad_bottom));
+  // The lanes a beat keeps. A register holds the mask of the next beat, from the next loop counts,
+  // so the mask logic does not reach the data path. The job registers settle two or more cycles
+  // before the first beat of a job, because the source reads the TCDM first.
+  function automatic logic [NumElems-1:0] keep_mask(logic [SegWidth-1:0]        r,
+                                                    logic [TensorSizeWidth-1:0] oh,
+                                                    logic [PadKernelWidth-1:0]  kw,
+                                                    logic [PadKernelWidth-1:0]  kh);
+    logic [TensorSizeWidth-1:0] oh_rev;
+    logic [PadKernelWidth-1:0]  kw_rev, kh_rev;
+    logic [PosWidth-1:0]        top_pos, bot_pos;
+    logic [PadWidth-1:0]        left_n;
+    logic [PadRightWidth-1:0]   right_n;
+    logic                       row_zero, left_on, right_on;
+    logic [NumElems-1:0]        keep_l, keep_r;
+    // Rows: the image row is oh * stride + kh - pad_top. pad_bottom counts from the last row backwards.
+    oh_rev   = ctrl_i.tensor_size_m - 1'b1 - oh;
+    kh_rev   = ctrl_i.pad_kernel_h - 1'b1 - kh;
+    kw_rev   = ctrl_i.pad_kernel_w - 1'b1 - kw;
+    top_pos  = (PosWidth'(oh) << half) + PosWidth'(kh);
+    bot_pos  = (PosWidth'(oh_rev) << half) + PosWidth'(kh_rev);
+    row_zero = (top_pos < PosWidth'(ctrl_i.pad_top)) || (bot_pos < PosWidth'(ctrl_i.pad_bottom));
+    // Columns: the first beat starts pad_left - kw lanes left of the image. The last beat ends
+    // pad_right - (Kw - 1 - kw) lanes right of it.
+    left_on  = (r == '0) && (PadKernelWidth'(ctrl_i.pad_left) > kw);
+    left_n   = ctrl_i.pad_left - PadWidth'(kw);
+    right_on = (r == n_seg - 1'b1) && (ctrl_i.pad_right > PadRightWidth'(kw_rev));
+    right_n  = ctrl_i.pad_right - PadRightWidth'(kw_rev);
+    keep_l   = left_on  ? ~((StrbOne << left_n) - 1'b1) : '1;
+    keep_r   = right_on ? ((StrbOne << (NumElems - right_n)) - 1'b1) : '1;
+    return !active ? '1 : row_zero ? '0 : (keep_l & keep_r);
+  endfunction
 
-  // Columns: the first beat starts pad_left - kw lanes left of the image. The last beat ends
-  // pad_right - (Kw - 1 - kw) lanes right of it.
-  assign left_on  = (r_q == '0) && (PadKernelWidth'(ctrl_i.pad_left) > kw_q);
-  assign left_n   = ctrl_i.pad_left - PadWidth'(kw_q);
-  assign right_on = r_last && (ctrl_i.pad_right > PadRightWidth'(kw_rev));
-  assign right_n  = ctrl_i.pad_right - PadRightWidth'(kw_rev);
-  assign keep_l   = left_on  ? ~((StrbOne << left_n) - 1'b1) : '1;
-  assign keep_r   = right_on ? ((StrbOne << (NumElems - right_n)) - 1'b1) : '1;
-  assign keep     = !active ? '1 : row_zero ? '0 : (keep_l & keep_r);
+  always_comb keep_d = keep_mask(r_d, oh_d, kw_d, kh_d);
 
   for (genvar jj = 0; jj < NumElems; jj++) begin : gen_lane
-    assign data_o[jj] = keep[jj] ? base[jj] : '0;
+    assign data_o[jj] = keep_q[jj] ? base[jj] : '0;
   end
 
   if (MisalignedAccesses == 0) begin : gen_realign
@@ -130,6 +143,7 @@ module datamover_im2col_pad
   end
 
   `FFARNC(r_q,  r_d,  clear_i, '0, clk_i, rst_ni)
+  `FF(keep_q, keep_d, '1, clk_i, rst_ni)
   `FFARNC(oh_q, oh_d, clear_i, '0, clk_i, rst_ni)
   `FFARNC(kw_q, kw_d, clear_i, '0, clk_i, rst_ni)
   `FFARNC(kh_q, kh_d, clear_i, '0, clk_i, rst_ni)
