@@ -79,15 +79,18 @@ module datamover_engine
   logic [NumElems-1:0][ElemWidth-1:0] data_out_unrolled;
   logic                                   data_out_valid;
   logic                                   data_out_ready;
-  logic [NumElemsLog2-1:0]                remaining_elems;
-  logic [AccessCntWidth-1:0]            total_accesses_copy_mode, total_accesses_block, acc_target;
-  logic [TileCntWidth-1:0]              inner_tiles, outer_tiles;
-  logic [NumElemsLog2:0]                  inner_leftover, outer_leftover;
+  // The job geometry is a function of the job registers. A register stage keeps the multiply and
+  // the tile counts off the counter paths; the first beat comes two cycles after the job start.
+  logic [NumElemsLog2-1:0]                remaining_elems_d, remaining_elems;
+  logic [AccessCntWidth-1:0]            total_accesses_copy_mode_d, total_accesses_copy_mode;
+  logic [AccessCntWidth-1:0]            total_accesses_block_d, total_accesses_block, acc_target;
+  logic [TileCntWidth-1:0]              inner_tiles_d, inner_tiles, outer_tiles_d, outer_tiles;
+  logic [NumElemsLog2:0]                  inner_leftover_d, inner_leftover, outer_leftover_d, outer_leftover;
   logic [1:0]                             group_log2;
   logic [$clog2(NumElemsLog2+1)-1:0]      inner_rows_log2;
   logic [TensorSizeWidth-1:0]           inner_size;
   logic [TileCntWidth-1:0]              inner_tile_q, inner_tile_d, outer_tile_q, outer_tile_d;
-  logic [TensorSizeWidth-1:0]           pass_cnt_q, pass_cnt_d, num_passes;
+  logic [TensorSizeWidth-1:0]           pass_cnt_q, pass_cnt_d, num_passes_d, num_passes;
   logic [NumElemsLog2:0]                  inner_len, outer_len, fill_len, drain_len, phase_len;
   logic                                   buffer_mode, unfold_fold, tile_done, buffer_job_done;
   logic                                   last_inner_tile, last_outer_tile, last_pass;
@@ -103,6 +106,9 @@ module datamover_engine
     logic [NumElems-1:0]                strb;
   } buf_beat_t;
   buf_beat_t                              buf_rd, buf_rd_q;
+  // The drained column as a one-hot register, so no decode of the counter fans out to the mux.
+  localparam logic [NumElems-1:0] ColZero = {{(NumElems-1){1'b0}}, 1'b1};
+  logic [NumElems-1:0]                    col_sel_q, col_sel_d;
   logic                                   buf_rd_valid, buf_rd_ready, buf_rd_valid_q, rd_hs;
 
   assign im2col_mode = EnableIm2col && (ctrl_i.datamover_mode == DATAMOVER_IM2COL);
@@ -202,8 +208,8 @@ module datamover_engine
   // Partial tile / leftover elements handling
   // Due to the streamer address generation, matrices need to be word-aligned in n-dimension for transposition
   localparam logic [NumElems-1:0] StrbOne = {{(NumElems-1){1'b0}}, 1'b1};    // Necessary to force the shifting operation to the correct bitwidth (default would be only 32b)
-  assign remaining_elems = ctrl_i.total_elements & (NumElems - 1);         // modulo (NumElems: power of two) - this signal is only used in copy mode
-  assign total_accesses_copy_mode = (ctrl_i.total_elements >> NumElemsLog2) + ((remaining_elems != 0) ? 1 : 0);
+  assign remaining_elems_d = ctrl_i.total_elements & (NumElems - 1);         // modulo (NumElems: power of two) - this signal is only used in copy mode
+  assign total_accesses_copy_mode_d = (ctrl_i.total_elements >> NumElemsLog2) + ((remaining_elems_d != 0) ? 1 : 0);
 
   // Tile geometry
   // The buffer modes walk a grid of NumElems tiles, inner dimension first, num_passes times.
@@ -218,11 +224,11 @@ module datamover_engine
                            ctrl_i.transp_stride == 3'd2   ? 2'd1 : 2'd0;
   assign inner_rows_log2 = NumElemsLog2 - group_log2;
   assign inner_size      = unfold_fold ? ctrl_i.num_channels : ctrl_i.tensor_size_m;
-  assign inner_tiles     = (inner_size + (TensorSizeWidth'(1) << inner_rows_log2) - 1) >> inner_rows_log2;
-  assign outer_tiles     = (ctrl_i.tensor_size_n + NumElems - 1) >> NumElemsLog2;
-  assign inner_leftover  = (inner_size & ((TensorSizeWidth'(1) << inner_rows_log2) - 1)) << group_log2;
-  assign outer_leftover  = ctrl_i.tensor_size_n & (NumElems - 1);
-  assign num_passes      = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? TensorSizeWidth'(1) : ctrl_i.tensor_size_m;
+  assign inner_tiles_d    = (inner_size + (TensorSizeWidth'(1) << inner_rows_log2) - 1) >> inner_rows_log2;
+  assign outer_tiles_d    = (ctrl_i.tensor_size_n + NumElems - 1) >> NumElemsLog2;
+  assign inner_leftover_d = (inner_size & ((TensorSizeWidth'(1) << inner_rows_log2) - 1)) << group_log2;
+  assign outer_leftover_d = ctrl_i.tensor_size_n & (NumElems - 1);
+  assign num_passes_d     = (ctrl_i.datamover_mode == DATAMOVER_TRANSPOSE) ? TensorSizeWidth'(1) : ctrl_i.tensor_size_m;
   assign last_inner_tile = (inner_tile_q == inner_tiles - 1);
   assign last_outer_tile = (outer_tile_q == outer_tiles - 1);
   assign last_pass       = (pass_cnt_q == num_passes - 1);
@@ -272,7 +278,7 @@ module datamover_engine
   assign cnt_d = cnt_en ? ((cnt_q < (phase_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
 
   // Pass-through modes count output beats; buffer modes count tiles.
-  assign total_accesses_block = ctrl_i.tensor_size_m * outer_tiles;
+  assign total_accesses_block_d = ctrl_i.tensor_size_m * outer_tiles_d;
   assign acc_target         = (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? total_accesses_block : total_accesses_copy_mode;
   assign execution_done     = buffer_mode ? buffer_job_done :
                               (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
@@ -371,8 +377,14 @@ module datamover_engine
   end
 
   // The buffer drains through a register stage, so the column select does not reach the output FIFO.
+  assign col_sel_d = ColZero << cnt_d;
   for (genvar ii = 0; ii < NumElems; ii++) begin : gen_buffer_read
-    assign buf_rd.data[ii] = elem_matrix_q[ii][cnt_q];
+    always_comb begin
+      buf_rd.data[ii] = '0;
+      for (int unsigned c = 0; c < NumElems; c++) begin
+        buf_rd.data[ii] |= {ElemWidth{col_sel_q[c]}} & elem_matrix_q[ii][c];
+      end
+    end
   end
   assign buf_rd.strb  = strb_mode;
   assign buf_rd_valid = buffer_mode && (fsm_q == READ);
@@ -414,6 +426,15 @@ module datamover_engine
   `FFARNC(inner_tile_q, inner_tile_d, clear_run, '0,    clk_i, rst_ni)
   `FFARNC(outer_tile_q, outer_tile_d, clear_run, '0,    clk_i, rst_ni)
   `FFARNC(pass_cnt_q,   pass_cnt_d,   clear_run, '0,    clk_i, rst_ni)
+  `FF(remaining_elems,          remaining_elems_d,          '0, clk_i, rst_ni)
+  `FF(total_accesses_copy_mode, total_accesses_copy_mode_d, '0, clk_i, rst_ni)
+  `FF(total_accesses_block,     total_accesses_block_d,     '0, clk_i, rst_ni)
+  `FF(inner_tiles,              inner_tiles_d,              '0, clk_i, rst_ni)
+  `FF(outer_tiles,              outer_tiles_d,              '0, clk_i, rst_ni)
+  `FF(inner_leftover,           inner_leftover_d,           '0, clk_i, rst_ni)
+  `FF(outer_leftover,           outer_leftover_d,           '0, clk_i, rst_ni)
+  `FF(num_passes,               num_passes_d,               '0, clk_i, rst_ni)
+  `FFARNC(col_sel_q,    col_sel_d,    clear_run, ColZero, clk_i, rst_ni)
 
 `ifndef SYNTHESIS
 `ifndef VERILATOR
