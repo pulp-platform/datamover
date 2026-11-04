@@ -78,7 +78,7 @@ $(SW_OBJ): sw/tb_datamover.c sw/datamover_hal.h sw/datamover_config.h sw/datamov
 # Step 3: link
 $(SW_BIN): $(SW_CRT) $(SW_OBJ) sw/link.ld
 	$(RISCV_LD) $(LD_OPTS) -o $(SW_BIN) $(SW_CRT) $(SW_OBJ) -Tsw/link.ld
-	$(RISCV_OBJDUMP) -D $(SW_BIN) > $(SW_BIN).dump
+	$(RISCV_OBJDUMP) -d $(SW_BIN) > $(SW_BIN).dump
 
 # Step 4: convert ELF to memory hex files for $readmemh
 $(SW_STIM_INSTR) $(SW_STIM_DATA): $(SW_BIN)
