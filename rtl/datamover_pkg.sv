@@ -104,6 +104,7 @@ package datamover_pkg;
     logic [TensorSizeWidth-1:0]     tensor_size_m;
     logic [TensorSizeWidth-1:0]     tensor_size_n;
     logic [TotalElemWidth-1:0]      total_elements; // num_channels * size_m * size_n (from HAL)
+    logic [31:0]                    out_tot_len;    // output beats of the job, the sink length
     logic [NumChannelsWidth-1:0]    num_channels;   // number of channels (for unfolding/folding)
   } ctrl_engine_t;
 

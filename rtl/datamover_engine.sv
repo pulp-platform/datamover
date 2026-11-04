@@ -79,11 +79,10 @@ module datamover_engine
   logic [NumElems-1:0][ElemWidth-1:0] data_out_unrolled;
   logic                                   data_out_valid;
   logic                                   data_out_ready;
-  // The job geometry is a function of the job registers. A register stage keeps the multiply and
-  // the tile counts off the counter paths; the first beat comes two cycles after the job start.
+  // The job geometry is a function of the job registers. A register stage keeps the tile counts
+  // off the counter paths; the first beat comes two cycles after the job start.
   logic [NumElemsLog2-1:0]                remaining_elems_d, remaining_elems;
-  logic [AccessCntWidth-1:0]            total_accesses_copy_mode_d, total_accesses_copy_mode;
-  logic [AccessCntWidth-1:0]            total_accesses_block_d, total_accesses_block, acc_target;
+  logic [AccessCntWidth-1:0]            acc_last_d, acc_last;
   logic [TileCntWidth-1:0]              inner_tiles_d, inner_tiles, outer_tiles_d, outer_tiles;
   logic [NumElemsLog2:0]                  inner_leftover_d, inner_leftover, outer_leftover_d, outer_leftover;
   logic [1:0]                             group_log2;
@@ -209,7 +208,8 @@ module datamover_engine
   // Due to the streamer address generation, matrices need to be word-aligned in n-dimension for transposition
   localparam logic [NumElems-1:0] StrbOne = {{(NumElems-1){1'b0}}, 1'b1};    // Necessary to force the shifting operation to the correct bitwidth (default would be only 32b)
   assign remaining_elems_d = ctrl_i.total_elements & (NumElems - 1);         // modulo (NumElems: power of two) - this signal is only used in copy mode
-  assign total_accesses_copy_mode_d = (ctrl_i.total_elements >> NumElemsLog2) + ((remaining_elems_d != 0) ? 1 : 0);
+  // The pass-through modes end on the last output beat, which the sink length of the job gives.
+  assign acc_last_d        = AccessCntWidth'(ctrl_i.out_tot_len - 1);
 
   // Tile geometry
   // The buffer modes walk a grid of NumElems tiles, inner dimension first, num_passes times.
@@ -248,7 +248,7 @@ module datamover_engine
 
   logic [NumElems-1:0] strb_copy, strb_buffer, strb_block, strb_im2col, strb_mode;
 
-  assign strb_copy   = ((tot_cnt_q >= total_accesses_copy_mode-1) && (remaining_elems != 0)) ? ((StrbOne << remaining_elems) - 1) : '1;
+  assign strb_copy   = ((tot_cnt_q == acc_last) && (remaining_elems != 0)) ? ((StrbOne << remaining_elems) - 1) : '1;
 
   // The buffer holds fill_len valid rows, so each drained column has fill_len elements.
   assign strb_buffer = (StrbOne << fill_len) - 1;
@@ -278,10 +278,8 @@ module datamover_engine
   assign cnt_d = cnt_en ? ((cnt_q < (phase_len-ctrl_i.transp_stride)) ? cnt_q+ctrl_i.transp_stride : '0) : cnt_q;
 
   // Pass-through modes count output beats; buffer modes count tiles.
-  assign total_accesses_block_d = ctrl_i.tensor_size_m * outer_tiles_d;
-  assign acc_target         = (ctrl_i.datamover_mode == DATAMOVER_BLOCK_LAYOUT) ? total_accesses_block : total_accesses_copy_mode;
   assign execution_done     = buffer_mode ? buffer_job_done :
-                              (acc_target != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q >= acc_target - 1);
+                              (ctrl_i.out_tot_len != 0) && (data_out_prefifo.valid & data_out_prefifo.ready) && (tot_cnt_q == acc_last);
 
   // The read register pushes the last buffer beat after the job clears the counters, so buffer
   // jobs, which end on the tile count, do not count beats.
@@ -427,8 +425,7 @@ module datamover_engine
   `FFARNC(outer_tile_q, outer_tile_d, clear_run, '0,    clk_i, rst_ni)
   `FFARNC(pass_cnt_q,   pass_cnt_d,   clear_run, '0,    clk_i, rst_ni)
   `FF(remaining_elems,          remaining_elems_d,          '0, clk_i, rst_ni)
-  `FF(total_accesses_copy_mode, total_accesses_copy_mode_d, '0, clk_i, rst_ni)
-  `FF(total_accesses_block,     total_accesses_block_d,     '0, clk_i, rst_ni)
+  `FF(acc_last,                 acc_last_d,                 '0, clk_i, rst_ni)
   `FF(inner_tiles,              inner_tiles_d,              '0, clk_i, rst_ni)
   `FF(outer_tiles,              outer_tiles_d,              '0, clk_i, rst_ni)
   `FF(inner_leftover,           inner_leftover_d,           '0, clk_i, rst_ni)

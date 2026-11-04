@@ -244,6 +244,7 @@ module datamover_ctrl
   assign engine_ctrl_d.conv_stride    = (engine_ctrl_d.datamover_mode == DATAMOVER_IM2COL) ?
                                         job_dep_regs.ctrl_engine.conv_stride.value : 1'b1;
   assign engine_ctrl_d.im2col_pack    = job_dep_regs.ctrl_engine.im2col_pack.value;
+  assign engine_ctrl_d.out_tot_len    = job_dep_regs.out_tot_len.value.value;
   assign engine_ctrl_d.im2col_log2w   = job_dep_regs.ctrl_engine.im2col_log2w.value;
   assign engine_ctrl_d.im2col_kernel  = job_dep_regs.ctrl_engine.im2col_kernel.value;
   assign engine_ctrl_d.pad_kernel_h   = job_dep_regs.im2col_pad.kernel_h.value;
