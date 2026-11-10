@@ -43,9 +43,9 @@ default.
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `Bandwidth` | 576 | TCDM port width in bits, a multiple of the word width |
+| `Bandwidth` | 512 | TCDM port width in bits, a multiple of the word width |
 | `ElemsPerWord`, `ElemWidth` | 8, 8 | Elements per memory word; element width in bits (8, 16, or 32) |
-| `MisalignedAccesses` | 1 | Accesses that start inside a word; the realignment takes one word of the port |
+| `MisalignedAccesses` | 0 | Accesses that start inside a word; the realignment takes one word of the port |
 | `NumCores`, `NumContext`, `IdWidth` | 8, 2, 10 | Event targets, job queue depth, peripheral ID width |
 | `AddrWidth` | 32 | TCDM address width (wrapper only) |
 | `EnableIm2col`, `EnableBuffer` | 1, 1 | Build the im2col unit; build the element buffer (transpose, unfold, fold) |
@@ -63,7 +63,7 @@ validator:
 |---|---|---|---|---|---|---|---|
 | `bw128_w32` | 128 | 32 | 8 | no | | 16 | yes |
 | `bw256_w64` | 256 | 64 | 8 | no | `IM2COL_KERNEL` 5 | 32 | yes |
-| `default` | 576 | 64 | 8 | yes | | 64 | yes |
+| `default` | 512 | 64 | 8 | no | | 64 | yes |
 | `bw128_w32_nobuf` | 128 | 32 | 8 | no | `ENABLE_BUFFER` 0 | 16 | no |
 | `bw256_w64_e16` | 256 | 64 | 16 | no | | 16 | no |
 | `bw256_w64_k7` | 256 | 64 | 8 | no | `IM2COL_KERNEL` 7 | 32 | im2col |
